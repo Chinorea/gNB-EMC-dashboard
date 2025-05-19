@@ -132,13 +132,6 @@ class IpAddress(Attribute):
 
     def print_Ip_Status(self):
 
-<<<<<<< HEAD
-        # EP_NgU
-        print("EP_NgU:")
-        print(f"  Local IP Address:  {self.ipAddressNgu or 'N/A'}")
-        print(f"  Remote IP Address: {self.remoteIpNgu or 'N/A'}\n")
-        pass
-=======
         print("IpAddress Info:")
         print(f"  gnbId: {self.gnb_Id or 'N/A'}")
         print(f"  pci: {self.gnb_Pci or 'N/A'}")
@@ -146,4 +139,3 @@ class IpAddress(Attribute):
         print(f"  NgC IP Address:  {self.ipAddressNgc or 'N/A'}")
         print(f"  NgU IP Address:  {self.ipAddressNgu or 'N/A'}\n")
         pass
->>>>>>> 794fef9410e3808eae0c0924c3ae0594e83f07bf
