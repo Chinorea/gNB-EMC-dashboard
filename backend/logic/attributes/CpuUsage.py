@@ -1,4 +1,4 @@
-from Attribute import Attribute
+from .Attribute import Attribute
 
 class CpuUsage(Attribute):
     cpuUsage = None
