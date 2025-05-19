@@ -1,5 +1,5 @@
 from .Attribute import Attribute
-import re
+import re, os
 from typing import Optional, List, Dict
 
 class BroadcastFrequency(Attribute):
@@ -25,7 +25,15 @@ class BroadcastFrequency(Attribute):
         self.set_Ul_Bw(freqs.get('nUlBw', ''))
 
     def get_Broadcast_Frequency(self):
+
         tags = ['nUlCenterFreq','nDlCenterFreq','nUlBw','nDlBw']
+        error_file_dict = {tag: "File not found" for tag in tags}
+        error_freq_dict = {tag: "Freq not found" for tag in tags}
+
+        if not os.path.isfile(self.config_path):
+            print('File does not exist')
+            return error_file_dict
+
         freq_info = { tag: None for tag in tags }
         pattern = re.compile(rf'<({"|".join(tags)})>\s*(.*?)\s*</\1>')
 
@@ -35,6 +43,10 @@ class BroadcastFrequency(Attribute):
                 if m:
                     tag, val = m.group(1), m.group(2)
                     freq_info[tag] = val
+
+        if all(v is None for v in freq_info.values()):
+            print("No broadcast-frequency tags found in file.")
+            return error_freq_dict
 
         return freq_info
 
@@ -57,7 +69,7 @@ class BroadcastFrequency(Attribute):
         return self.downLinkBw, self.downLinkBw
 
     def print_Freq_Status(self):
-        print("Broadcast Frequencies:")
+        print("Broadcast Frequencies Info:")
         print(f"  Downlink Center Frequency: {self.frequencyDownLink}")
         print(f"  Downlink Bandwidth:        {self.downLinkBw}")
         print(f"  Uplink Center Frequency:   {self.frequencyUpLink}")

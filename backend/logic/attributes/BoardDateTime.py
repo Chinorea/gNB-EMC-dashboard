@@ -14,8 +14,8 @@ class BoardDateTime(Attribute):
         self.boardTime = datetime.today().time().strftime("%H:%M:%S")
 
     def print_Current_time(self):
-        print("Current date : ", self.boardDate)
-        print("Current time : ", self.boardTime)
+        print("\n Current date : ", self.boardDate)
+        print("  Current time : ", self.boardTime, "\n")
 
 
 
