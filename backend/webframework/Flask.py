@@ -11,25 +11,35 @@ from backend.logic.attributes.RaptorStatus       import RaptorStatus
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-@app.route("/api/attributes")
-def attributes_api():
-    ip  = IpAddress("/cu/config/me_config.xml");                 ip.refresh()
-    cpu = "50"  # CpuUsage(cfg);          cpu.refresh()
-    ram = "40"  # RamUsage(cfg);          ram.refresh()
-    bc  = BroadcastFrequency("/du/config/gnb_config.xml");        bc.refresh()
-    bd  = BoardDateTime();                bd.refresh()
-    rap = RaptorStatus("/logdump/du_log.txt");                 rap.refresh()
+@app.route("/api/attributes", methods=["GET"])
+def get_attributes():
+    ip_address         = IpAddress("/cu/config/me_config.xml")
+    cpu_usage          = "50"
+    ram_usage          = "40"
+    ram_total          = "100"
+    broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
+    board_date_time    = BoardDateTime()
+    raptor_status      = RaptorStatus("/logdump/du_log.txt")
+
+    # refresh all
+    for attr in (ip_address,
+                 broadcast_frequency, board_date_time, raptor_status):
+        attr.refresh()
 
     data = {
-      "ipAddressGnb":      ip.ipAddressGnb,
-      "ipAddressNgc":      ip.ipAddressNgc,
-      "ipAddressNgu":      ip.ipAddressNgu,
-      "cpuUsage":          cpu,
-      "ramUsage":          ram,
-      "frequencyDownLink": bc.frequencyDownLink,
-      "frequencyUpLink":   bc.frequencyUpLink,
-      "boardDate":         bd.boardDate,
-      "boardTime":         bd.boardTime,
-      "raptorStatus":      rap.raptorStatus.name,
+        "ip_address_gnb":      ip_address.ipAddressGnb,
+        "ip_address_ngc":      ip_address.ipAddressNgc,
+        "ip_address_ngu":      ip_address.ipAddressNgu,
+        "cpu_usage":           cpu_usage,
+        "ram_usage":           ram_usage,
+        "total_ram":           ram_total,
+        "frequency_down_link": broadcast_frequency.frequencyDownLink,
+        "frequency_up_link":   broadcast_frequency.frequencyUpLink,
+        "bandwidth_down_link": broadcast_frequency.downLinkBw,
+        "bandwidth_up_link":   broadcast_frequency.upLinkBw,
+        "gnb_id":              ip_address.gnb_Id,
+        "board_date":          board_date_time.boardDate,
+        "board_time":          board_date_time.boardTime,
+        "raptor_status":       raptor_status.raptorStatus.name,
     }
     return jsonify(data)
