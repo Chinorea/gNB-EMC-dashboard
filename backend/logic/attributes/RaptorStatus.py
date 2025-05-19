@@ -70,11 +70,11 @@ class RaptorStatus(Attribute):
 
     def print_Raptor_Status(self):
         if  self.duStatus and self.raptorStatusMode:
-            self.raptorStatus = RaptorStatusType.RUNNING
+            self.raptorStatus = RaptorStatusType.RUNNING.name
         elif (self.duStatus ^ self.raptorStatusMode):
-            self.raptorStatus = RaptorStatusType.INITIALISING
+            self.raptorStatus = RaptorStatusType.INITIALISING.name
         else:
-            self.raptorStatus = RaptorStatusType.OFF
+            self.raptorStatus = RaptorStatusType.OFF.name
 
         print(self.raptorStatus)
 
