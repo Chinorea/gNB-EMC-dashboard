@@ -30,6 +30,21 @@ function App() {
             </div>
 
             <div className="widget-stack">
+                <Widget
+                    title="Broadcast Bandwidth"
+                    value="40Mhz"
+                />
+                <Widget
+                    title="CPU Usage"
+                    value="42%"
+                />
+                <Widget
+                    title="RAM Usage"
+                    value="1.1/2.0 GB"
+                />
+            </div>
+
+            <div className="widget-stack">
                 <WidgetWith3Subtitles
                     title="IP Address"
                     subtitle1="gNB IP Address"
@@ -40,21 +55,14 @@ function App() {
                     text3="192.168.2.10"
 
                 />
-                <WidgetWith2Subtitles
-                    title="Widget Title 2-Sub"
-                    subtitle1="Subtitle 1"
-                    text1="Text 1"
-                    subtitle2="Subtitle 2"
-                    text2="Text 2"
-                />
                 <WidgetWith3Subtitles
-                    title="Widget Title 3-Sub"
-                    subtitle1="Subtitle 1"
-                    text1="Text 1"
-                    subtitle2="Subtitle 2"
-                    text2="Text 2"
-                    subtitle3="Subtitle 3"
-                    text3="Tqweiqwjeieiejqiej"
+                    title="Broadcast Frequency"
+                    subtitle1="Downlink"
+                    text1="3.5Mhz"
+                    subtitle2="Uplink"
+                    text2="3.5Mhz"
+                    subtitle3="Bandwidth"
+                    text3="40Mhz"
                 />
             </div>
         </div>
