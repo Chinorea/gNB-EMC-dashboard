@@ -4,9 +4,10 @@ from .Attribute import Attribute
 import re, subprocess, os
 from typing import Optional, List, Dict, Tuple
 
+
 class IpAddress(Attribute):
 
-    def __init__(self, new_config_path:str):
+    def __init__(self, new_config_path: str):
         super().__init__()
         self.gnb_Id = ""
         self.gnb_Pci: List[str] = []
