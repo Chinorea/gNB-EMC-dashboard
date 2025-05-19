@@ -4,9 +4,10 @@ from .Attribute import Attribute
 import re, subprocess
 from typing import Optional, List, Dict
 
+
 class IpAddress(Attribute):
 
-    def __init__(self, new_config_path:str):
+    def __init__(self, new_config_path: str):
         super().__init__()
         self.ipAddressGnb = ""
         self.ipAddressNgc = ""

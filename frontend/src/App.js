@@ -1,72 +1,78 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
-import {Widget, WidgetWithButton, WidgetWith2Subtitles, WidgetWith3Subtitles} from "./jsfiles/Widgets";
+import {
+  Widget,
+  WidgetWithButton,
+  WidgetWith3Subtitles,
+} from "./jsfiles/Widgets";
 import "./cssfiles/Widgets.css";
 
-
 function App() {
-    // Example mock data for just the gNB IP address
-    const ipAddressGnb = "192.168.1.100";
+  // state to hold everything we get back from Flask
+  const [attrs, setAttrs] = useState(null);
 
-    return (
-        <div className="dashboard-container">
-            <h1 className="dashboard-title">5G Node Dashboard</h1>
-            <div className="widget-stack">
-                <Widget
-                    title="System Time"
-                    value="1:29PM"
-                />
-                <Widget
-                    title="System Date"
-                    value="12/06/2025"
-                />
+  useEffect(() => {
+    fetch("http://localhost:5000/api/attributes")
+      .then((res) => res.json())
+      .then((data) => setAttrs(data))
+      .catch((err) => {
+        console.error("Failed to load attributes:", err);
+      });
+  }, []);
 
-                <WidgetWithButton
-                    title="Status"
-                    value="Online"
-                    button="Turn Off"
-                />
-            </div>
+  // while loading, you can show a spinner or simple text
+  if (!attrs) {
+    return <div className="dashboard-container">Loading…</div>;
+  }
 
-            <div className="widget-stack">
-                <Widget
-                    title="Broadcast Bandwidth"
-                    value="40Mhz"
-                />
-                <Widget
-                    title="CPU Usage"
-                    value="42%"
-                />
-                <Widget
-                    title="RAM Usage"
-                    value="1.1/2.0 GB"
-                />
-            </div>
+  return (
+    <div className="dashboard-container">
+      <h1 className="dashboard-title">5G Node Dashboard</h1>
 
-            <div className="widget-stack">
-                <WidgetWith3Subtitles
-                    title="IP Address"
-                    subtitle1="gNB IP Address"
-                    text1="192.168.2.26"
-                    subtitle2="User Plane NgC"
-                    text2="192.168.2.10"
-                    subtitle3="User Plane NgR"
-                    text3="192.168.2.10"
+      <div className="widget-stack">
+        <Widget title="System Time" value={attrs.boardTime} />
+        <Widget title="System Date" value={attrs.boardDate} />
 
-                />
-                <WidgetWith3Subtitles
-                    title="Broadcast Frequency"
-                    subtitle1="Downlink"
-                    text1="3.5Mhz"
-                    subtitle2="Uplink"
-                    text2="3.5Mhz"
-                    subtitle3="Bandwidth"
-                    text3="40Mhz"
-                />
-            </div>
-        </div>
-    );
+        <WidgetWithButton
+          title="Status"
+          value={attrs.raptorStatus}
+          button={attrs.raptorStatus === "RUNNING" ? "Turn Off" : "Turn On"}
+        />
+      </div>
+      
+      <div className="widget-stack">
+        <Widget
+          title="Broadcast Bandwidth"
+          value={`${attrs.frequencyDownLink}/${attrs.frequencyUpLink}`}
+        />
+        <Widget title="CPU Usage" value={`${attrs.cpuUsage}%`} />
+        <Widget title="RAM Usage" value={attrs.ramUsage} />
+      </div>
+
+      <div className="widget-stack">
+        <WidgetWith3Subtitles
+          title="IP Address"
+          subtitle1="gNB IP Address"
+          text1={attrs.ipAddressGnb}
+          subtitle2="User Plane NgC"
+          text2={attrs.ipAddressNgc}
+          subtitle3="User Plane NgR"
+          text3={attrs.ipAddressNgu}
+        />
+
+        <WidgetWith3Subtitles
+          title="Broadcast Frequency"
+          subtitle1="Downlink"
+          text1={attrs.frequencyDownLink}
+          subtitle2="Uplink"
+          text2={attrs.frequencyUpLink}
+          subtitle3="Bandwidth"
+          text3={`${attrs.frequencyDownLink + attrs.frequencyUpLink}`}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default App;
