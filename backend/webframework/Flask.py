@@ -15,8 +15,8 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 def attributes_api():
     # Instantiate and refresh each attribute
     ip  = IpAddress("/cu/config/me_config.xml"); ip.refresh()
-    cpu = CpuUsage();           cpu.refresh()
-    ram = RamUsage();           ram.refresh()
+    cpu = "50" #CpuUsage();           cpu.refresh()
+    ram = "40" #RamUsage();           ram.refresh()
     bc  = BroadcastFrequency(); bc.refresh()
     bd  = BoardDateTime();      bd.refresh()
     rap = RaptorStatus();       rap.refresh()
