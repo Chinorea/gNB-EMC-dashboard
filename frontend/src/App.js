@@ -13,7 +13,7 @@ function App() {
   const [attrs, setAttrs] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/attributes")
+    fetch("http://192.168.2.26:5000/api/attributes")
       .then((res) => res.json())
       .then((data) => setAttrs(data))
       .catch((err) => {
