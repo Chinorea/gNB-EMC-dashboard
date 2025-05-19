@@ -13,21 +13,20 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route("/api/attributes")
 def attributes_api():
-    # Instantiate and refresh each attribute
-    ip  = IpAddress("/cu/config/me_config.xml"); ip.refresh()
-    cpu = "50" #CpuUsage();           cpu.refresh()
-    ram = "40" #RamUsage();           ram.refresh()
-    bc  = BroadcastFrequency(); bc.refresh()
-    bd  = BoardDateTime();      bd.refresh()
-    rap = RaptorStatus();       rap.refresh()
+    cfg = "/cu/config/me_config.xml"
+    ip  = IpAddress(cfg);                 ip.refresh()
+    cpu = "50"  # CpuUsage(cfg);          cpu.refresh()
+    ram = "40"  # RamUsage(cfg);          ram.refresh()
+    bc  = BroadcastFrequency(cfg);        bc.refresh()
+    bd  = BoardDateTime();                bd.refresh()
+    rap = RaptorStatus();                 rap.refresh()
 
-    # Return real values instead of dummy strings
     data = {
       "ipAddressGnb":      ip.ipAddressGnb,
       "ipAddressNgc":      ip.ipAddressNgc,
       "ipAddressNgu":      ip.ipAddressNgu,
-      "cpuUsage":          cpu.cpuUsage,
-      "ramUsage":          ram.ramUsage,
+      "cpuUsage":          cpu,
+      "ramUsage":          ram,
       "frequencyDownLink": bc.frequencyDownLink,
       "frequencyUpLink":   bc.frequencyUpLink,
       "boardDate":         bd.boardDate,
