@@ -56,38 +56,9 @@
 
 .widget-stack {
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
 }
 
-.widget-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(44, 62, 80, 0.08);
-  padding: 32px 48px;
-  margin: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.widget-title {
-  color: #4361ee;
-  font-size: 1.35rem;
-  margin-bottom: 10px;
-  font-weight: 500;
-}
-
-.widget-value {
-  font-size: 2rem;
-  color: #22223b;
-  font-family: 'Roboto Mono', monospace;
-  letter-spacing: 0.5px;
-}
-
-.widget-subitle {
-  color: #4361ee;
-  font-size: 1.35rem;
-  margin-bottom: 10px;
-  font-weight: 500;
-}
