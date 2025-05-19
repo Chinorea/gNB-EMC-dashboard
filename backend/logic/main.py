@@ -4,6 +4,8 @@ from attributes.IpAddress import IpAddress
 from attributes.BoardDateTime import BoardDateTime
 from attributes.BroadcastFrequency import BroadcastFrequency
 from attributes.RaptorStatus import RaptorStatus
+from attributes.CpuUsage import CpuUsage
+from attributes.RamUsage import RamUsage
 
 ip_path = "/cu/config/me_config.xml"
 freq_path = "/du/config/gnb_config.xml"
@@ -13,8 +15,16 @@ ip = IpAddress(ip_path)
 boardDateTime = BoardDateTime()
 freq = BroadcastFrequency(freq_path)
 raptorStatus = RaptorStatus(raptor_path)
+cpu = CpuUsage()
+ram = RamUsage()
 
 boardDateTime.print_Current_time()
+
+cpu.refresh()
+ram.refresh()
+cpu.print_cpu_usage()
+ram.print_ram_usage()
+
 ip.refresh()
 ip.print_Ip_Status()
 
