@@ -32,7 +32,7 @@ class CpuUsage(Attribute):
         total_delta = total2 - total1
         if total_delta == 0:
             return 0.0
-        return (1.0 - idle_delta / total_delta) * 100.0
+        return round((1.0 - idle_delta / total_delta) * 100.0,1)
 
     def print_cpu_usage(self):
-        print(f"Cpu Usage: {self.cpuUsage:.1f}%")
+        print(f"Cpu Usage: {self.cpuUsage}%")

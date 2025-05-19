@@ -27,9 +27,9 @@ class RamUsage(Attribute):
                                 + meminfo.get('Buffers', 0.0)
                                 + meminfo.get('Cached', 0.0))
         used = total - available
-        self.totalRam = total / (1024.0 * 1024.0)
-        return (used / total) * 100.0 if total else 0.0
+        self.totalRam = round(total / (1024.0 * 1024.0),1)
+        return round((used / total) * 100.0 if total else 0.0,1)
 
     def print_ram_usage(self):
-        print(f"Total Ram: {self.totalRam:.1f}GiB")
-        print(f"Ram Usage: {self.ramUsage:.1f}%")
+        print(f"Total Ram: {self.totalRam}GiB")
+        print(f"Ram Usage: {self.ramUsage}%")
