@@ -30,6 +30,6 @@ def attributes_api():
       "frequencyUpLink":   bc.frequencyUpLink,
       "boardDate":         bd.boardDate,
       "boardTime":         bd.boardTime,
-      "raptorStatus":      rap.raptorStatus,
+      "raptorStatus":      rap.raptorStatus.name,
     }
     return jsonify(data)
