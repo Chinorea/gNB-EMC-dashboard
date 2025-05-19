@@ -13,13 +13,12 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route("/api/attributes")
 def attributes_api():
-    cfg = "/cu/config/me_config.xml"
-    ip  = IpAddress(cfg);                 ip.refresh()
+    ip  = IpAddress("/cu/config/me_config.xml");                 ip.refresh()
     cpu = "50"  # CpuUsage(cfg);          cpu.refresh()
     ram = "40"  # RamUsage(cfg);          ram.refresh()
-    bc  = BroadcastFrequency(cfg);        bc.refresh()
+    bc  = BroadcastFrequency("/du/config/gnb_config.xml");        bc.refresh()
     bd  = BoardDateTime();                bd.refresh()
-    rap = RaptorStatus();                 rap.refresh()
+    rap = RaptorStatus("/logdump/du_log.txt");                 rap.refresh()
 
     data = {
       "ipAddressGnb":      ip.ipAddressGnb,
