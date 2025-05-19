@@ -2,7 +2,6 @@ from .Attribute import Attribute
 from .RaptorStatusType import RaptorStatusType
 import os, subprocess
 
-
 class RaptorStatus(Attribute):
     du_Check = "CELL_IS_UP, CELL_ID:1"
 
