@@ -14,15 +14,14 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
     ip_address         = IpAddress("/cu/config/me_config.xml")
-    cpu_usage          = "50"
-    ram_usage          = "40"
-    ram_total          = "100"
+    cpu_usage          = CpuUsage()
+    ram_usage          = RamUsage()
     broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
     board_date_time    = BoardDateTime()
     raptor_status      = RaptorStatus("/logdump/du_log.txt")
 
     # refresh all
-    for attr in (ip_address,
+    for attr in (ip_address, cpu_usage, ram_usage,
                  broadcast_frequency, board_date_time, raptor_status):
         attr.refresh()
 
@@ -30,9 +29,9 @@ def get_attributes():
         "ip_address_gnb":      ip_address.ipAddressGnb,
         "ip_address_ngc":      ip_address.ipAddressNgc,
         "ip_address_ngu":      ip_address.ipAddressNgu,
-        "cpu_usage":           cpu_usage,
-        "ram_usage":           ram_usage,
-        "total_ram":           ram_total,
+        "cpu_usage":           cpu_usage.cpuUsage,
+        "ram_usage":           ram_usage.ramUsage,
+        "ram_total":           ram_usage.totalRam,
         "frequency_down_link": broadcast_frequency.frequencyDownLink,
         "frequency_up_link":   broadcast_frequency.frequencyUpLink,
         "bandwidth_down_link": broadcast_frequency.downLinkBw,
