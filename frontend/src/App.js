@@ -49,7 +49,7 @@ function App() {
     { label: 'CPU Usage', value: `${attrs.cpu_usage}%` },
     { label: 'RAM Usage', value: `${attrs.ram_usage}%` },
     { label: 'Total RAM', value: `${attrs.ram_total} GB` },
-    { label: 'Core Connection', value: `${attrs.core_connection}` },
+    { label: 'CPU Temperature', value: `${attrs.cpu_temp}C` },
     { label: 'Total Disk', value: `${attrs.drive_total} GB` },
     { label: 'Used Disk', value: `${attrs.drive_used} GB` },
     { label: 'Free Disk', value: `${attrs.drive_free} GB` },
