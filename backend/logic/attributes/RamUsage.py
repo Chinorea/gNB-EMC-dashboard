@@ -1,4 +1,5 @@
 from .Attribute import Attribute
+from collections import deque
 # Update refresh such that it stores ram usage for the most recent 100 entries
 # on refresh, remove the oldest data and add the newest data
 class RamUsage(Attribute):
@@ -7,9 +8,16 @@ class RamUsage(Attribute):
         super().__init__()
         self.ramUsage = ""
         self.totalRam = ""
+        # history deques with fixed maxlen=100
+        self.usage_history = deque(maxlen=100)
+        self.total_history = deque(maxlen=100)
+
 
     def refresh(self):
         self.ramUsage = self.get_ram_usage()
+        self.usage_history.append(self.ramUsage)
+        self.total_history.append(self.totalRam)
+
 
     def get_ram_usage(self):
         """
@@ -34,3 +42,9 @@ class RamUsage(Attribute):
     def print_ram_usage(self):
         print(f"Total Ram: {self.totalRam}GiB")
         print(f"Ram Usage: {self.ramUsage}%")
+
+    def print_ram_usage_hist(self):
+        print(f"Total Ram: {self.totalRam} GiB")
+        print(f"Ram Usage: {self.ramUsage}%")
+        print(f"History (last {len(self.usage_history)} samples):")
+        print(list(self.usage_history))
