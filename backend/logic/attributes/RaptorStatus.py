@@ -71,7 +71,7 @@ class RaptorStatus(Attribute):
     def print_Raptor_Status(self):
         if  self.duStatus and self.raptorStatusMode:
             self.raptorStatus = RaptorStatusType.RUNNING
-        elif (self.duStatus ^ self.raptorStatusMode):
+        elif (not self.duStatus and self.raptorStatusMode):
             self.raptorStatus = RaptorStatusType.INITIALISING
         else:
             self.raptorStatus = RaptorStatusType.OFF
