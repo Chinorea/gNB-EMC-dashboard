@@ -8,10 +8,12 @@ from attributes.CpuUsage import CpuUsage
 from attributes.RamUsage import RamUsage
 from attributes.SocTemp import SocTemp
 from attributes.DriveSpace import DriveSpace
+from attributes.Network import Network
 
 ip_path = "/cu/config/me_config.xml"
 freq_path = "/du/config/gnb_config.xml"
 raptor_path = "/logdump/du_log.txt"
+ping = "192.168.2.10"
 
 ip = IpAddress(ip_path)
 boardDateTime = BoardDateTime()
@@ -21,6 +23,7 @@ cpu = CpuUsage()
 ram = RamUsage()
 temp = SocTemp()
 driveSpace = DriveSpace()
+network = Network(ping)
 
 boardDateTime.print_Current_time()
 
@@ -31,6 +34,9 @@ ram.print_ram_usage()
 
 ip.refresh()
 ip.print_Ip_Status()
+
+network.refresh()
+network.print_network_status()
 
 freq.refresh()
 freq.print_Freq_Status()

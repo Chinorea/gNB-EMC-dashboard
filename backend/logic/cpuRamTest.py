@@ -1,40 +1,53 @@
 #!/usr/bin/env python3
-import shutil
-import glob, os
+import subprocess
+import sys
 
-def read_hwmon_temp():
-
-    hwmons = glob.glob("/sys/class/hwmon/hwmon*")
-    if not hwmons:
-        raise RuntimeError("No hwmon directories found")
-
-    # Fallback: read the very first temp*_input we can find
-    for hw in hwmons:
-        for inp in glob.glob(os.path.join(hw, "temp*_input")):
-            try:
-                raw = open(inp).read().strip()
-                return int(raw) / 1000.0
-            except Exception:
-                continue
-
-    raise RuntimeError("No temperature input file could be read from hwmon")
-
-def get_disk_usage(path="/"):
+def ping_status(host: str, attempts: int = 4, timeout: int = 1) -> str:
     """
-    Returns a tuple (total_gib, used_gib, free_gib)
+    Ping `host` up to `attempts` times, showing each ping's output.
+    Returns:
+      - "Up"       : all attempts succeeded
+      - "Unstable" : at least one succeeded, but not all
+      - "Down"     : no attempt succeeded
     """
-    total, used, free = shutil.disk_usage(path)
-    # convert bytes → GiB
-    gib = 1024**3
-    return (total / gib, used / gib, free / gib)
+    successes = 0
+
+    for i in range(1, attempts + 1):
+        if sys.platform.startswith("win"):
+            cmd = ["ping", "-n", "1", "-w", str(timeout * 1000), host]
+        else:
+            cmd = ["ping", "-c", "1", "-W", str(timeout), host]
+
+        print(f"\n--- Ping attempt {i}/{attempts} ---")
+        try:
+            # capture both stdout and stderr so we can print the full ping output
+            result = subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            )
+            output = result.stdout.decode(errors="ignore")
+            print(output, end="")
+
+            if result.returncode == 0:
+                successes += 1
+            else:
+                print(f"(Attempt {i} failed, return code {result.returncode})")
+        except Exception as e:
+            print(f"Error executing ping: {e}")
+
+    if successes == attempts:
+        return "Up"
+    elif successes > 0:
+        return "Unstable"
+    else:
+        return "Down"
+
 
 if __name__ == "__main__":
-    total, used, free = get_disk_usage("/")
-    temp = read_hwmon_temp()
-    print(f"Measured temperature: {temp:.1f} °C")
-    print(f"Disk total: {total:.2f} GiB")
-    print(f"Disk used : {used:.2f} GiB")
-    print(f"Disk free : {free:.2f} GiB")
+    target_host = "192.168.100.100"  # change as needed
+    status = ping_status(target_host, attempts=4, timeout=1)
+    print(f"\nFinal status for {target_host}: {status}")
+
+
 
 
 

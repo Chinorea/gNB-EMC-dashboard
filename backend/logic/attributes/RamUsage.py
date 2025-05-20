@@ -1,5 +1,6 @@
 from .Attribute import Attribute
-
+# Update refresh such that it stores ram usage for the most recent 100 entries
+# on refresh, remove the oldest data and add the newest data
 class RamUsage(Attribute):
 
     def __init__(self):
