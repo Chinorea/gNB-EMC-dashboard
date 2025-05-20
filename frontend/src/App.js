@@ -54,7 +54,7 @@ function App() {
   ];
 
   return (
-    <>
+    <Box sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       <CssBaseline />
 
       {/* Top bar with status */}
@@ -127,10 +127,11 @@ function App() {
           container
           spacing={3}
           justifyContent="center"   // center items horizontally
+          alignItems="stretch"          // ← stretch all items to same height
         >
           {firstLayerItems.map(item => (
-            <Grid item xs={12} sm={6} md={3} key={item.label}>
-              <Card elevation={3}>
+            <Grid item xs={12} sm={6} md={3} key={item.label} sx={{ display: 'flex' }}>
+              <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <CardContent sx={{ textAlign: 'center' }}>
                   <Typography 
                     color="textSecondary" 
@@ -154,15 +155,96 @@ function App() {
             </Grid>
           ))}
           {/* Combined Disk Card */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card elevation={3}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="textSecondary" gutterBottom variant="subtitle2">
-                  Disk Space
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
+            <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              {/* reduce vertical padding to shorten content height */}
+              <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                <Typography
+                color="textSecondary"
+                gutterBottom variant="subtitle2"
+                sx={{ fontSize: '1.1rem' }} 
+                >
+                  Disk Overview
                 </Typography>
-                <Typography variant="body1">{`Total: ${attrs.drive_total} GB`}</Typography>
-                <Typography variant="body1">{`Used:  ${attrs.drive_used} GB`}</Typography>
-                <Typography variant="body1">{`Free:  ${attrs.drive_free} GB`}</Typography>
+
+                {/* nested grid with custom horizontal padding & gutter */}
+                <Grid
+                  container
+                  spacing={0.5}         // vertical & default gutter
+                  columnSpacing={2}     // extra horizontal gutter
+                  sx={{
+                    mt: 0.5,
+                  }}
+                >
+                  {/* Total */}
+                  <Grid item xs={12}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 0.25,      // reduce bottom margin
+                      }}
+                    >
+                      Total
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // optional: tighten top margin
+                      }}
+                    >
+                      {attrs.drive_total} GB
+                    </Typography>
+                  </Grid>
+
+                  {/* Used */}
+                  <Grid item xs={6}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 0.25,      // reduce bottom margin
+                      }}
+                    >
+                      Used
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // tighten top margin
+                      }}
+                    >
+                      {attrs.drive_used} GB
+                    </Typography>
+                  </Grid>
+
+                  {/* Free */}
+                  <Grid item xs={6}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 0.25,      // reduce bottom margin
+                      }}
+                    >
+                      Free
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // tighten top margin
+                      }}
+                    >
+                      {attrs.drive_free} GB
+                    </Typography>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
@@ -237,7 +319,7 @@ function App() {
           </Typography>
         </Box>
       </Container>
-    </>
+    </Box>
   );
 }
 
