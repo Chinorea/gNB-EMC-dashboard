@@ -3,11 +3,23 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+// 1) import MUI theme tools
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+
+// 2) define your custom theme
+const theme = createTheme({
+  typography: {
+    fontFamily: "'DM Sans', Arial, sans-serif",
+  },
+});
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    {/* 3) wrap App in ThemeProvider */}
+    <ThemeProvider theme={theme}>
+      <App />
+    </ThemeProvider>
   </React.StrictMode>
 );
 
