@@ -39,21 +39,18 @@ function App() {
     );
   }
 
-  const firstFourItems = [
-    { label: 'Node ID', value: attrs.gnb_id },
-    { label: 'Time', value: attrs.board_time },
-    { label: 'Date', value: attrs.board_date },
+  const firstLayerItems = [
+    { label: 'Node ID',    value: attrs.gnb_id },
+    { label: 'Time',       value: attrs.board_time },
+    { label: 'Date',       value: attrs.board_date },
   ];
 
   const otherItems = [
-    { label: 'CPU Usage', value: `${attrs.cpu_usage}%` },
-    { label: 'RAM Usage', value: `${attrs.ram_usage}%` },
-    { label: 'Total RAM', value: `${attrs.ram_total} GB` },
-    { label: 'CPU Temperature', value: `${attrs.cpu_temp}C` },
-    { label: 'Total Disk', value: `${attrs.drive_total} GB` },
-    { label: 'Used Disk', value: `${attrs.drive_used} GB` },
-    { label: 'Free Disk', value: `${attrs.drive_free} GB` },
-    { label: 'Core Connection', value: `${attrs.core_connection}` },
+    { label: 'CPU Usage',      value: `${attrs.cpu_usage}%` },
+    { label: 'RAM Usage',      value: `${attrs.ram_usage}%` },
+    { label: 'Total RAM',      value: `${attrs.ram_total} GB` },
+    { label: 'CPU Temperature',value: `${attrs.cpu_temp}C` },
+    { label: 'Core Connection',value: `${attrs.core_connection}` },
   ];
 
   return (
@@ -131,7 +128,7 @@ function App() {
           spacing={3}
           justifyContent="center"   // center items horizontally
         >
-          {firstFourItems.map(item => (
+          {firstLayerItems.map(item => (
             <Grid item xs={12} sm={6} md={3} key={item.label}>
               <Card elevation={3}>
                 <CardContent sx={{ textAlign: 'center' }}>
@@ -156,6 +153,19 @@ function App() {
               </Card>
             </Grid>
           ))}
+          {/* Combined Disk Card */}
+          <Grid item xs={12} sm={6} md={3}>
+            <Card elevation={3}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography color="textSecondary" gutterBottom variant="subtitle2">
+                  Disk Space
+                </Typography>
+                <Typography variant="body1">{`Total: ${attrs.drive_total} GB`}</Typography>
+                <Typography variant="body1">{`Used:  ${attrs.drive_used} GB`}</Typography>
+                <Typography variant="body1">{`Free:  ${attrs.drive_free} GB`}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
         {/* Layer 2 */}
