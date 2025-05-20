@@ -1,58 +1,54 @@
 #!/usr/bin/env python3
-import time
+import subprocess
+import sys
 
-def get_cpu_usage(interval=0.1):
+def ping_status(host: str, attempts: int = 4, timeout: int = 1) -> str:
     """
-    Read /proc/stat twice, interval seconds apart,
-    and compute the percentage of non-idle time.
+    Ping `host` up to `attempts` times, showing each ping's output.
+    Returns:
+      - "Up"       : all attempts succeeded
+      - "Unstable" : at least one succeeded, but not all
+      - "Down"     : no attempt succeeded
     """
-    def _read():
-        with open('/proc/stat', 'r') as f:
-            parts = f.readline().split()[1:]
-            nums = list(map(float, parts))
-        idle = nums[3] + nums[4]      # idle + iowait
-        total = sum(nums)
-        return idle, total
+    successes = 0
 
-    idle1, total1 = _read()
-    time.sleep(interval)
-    idle2, total2 = _read()
+    for i in range(1, attempts + 1):
+        if sys.platform.startswith("win"):
+            cmd = ["ping", "-n", "1", "-w", str(timeout * 1000), host]
+        else:
+            cmd = ["ping", "-c", "1", "-W", str(timeout), host]
 
-    idle_delta  = idle2  - idle1
-    total_delta = total2 - total1
-    if total_delta == 0:
-        return 0.0
-    return (1.0 - idle_delta / total_delta) * 100.0
+        print(f"\n--- Ping attempt {i}/{attempts} ---")
+        try:
+            # capture both stdout and stderr so we can print the full ping output
+            result = subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            )
+            output = result.stdout.decode(errors="ignore")
+            print(output, end="")
 
-def get_ram_usage():
-    """
-    Parse /proc/meminfo to compute used RAM percentage.
-    Uses MemAvailable if present, otherwise falls back.
-    """
-    meminfo = {}
-    with open('/proc/meminfo', 'r') as f:
-        for line in f:
-            key, val = line.split(':')[0], line.split(':')[1].strip().split()[0]
-            meminfo[key] = float(val)
+            if result.returncode == 0:
+                successes += 1
+            else:
+                print(f"(Attempt {i} failed, return code {result.returncode})")
+        except Exception as e:
+            print(f"Error executing ping: {e}")
 
-    total     = meminfo.get('MemTotal', 0.0)
-    available = meminfo.get('MemAvailable',
-                            meminfo.get('MemFree',0.0)
-                          + meminfo.get('Buffers',0.0)
-                          + meminfo.get('Cached',0.0))
-    used = total - available
-    return (used / total) * 100.0 if total else 0.0
+    if successes == attempts:
+        return "Up"
+    elif successes > 0:
+        return "Unstable"
+    else:
+        return "Down"
+
 
 if __name__ == "__main__":
-    # Run a quick one‐time measurement
-    # cpu = get_cpu_usage()
-    # ram = get_ram_usage()
-    # print(f"CPU Usage: {cpu:.1f}%")
-    # print(f"RAM Usage: {ram:.1f}%")
+    target_host = "192.168.100.100"  # change as needed
+    status = ping_status(target_host, attempts=4, timeout=1)
+    print(f"\nFinal status for {target_host}: {status}")
 
-    # Or run in a loop to watch changes:
-    while True:
-        print(f"CPU {get_cpu_usage():.1f}%  RAM {get_ram_usage():.1f}%")
-        time.sleep(1)
+
+
+
 
 
