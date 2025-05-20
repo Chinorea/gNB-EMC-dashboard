@@ -96,3 +96,7 @@ class Network(Attribute):
 
     def print_network_status(self):
            print(f"Network Status: {self.networkStatus.name}")
+
+    def test_network(self, ip: str):
+        self.host = ip
+        self.refresh()
