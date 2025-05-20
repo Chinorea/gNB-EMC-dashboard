@@ -6,6 +6,8 @@ from attributes.BroadcastFrequency import BroadcastFrequency
 from attributes.RaptorStatus import RaptorStatus
 from attributes.CpuUsage import CpuUsage
 from attributes.RamUsage import RamUsage
+from attributes.SocTemp import SocTemp
+from attributes.DriveSpace import DriveSpace
 
 ip_path = "/cu/config/me_config.xml"
 freq_path = "/du/config/gnb_config.xml"
@@ -17,6 +19,8 @@ freq = BroadcastFrequency(freq_path)
 raptorStatus = RaptorStatus(raptor_path)
 cpu = CpuUsage()
 ram = RamUsage()
+temp = SocTemp()
+driveSpace = DriveSpace()
 
 boardDateTime.print_Current_time()
 
@@ -33,3 +37,10 @@ freq.print_Freq_Status()
 
 raptorStatus.refresh()
 raptorStatus.print_Raptor_Status()
+
+temp.refresh()
+temp.print_core_temp()
+
+driveSpace.refresh()
+driveSpace.print_drive_space()
+
