@@ -43,13 +43,17 @@ function App() {
     { label: 'Node ID', value: attrs.gnb_id },
     { label: 'Time', value: attrs.board_time },
     { label: 'Date', value: attrs.board_date },
-    { label: 'Disk Space', value: attrs.disk_space },
   ];
 
   const otherItems = [
     { label: 'CPU Usage', value: `${attrs.cpu_usage}%` },
     { label: 'RAM Usage', value: `${attrs.ram_usage}%` },
     { label: 'Total RAM', value: `${attrs.ram_total} GB` },
+    { label: 'Core Connection', value: `${attrs.core_connection}` },
+    { label: 'Total Disk', value: `${attrs.drive_total} GB` },
+    { label: 'Used Disk', value: `${attrs.drive_used} GB` },
+    { label: 'Free Disk', value: `${attrs.drive_free} GB` },
+    { label: 'Core Connection', value: `${attrs.core_connection}` },
   ];
 
   return (
