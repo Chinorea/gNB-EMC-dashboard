@@ -52,13 +52,21 @@ class RaptorStatus(Attribute):
             )
             output = result.stdout.strip()
         except subprocess.TimeoutExpired:
-            result = subprocess.run(
-                ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            output = result.stdout.strip()
+            # Second attempt: give it a little more time, but still catch if it hangs
+            try:
+                result = subprocess.run(
+                    ["/raptor/bin/utility", "--getRfmgrStatus"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=1
+                )
+                output = result.stdout.strip()
+
+            except subprocess.TimeoutExpired:
+                # Both attempts timed out: stop trying and continue
+                print("Warning: Raptor command timed out twice. Skipping status check.")
+                return False
 
         # ... after capturing `output` ...
         if "error response received" in output.lower():
