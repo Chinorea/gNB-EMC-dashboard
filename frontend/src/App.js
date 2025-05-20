@@ -27,7 +27,7 @@ function App() {
     };
 
     fetchAttrs();
-    const id = setInterval(fetchAttrs, 1000);
+    const id = setInterval(fetchAttrs, 10000);
     return () => clearInterval(id);
   }, []);
 
