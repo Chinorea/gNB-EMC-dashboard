@@ -54,7 +54,15 @@ function App() {
   ];
 
   return (
-    <Box sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <Box sx={{ 
+      backgroundColor:
+        attrs.raptor_status === 'RUNNING'
+          ? '#f3f7f2'       // green when RUNNING
+          : attrs.raptor_status === 'INITIALISING'
+          ? '#f2f1ed'       // yellow when INITIALISING
+          : '#faf2f0',      // red when other
+      minHeight: '100vh' 
+    }}>
       <CssBaseline />
 
       {/* Top bar with status */}
@@ -266,50 +274,134 @@ function App() {
           ))}
         </Grid>
 
-        {/* Broadcast Frequencies */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Downlink Frequency
-              </Typography>
-              <Typography variant="h5" sx={{ mb: 1 }}>
-                {attrs.frequency_down_link} MHz
-              </Typography>
-              <Typography color="textSecondary" gutterBottom>
-                Uplink Frequency
-              </Typography>
-              <Typography variant="h5">
-                {attrs.frequency_up_link} MHz
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        {/* Layer 3 – Frequencies & IP side-by-side */}
+        <Grid
+          container
+          spacing={3}
+          sx={{ mt: 4 }}
+          justifyContent="center"
+          alignItems="stretch"
+        >
+          {/* Frequency Card */}
+          <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+            <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                {/* add a title above the nested grid */}
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.2rem' }}
+                >
+                  Frequency Overview
+                </Typography>
 
-        {/* IP Addresses */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                gNB IP
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                {attrs.ip_address_gnb}
-              </Typography>
-              <Typography color="textSecondary" gutterBottom>
-                NgC IP
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 1 }}>
-                {attrs.ip_address_ngc}
-              </Typography>
-              <Typography color="textSecondary" gutterBottom>
-                NgU IP
-              </Typography>
-              <Typography variant="body1">
-                {attrs.ip_address_ngu}
-              </Typography>
-            </CardContent>
-          </Card>
+                {/* nested grid for horizontal layout with extra horizontal gutter */}
+                <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }}>
+                  <Grid item xs={6}>
+                    <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}
+                    >
+                      Downlink
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                      {attrs.frequency_down_link} GHz
+                    </Typography>
+                    <Typography variant="h5" sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1.3rem',
+                      mt: 0.5 }}>
+                      {attrs.bandwidth_down_link} MHz
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}
+                    >
+                      Uplink
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                      {attrs.frequency_up_link} GHz
+                    </Typography>
+                    <Typography variant="h5" sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1.3rem',
+                      mt: 0.5 }}>
+                      {attrs.bandwidth_up_link} MHz
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* IP Addresses Card */}
+          <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+            <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                {/* add a title above the nested grid */}
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.2rem' }}
+                >
+                  IP Addresses
+                </Typography>
+
+                {/* nested grid for horizontal layout */}
+                <Grid container spacing={1} sx={{ mt: 3 }}>
+                  <Grid item xs={4}>
+                    <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}
+                    >
+                      gNB IP
+                    </Typography>
+                    <Typography variant="body1" sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1.5rem'
+                      }}>
+                      {attrs.ip_address_gnb}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}>
+                      NgC IP
+                    </Typography>
+                    <Typography variant="body1" sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1.5rem'
+                      }}>
+                      {attrs.ip_address_ngc}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}>
+                      NgU IP
+                    </Typography>
+                    <Typography variant="body1" sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1.5rem'
+                      }}>
+                      {attrs.ip_address_ngu}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
         {/* Footer */}
