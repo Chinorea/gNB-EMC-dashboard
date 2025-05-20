@@ -1,5 +1,6 @@
 from .Attribute import Attribute
 import time
+from collections import deque
 
 # Update refresh such that it stores ram usage for the most recent 100 entries
 # on refresh, remove the oldest data and add the newest data
@@ -8,9 +9,11 @@ class CpuUsage(Attribute):
     def __init__(self):
         super().__init__()
         self.cpuUsage = ""
+        self.usage_history = deque(maxlen=100)
 
     def refresh(self):
         self.cpuUsage = self.get_cpu_usage()
+        self.usage_history.append(self.cpuUsage)
 
     def get_cpu_usage(self):
         """
@@ -38,3 +41,9 @@ class CpuUsage(Attribute):
 
     def print_cpu_usage(self):
         print(f"Cpu Usage: {self.cpuUsage}%")
+
+    def print_cpu_usage_hist(self):
+        print(f"Cpu Usage: {self.cpuUsage}%")
+        print(f"History (last {len(self.usage_history)} samples):")
+        print(list(self.usage_history))
+
