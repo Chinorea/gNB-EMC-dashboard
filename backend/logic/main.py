@@ -35,7 +35,9 @@ ram.print_ram_usage()
 ip.refresh()
 ip.print_Ip_Status()
 
-network.refresh()
+network.test_network(ip.ipAddressNgu)
+network.print_network_status()
+network.test_network(ip.ipAddressNgc)
 network.print_network_status()
 
 freq.refresh()
