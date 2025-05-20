@@ -13,6 +13,8 @@ class RaptorStatus(Attribute):
     def refresh(self):
         self.duStatus = self.check_Du_Log()
         self.raptorStatusMode = self.get_Raptor_Status()
+        self.check_Raptor_Status()
+
 
     def check_Du_Log(self) -> bool:
         if not os.path.isfile(self.log_path):
@@ -68,14 +70,16 @@ class RaptorStatus(Attribute):
             print(f"Raptor status: \n {output}")
             return True
 
-    def print_Raptor_Status(self):
+    def check_Raptor_Status(self):
         if  self.duStatus and self.raptorStatusMode:
             self.raptorStatus = RaptorStatusType.RUNNING
-        elif (self.duStatus ^ self.raptorStatusMode):
+        elif (not self.duStatus and self.raptorStatusMode):
             self.raptorStatus = RaptorStatusType.INITIALISING
         else:
             self.raptorStatus = RaptorStatusType.OFF
 
+
+    def print_Raptor_Status(self):
         print(self.raptorStatus)
 
 
