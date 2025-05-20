@@ -42,6 +42,7 @@ function App() {
       <div className="widget-stack">
         <Widget title="System Time" value={attrs.board_time} />
         <Widget title="System Date" value={attrs.board_date} />
+        <Widget title="System ID" value={attrs.gnb_id} />
 
         <WidgetWithButton
           title="Status"
@@ -54,17 +55,17 @@ function App() {
         <WidgetWith2Subtitles
           title="Broadcast Bandwidth"
           subtitle1="Downlink"
-          text1={`${attrs.bandwidth_down_link} MHz`}
+          text1={`${attrs.bandwidth_down_link}MHz`}
           subtitle2="Uplink"
-          text2={`${attrs.bandwidth_up_link} MHz`}
+          text2={`${attrs.bandwidth_up_link}MHz`}
         />
         <Widget title="CPU Usage" value={`${attrs.cpu_usage}%`} />
         <WidgetWith2Subtitles
         title="RAM"
         subtitle1="Total RAM"
-        text1={`${attrs.ram_total} GB`}
+        text1={`${attrs.ram_total}GB`}
         subtitle2="Used RAM" 
-        text2={`${attrs.ram_usage} GB`}
+        text2={`${attrs.ram_usage}%`}
         />
       </div>
 
@@ -82,9 +83,9 @@ function App() {
         <WidgetWith2Subtitles
           title="Broadcast Frequency"
           subtitle1="Downlink"
-          text1={`${attrs.frequency_down_link} KHz`}
+          text1={`${attrs.frequency_down_link}GHz`}
           subtitle2="Uplink"
-          text2={`${attrs.frequency_down_link} KHz`}
+          text2={`${attrs.frequency_down_link}GHz`}
         />
       </div>
     </div>

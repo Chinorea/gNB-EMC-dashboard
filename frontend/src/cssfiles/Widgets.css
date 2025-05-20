@@ -20,22 +20,21 @@
 .widget-title {
     color: #4361ee;
     font-size: 1.35rem;
+    font-weight: bold;
     margin: 5px;
-    font-weight: 500;
 }
 
 .widget-value {
     font-size: 2rem;
     color: #22223b;
-    font-family: 'Roboto Mono', monospace;
     letter-spacing: 0.5px;
 }
 
 .widget-subtitle {
     color: #4361ee;
     font-size: 1.35rem;
+    font-weight: bold;
     margin: 5px;
-    font-weight: 500;
 }
 
 .widget-button {
