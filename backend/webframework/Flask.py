@@ -24,12 +24,14 @@ def get_attributes():
     broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
     board_date_time     = BoardDateTime()
     raptor_status       = RaptorStatus("/logdump/du_log.txt")
-    core_connection     = Network(ip_address.ipAddressNgc)
 
     # refresh all
     for attr in (ip_address, cpu_usage, cpu_temp, ram_usage, drive_space,
-                 broadcast_frequency, board_date_time, raptor_status, core_connection):
+                 broadcast_frequency, board_date_time, raptor_status):
         attr.refresh()
+    
+        core_connection     = Network(ip_address.ipAddressNgc)
+        core_connection.refresh()
 
     data = {
         "ip_address_gnb":      ip_address.ipAddressGnb,
@@ -39,7 +41,9 @@ def get_attributes():
         "cpu_temp":            cpu_temp.core_temp,
         "ram_usage":           ram_usage.ramUsage,
         "ram_total":           ram_usage.totalRam,
-        "drive_space":         drive_space.drive_data,
+        "drive_total":         drive_space.drive_data[0],
+        "drive_used":          drive_space.drive_data[1],
+        "drive_free":          drive_space.drive_data[2],
         "frequency_down_link": broadcast_frequency.frequencyDownLink,
         "frequency_up_link":   broadcast_frequency.frequencyUpLink,
         "bandwidth_down_link": broadcast_frequency.downLinkBw,
