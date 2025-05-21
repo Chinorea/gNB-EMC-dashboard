@@ -5,6 +5,7 @@ import os, subprocess
 class RaptorStatus(Attribute):
     du_Check = "CELL_IS_UP, CELL_ID:1"
 
+
     def __init__(self, new_log_path:str):
         super().__init__()
         self.raptorStatus = RaptorStatusType.OFF
@@ -12,9 +13,9 @@ class RaptorStatus(Attribute):
 
     def refresh(self):
         self.duStatus = self.check_Du_Log()
-        self.raptorStatusMode = self.get_Raptor_Status()
-        self.check_Raptor_Status()
-
+        #self.raptorStatusMode = self.get_Raptor_Status()
+        #self.check_Raptor_Status()
+        self.check_Cell_Status()
 
     def check_Du_Log(self) -> bool:
         if not os.path.isfile(self.log_path):
@@ -40,35 +41,44 @@ class RaptorStatus(Attribute):
         print("Last line:", last_line)
         return True if last_line == self.du_Check else False
 
-    def get_Raptor_Status(self):
-        # Simple: run and print its output
-        try:
-            result = subprocess.run(
-                ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
-                stdout=subprocess.PIPE,  # capture stdout
-                stderr=subprocess.PIPE,  # capture stderr
-                text=True,  # decode bytes to str
-                timeout=0.01  # immediately recalls command to bypass cmd request issue
-            )
-            output = result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            result = subprocess.run(
-                ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            output = result.stdout.strip()
-
-        # ... after capturing `output` ...
-        if "error response received" in output.lower():
-            print("Raptor down, gNB not transmitting\n")
-            return False
-
-        # Extract all "key: value" pairs with a regex
-        else:
-            print(f"Raptor status: \n {output}")
-            return True
+    # For the checking of raptor status through --getRfmgrStatus
+    # def get_Raptor_Status(self):
+    #     # Simple: run and print its output
+    #     try:
+    #         result = subprocess.run(
+    #             ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
+    #             stdout=subprocess.PIPE,  # capture stdout
+    #             stderr=subprocess.PIPE,  # capture stderr
+    #             text=True,  # decode bytes to str
+    #             timeout=0.01  # immediately recalls command to bypass cmd request issue
+    #         )
+    #         output = result.stdout.strip()
+    #     except subprocess.TimeoutExpired:
+    #         # Second attempt: give it a little more time, but still catch if it hangs
+    #         try:
+    #             result = subprocess.run(
+    #                 ["/raptor/bin/utility", "--getRfmgrStatus"],
+    #                 stdout=subprocess.PIPE,
+    #                 stderr=subprocess.PIPE,
+    #                 text=True,
+    #                 timeout=1
+    #             )
+    #             output = result.stdout.strip()
+    #
+    #         except subprocess.TimeoutExpired:
+    #             # Both attempts timed out: stop trying and continue
+    #             print("Warning: Raptor command timed out twice. Skipping status check.")
+    #             return False
+    #
+    #     # ... after capturing `output` ...
+    #     if "error response received" in output.lower():
+    #         print("Raptor down, gNB not transmitting\n")
+    #         return False
+    #
+    #     # Extract all "key: value" pairs with a regex
+    #     else:
+    #         print(f"Raptor status: \n {output}")
+    #         return True
 
     def check_Raptor_Status(self):
         if  self.duStatus and self.raptorStatusMode:
@@ -78,6 +88,11 @@ class RaptorStatus(Attribute):
         else:
             self.raptorStatus = RaptorStatusType.OFF
 
+    def check_Cell_Status(self):
+        if self.duStatus:
+            self.raptorStatus = RaptorStatusType.RUNNING
+        else:
+            self.raptorStatus = RaptorStatusType.OFF
 
     def print_Raptor_Status(self):
         print(self.raptorStatus)
