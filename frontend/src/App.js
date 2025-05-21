@@ -12,21 +12,27 @@ import {
   ListSubheader,
   TextField,
   Button,
-  Divider
+  Divider,
+  ListItem,
+  IconButton
 } from '@mui/material';
+import ClearIcon from '@mui/icons-material/Clear';
 
 const drawerWidth = 240;
 
-function Sidebar({ nodes, setNodes }) {
+function Sidebar({ nodes, setNodes, statuses }) {
   const [ip, setIp] = useState('');
   const navigate = useNavigate();
 
   const addNode = () => {
     if (ip && !nodes.includes(ip)) {
       setNodes(prev => [...prev, ip]);
-      navigate(`/node/${ip}`);
       setIp('');
     }
+  };
+
+  const removeNode = (ipToRemove) => {
+    setNodes(prev => prev.filter(item => item !== ipToRemove));
   };
 
   return (
@@ -59,11 +65,35 @@ function Sidebar({ nodes, setNodes }) {
         </List>
 
         <List subheader={<ListSubheader>Nodes</ListSubheader>}>
-          {nodes.map(n => (
-            <ListItemButton key={n} component={RouterLink} to={`/node/${n}`}>
-              <ListItemText primary={n} />
-            </ListItemButton>
-          ))}
+          {nodes.map(n => {
+            const status = statuses[n] || 'UNREACHABLE';
+            let bg;
+            switch (status) {
+              case 'RUNNING':
+                bg = '#d4edda';       // green
+                break;
+              case 'INITIALISING':
+                bg = '#fff3cd';       // yellow
+                break;
+              case 'OFF':
+                bg = '#f8d7da';       // red
+                break;
+              default:                // UNREACHABLE
+                bg = 'lightgrey';
+            }
+
+            return (
+              <ListItem
+                key={n}
+                disablePadding
+                sx={{ backgroundColor: bg }}
+              >
+                <ListItemButton component={RouterLink} to={`/node/${n}`}>
+                  <ListItemText primary={n} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
         </List>
       </Box>
     </Drawer>
@@ -71,14 +101,19 @@ function Sidebar({ nodes, setNodes }) {
 }
 
 export default function App() {
-  const [nodes, setNodes] = useState([]);
+  const [nodes, setNodes]       = useState([]);
+  const [nodeStatuses, setStatuses] = useState({});
 
   return (
     <BrowserRouter>
       <Box sx={{ display: 'flex' }}>
-        <Sidebar nodes={nodes} setNodes={setNodes} />
+        <Sidebar
+          nodes={nodes}
+          setNodes={setNodes}
+          statuses={nodeStatuses}
+        />
 
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
           <Routes>
             <Route
               path="/"
@@ -86,6 +121,8 @@ export default function App() {
                 <HomePage
                   nodes={nodes}
                   setNodes={setNodes}
+                  statuses={nodeStatuses}
+                  setStatuses={setStatuses}
                 />
               }
             />

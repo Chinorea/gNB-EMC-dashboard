@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -11,7 +11,7 @@ import {
   CardContent
 } from '@mui/material';
 
-export default function HomePage({ nodes, setNodes }) {
+export default function HomePage({ nodes, setNodes, statuses, setStatuses }) {
   const [ip, setIp] = useState('');
   const navigate = useNavigate();
 
@@ -24,44 +24,81 @@ export default function HomePage({ nodes, setNodes }) {
     setIp('');
   };
 
+  // poll each node’s /api/attributes endpoint
+  useEffect(() => {
+    const updateStatuses = () => {
+      nodes.forEach((node) => {
+        fetch(`http://${node}:5000/api/attributes`)
+          .then(res => {
+            if (!res.ok) throw new Error('unreachable');
+            return res.json();
+          })
+          .then(data => {
+            // got data.raptor_status === "OFF"|"INITIALISING"|"RUNNING"
+            setStatuses(prev => ({ ...prev, [node]: data.raptor_status }));
+          })
+          .catch(() => {
+            // cannot reach host
+            setStatuses(prev => ({ ...prev, [node]: 'UNREACHABLE' }));
+          });
+      });
+    };
+
+    updateStatuses();
+    const id = setInterval(updateStatuses, 1000);
+    return () => clearInterval(id);
+  }, [nodes, setStatuses]);
+
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Node Manager
+      <Typography
+        variant="h4"
+        align="center"
+        gutterBottom
+        sx={{ fontWeight: 'bold' }}
+      >
+        Node Dashboard
       </Typography>
 
-      <Box sx={{ display: 'flex', mb: 3 }}>
-        <TextField
-          label="Node IP"
-          value={ip}
-          onChange={e => setIp(e.target.value)}
-          fullWidth
-          size="small"
-        />
-        <Button
-          variant="contained"
-          sx={{ ml: 2 }}
-          onClick={addNode}
-        >
-          Add
-        </Button>
-      </Box>
+      <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
+        {nodes.map((node) => {
+          // pick status and color
+          const status = statuses[node] || 'UNREACHABLE';
+          let bg;
+          let label;
+          switch (status) {
+            case 'RUNNING':
+              bg = '#d4edda'; label = 'Broadcasting'; break;
+            case 'INITIALISING':
+              bg = '#fff3cd'; label = 'Initialising'; break;
+            case 'OFF':
+              bg = '#f8d7da'; label = 'Not Broadcasting'; break;
+            default: // UNREACHABLE
+              bg = 'lightgrey'; label = 'No Connection';
+          }
 
-      <Grid container spacing={2}>
-        {nodes.map(node => (
-          <Grid item xs={12} sm={6} key={node}>
-            <Card
-              sx={{ cursor: 'pointer', height: '100%' }}
-              onClick={() => navigate(`/node/${encodeURIComponent(node)}`)}
-            >
-              <CardContent>
-                <Typography variant="body1" align="center">
-                  {node}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+          return (
+            <Grid item xs={12} sm={6} md={4} key={node}>
+              <Card
+                onClick={() => navigate(`/node/${encodeURIComponent(node)}`)}
+                sx={{
+                  cursor: 'pointer',
+                  height: '100%',
+                  backgroundColor: bg
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {node}
+                  </Typography>
+                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                    {label}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
     </Container>
   );
