@@ -1,51 +1,68 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Container, Grid, TextField, Typography, Card, CardContent } from '@mui/material';
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Card,
+  CardContent
+} from '@mui/material';
 
-export default function HomePage() {
-  const [nodes, setNodes] = useState([]);
+export default function HomePage({ nodes, setNodes }) {
   const [ip, setIp] = useState('');
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
   const addNode = () => {
-    if (ip && !nodes.includes(ip)) {
-      setNodes([...nodes, ip]);
-      setIp('');
+    if (!ip) return;
+    if (!nodes.includes(ip)) {
+      setNodes(prev => [...prev, ip]);
     }
+    navigate(`/node/${encodeURIComponent(ip)}`);
+    setIp('');
   };
 
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Node Manager
+      </Typography>
+
+      <Box sx={{ display: 'flex', mb: 3 }}>
+        <TextField
+          label="Node IP"
+          value={ip}
+          onChange={e => setIp(e.target.value)}
+          fullWidth
+          size="small"
+        />
+        <Button
+          variant="contained"
+          sx={{ ml: 2 }}
+          onClick={addNode}
+        >
+          Add
+        </Button>
+      </Box>
+
       <Grid container spacing={2}>
-        <Grid item xs={8}>
-          <TextField
-            fullWidth
-            label="Node IP"
-            value={ip}
-            onChange={e => setIp(e.target.value)}
-          />
-        </Grid>
-        <Grid item xs={4}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => {
-              addNode();
-              nav(`/node/${ip}`);
-            }}
-          >
-            Go
-          </Button>
-        </Grid>
+        {nodes.map(node => (
+          <Grid item xs={12} sm={6} key={node}>
+            <Card
+              sx={{ cursor: 'pointer', height: '100%' }}
+              onClick={() => navigate(`/node/${encodeURIComponent(node)}`)}
+            >
+              <CardContent>
+                <Typography variant="body1" align="center">
+                  {node}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
-      <Typography sx={{ mt: 4 }}>Saved nodes:</Typography>
-      {nodes.map(n => (
-        <Card key={n} sx={{ mt: 1 }}>
-          <CardContent onClick={() => nav(`/node/${n}`)}>
-            <Typography>{n}</Typography>
-          </CardContent>
-        </Card>
-      ))}
     </Container>
   );
 }
