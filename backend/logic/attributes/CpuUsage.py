@@ -46,4 +46,3 @@ class CpuUsage(Attribute):
         print(f"Cpu Usage: {self.cpuUsage}%")
         print(f"History (last {len(self.usage_history)} samples):")
         print(list(self.usage_history))
-
