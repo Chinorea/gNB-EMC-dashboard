@@ -90,18 +90,27 @@ export default function NodeDashboard() {
     );
   }
 
+  const connectionStatusMap = {
+    UP:        'Connected',
+    DOWN:      'Disconnected',
+    UNSTABLE:  'unstable'
+  };
+
   const firstLayerItems = [
-    { label: 'Node ID',    value: attrs.gnb_id },
-    { label: 'Time',       value: attrs.board_time },
-    { label: 'Date',       value: attrs.board_date },
+    { label: 'Node ID',             value: attrs.gnb_id },
+    { label: 'Time',                value: attrs.board_time },
+    { label: 'Date',                value: attrs.board_date },
+    {
+      label: 'Connection to Core',
+      value: connectionStatusMap[attrs.core_connection] || attrs.core_connection
+    }
   ];
 
   const otherItems = [
-    { label: 'CPU Usage',      value: `${attrs.cpu_usage}%` },
-    { label: 'RAM Usage',      value: `${attrs.ram_usage}%` },
-    { label: 'Total RAM',      value: `${attrs.ram_total} GB` },
-    { label: 'CPU Temperature',value: `${attrs.cpu_temp}C` },
-    { label: 'Core Connection',value: `${attrs.core_connection}` },
+    { label: 'CPU Usage',       value: `${attrs.cpu_usage}%` },
+    { label: 'RAM Usage',       value: `${attrs.ram_usage}%` },
+    { label: 'Total RAM',       value: `${attrs.ram_total} GB` },
+    { label: 'CPU Temperature', value: `${attrs.cpu_temp}C` },
   ];
 
   return (
@@ -213,100 +222,6 @@ export default function NodeDashboard() {
               </Card>
             </Grid>
           ))}
-          {/* Combined Disk Card */}
-          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex' }}>
-            <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-              {/* reduce vertical padding to shorten content height */}
-              <CardContent sx={{ textAlign: 'center', py: 1 }}>
-                <Typography
-                color="textSecondary"
-                gutterBottom variant="subtitle2"
-                sx={{ fontSize: '1.1rem' }} 
-                >
-                  Disk Overview
-                </Typography>
-
-                {/* nested grid with custom horizontal padding & gutter */}
-                <Grid
-                  container
-                  spacing={0.5}         // vertical & default gutter
-                  columnSpacing={2}     // extra horizontal gutter
-                  sx={{
-                    mt: 0.5,
-                  }}
-                >
-                  {/* Total */}
-                  <Grid item xs={12}>
-                    <Typography
-                      color="textSecondary"
-                      variant="subtitle2"
-                      sx={{
-                        fontSize: '1.0rem',
-                        mb: 0.25,      // reduce bottom margin
-                      }}
-                    >
-                      Total
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 'bold',
-                        mt: 0.25,      // optional: tighten top margin
-                      }}
-                    >
-                      {attrs.drive_total} GB
-                    </Typography>
-                  </Grid>
-
-                  {/* Used */}
-                  <Grid item xs={6}>
-                    <Typography
-                      color="textSecondary"
-                      variant="subtitle2"
-                      sx={{
-                        fontSize: '1.0rem',
-                        mb: 0.25,      // reduce bottom margin
-                      }}
-                    >
-                      Used
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 'bold',
-                        mt: 0.25,      // tighten top margin
-                      }}
-                    >
-                      {attrs.drive_used} GB
-                    </Typography>
-                  </Grid>
-
-                  {/* Free */}
-                  <Grid item xs={6}>
-                    <Typography
-                      color="textSecondary"
-                      variant="subtitle2"
-                      sx={{
-                        fontSize: '1.0rem',
-                        mb: 0.25,      // reduce bottom margin
-                      }}
-                    >
-                      Free
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 'bold',
-                        mt: 0.25,      // tighten top margin
-                      }}
-                    >
-                      {attrs.drive_free} GB
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
 
         {/* Layer 2 */}
@@ -447,6 +362,100 @@ export default function NodeDashboard() {
                       fontSize: '1.5rem'
                       }}>
                       {attrs.ip_address_ngu}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Disk Overview Card */}
+          <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+            <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                <Typography
+                color="textSecondary"
+                gutterBottom variant="subtitle2"
+                sx={{ fontSize: '1.1rem' }} 
+                >
+                  Disk Overview
+                </Typography>
+
+                {/* nested grid with custom horizontal padding & gutter */}
+                <Grid
+                  container
+                  spacing={0.5}         // vertical & default gutter
+                  columnSpacing={2}     // extra horizontal gutter
+                  sx={{
+                    mt: 3.3,
+                  }}
+                >
+                  {/* Total */}
+                  <Grid item xs={12}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 1.0,      // reduce bottom margin
+                      }}
+                    >
+                      Total
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // optional: tighten top margin
+                      }}
+                    >
+                      {attrs.drive_total} GB
+                    </Typography>
+                  </Grid>
+
+                  {/* Used */}
+                  <Grid item xs={6}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 1,      // reduce bottom margin
+                      }}
+                    >
+                      Used
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // tighten top margin
+                      }}
+                    >
+                      {attrs.drive_used} GB
+                    </Typography>
+                  </Grid>
+
+                  {/* Free */}
+                  <Grid item xs={6}>
+                    <Typography
+                      color="textSecondary"
+                      variant="subtitle2"
+                      sx={{
+                        fontSize: '1.0rem',
+                        mb: 1,      // reduce bottom margin
+                      }}
+                    >
+                      Free
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 'bold',
+                        mt: 0.25,      // tighten top margin
+                      }}
+                    >
+                      {attrs.drive_free} GB
                     </Typography>
                   </Grid>
                 </Grid>

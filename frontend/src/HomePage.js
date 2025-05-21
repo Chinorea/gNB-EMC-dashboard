@@ -24,31 +24,6 @@ export default function HomePage({ nodes, setNodes, statuses, setStatuses }) {
     setIp('');
   };
 
-  // poll each node’s /api/attributes endpoint
-  useEffect(() => {
-    const updateStatuses = () => {
-      nodes.forEach((node) => {
-        fetch(`http://${node}:5000/api/attributes`)
-          .then(res => {
-            if (!res.ok) throw new Error('unreachable');
-            return res.json();
-          })
-          .then(data => {
-            // got data.raptor_status === "OFF"|"INITIALISING"|"RUNNING"
-            setStatuses(prev => ({ ...prev, [node]: data.raptor_status }));
-          })
-          .catch(() => {
-            // cannot reach host
-            setStatuses(prev => ({ ...prev, [node]: 'UNREACHABLE' }));
-          });
-      });
-    };
-
-    updateStatuses();
-    const id = setInterval(updateStatuses, 1000);
-    return () => clearInterval(id);
-  }, [nodes, setStatuses]);
-
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Typography
