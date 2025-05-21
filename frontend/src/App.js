@@ -80,8 +80,24 @@ export default function App() {
 
         <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/node/:ip" element={<NodeDashboard />} />
+            <Route
+              path="/"
+              element={
+                <HomePage
+                  nodes={nodes}
+                  setNodes={setNodes}
+                />
+              }
+            />
+            <Route
+              path="/node/:ip"
+              element={
+                <NodeDashboard
+                  nodes={nodes}
+                  setNodes={setNodes}
+                />
+              }
+            />
           </Routes>
         </Box>
       </Box>
