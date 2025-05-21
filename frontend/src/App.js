@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
@@ -60,7 +60,10 @@ function Sidebar({ nodes, setNodes, statuses }) {
 
         <List subheader={<ListSubheader>Navigation</ListSubheader>}>
           <ListItemButton component={RouterLink} to="/">
-            <ListItemText primary="Home" />
+            <ListItemText
+              primary="Home"
+              primaryTypographyProps={{ fontWeight: 'bold' }}
+            />
           </ListItemButton>
         </List>
 
@@ -86,10 +89,13 @@ function Sidebar({ nodes, setNodes, statuses }) {
               <ListItem
                 key={n}
                 disablePadding
-                sx={{ backgroundColor: bg }}
+                sx={{ backgroundColor: bg}}
               >
                 <ListItemButton component={RouterLink} to={`/node/${n}`}>
-                  <ListItemText primary={n} />
+                  <ListItemText
+                    primary={n}
+                    primaryTypographyProps={{ fontWeight: 'bold' }}
+                  />
                 </ListItemButton>
               </ListItem>
             );
@@ -101,8 +107,29 @@ function Sidebar({ nodes, setNodes, statuses }) {
 }
 
 export default function App() {
-  const [nodes, setNodes]       = useState([]);
+  const [nodes, setNodes]         = useState([]);
   const [nodeStatuses, setStatuses] = useState({});
+
+  // poll *all* nodes continuously, regardless of route
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    const update = () => {
+      nodes.forEach((n) => {
+        fetch(`http://${n}:5000/api/attributes`)
+          .then((res) => res.json())
+          .then((data) => {
+            setStatuses(prev => ({ ...prev, [n]: data.raptor_status }));
+          })
+          .catch(() => {
+            setStatuses(prev => ({ ...prev, [n]: "UNREACHABLE" }));
+          });
+      });
+    };
+
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [nodes, setStatuses]);
 
   return (
     <BrowserRouter>
