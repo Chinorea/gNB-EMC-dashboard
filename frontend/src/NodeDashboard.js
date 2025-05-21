@@ -6,6 +6,17 @@ import {
   Drawer, List, ListItemButton, ListItemText, ListSubheader, Divider, TextField
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 
 const drawerWidth = 240;
 
@@ -106,12 +117,35 @@ export default function NodeDashboard() {
     }
   ];
 
-  const otherItems = [
-    { label: 'CPU Usage',       value: `${attrs.cpu_usage}%` },
-    { label: 'RAM Usage',       value: `${attrs.ram_usage}%` },
-    { label: 'Total RAM',       value: `${attrs.ram_total} GB` },
-    { label: 'CPU Temperature', value: `${attrs.cpu_temp}C` },
-  ];
+  // prepare & smooth last 100 CPU points
+  const rawCpu = attrs.cpu_usage_history.slice(-100)
+    .map((v,i) => ({ name: i+1, value: v }));
+  const smoothCpu = rawCpu.map((pt, i, arr) => {
+    const win = 30;
+    const half = Math.floor(win/2);
+    const start = Math.max(0, i-half);
+    const end   = Math.min(arr.length, i+half+1);
+    const slice = arr.slice(start, end).map(x => x.value);
+    const avg   = slice.reduce((s,v) => s+v, 0) / slice.length;
+    // round to 1 decimal place
+    const rounded = Math.round(avg * 10) / 10;
+    return { name: pt.name, value: rounded };
+  });
+
+  // prepare & smooth last 100 RAM points
+  const rawRam = attrs.ram_usage_history
+    .slice(-100)
+    .map((v,i) => ({ name: i+1, value: v }));
+  const smoothRam = rawRam.map((pt, i, arr) => {
+    const win  = 30;
+    const half = Math.floor(win/2);
+    const start = Math.max(0, i-half);
+    const end   = Math.min(arr.length, i+half+1);
+    const slice = arr.slice(start, end).map(x => x.value);
+    const avg   = slice.reduce((s,v) => s+v, 0) / slice.length;
+    const rounded = Math.round(avg * 10) / 10;  // 1dp
+    return { name: pt.name, value: rounded };
+  });
 
   return (
     <Box sx={{ 
@@ -224,20 +258,157 @@ export default function NodeDashboard() {
           ))}
         </Grid>
 
-        {/* Layer 2 */}
-        <Grid container spacing={3} sx={{ mt: 4 }}>
-          {otherItems.map(item => (
-            <Grid item xs={12} sm={6} md={3} key={item.label}>
-              <Card elevation={3}>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    {item.label}
-                  </Typography>
-                  <Typography variant="h5">{item.value}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
+        {/* Layer 2 – Usage Charts */}
+        <Grid
+          container
+          spacing={3}
+          sx={{ mt: 4 }}
+          alignItems="stretch"
+          justifyContent={'center'}  // center items horizontally
+        >
+          {/* CPU Usage Chart */}
+          <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '40%' }}>
+            <Card
+              elevation={3}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 250      // make card taller
+              }}
+            >
+              <CardContent>
+                <Typography
+                  color="textSecondary"
+                  variant="subtitle2"
+                  sx={{ mb: 2, textAlign: 'center' }}
+                >
+                  CPU Statistics
+                </Typography>
+                <Grid
+                  container
+                  spacing={2}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ mb: 2 }}
+                >
+                  <Grid item xs={6} sx={{ textAlign: 'center' }}>
+                    <Typography color="textSecondary" variant="subtitle2">
+                      CPU Usage
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {attrs.cpu_usage}%
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6} sx={{ textAlign: 'center' }}>
+                    <Typography color="textSecondary" variant="subtitle2">
+                      CPU Temp
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {attrs.cpu_temp}°C
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                <Typography color="textSecondary" gutterBottom variant="subtitle2">
+                  CPU Usage (Last 100 Seconds)
+                </Typography>
+
+                <ResponsiveContainer width="100%" height={250}>  {/* increase graph height */}
+                  <AreaChart data={smoothCpu}>
+                    {/* optional gradient for nicer shading */}
+                    <defs>
+                      <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8884d8" stopOpacity={0.4}/>
+                        <stop offset="75%" stopColor="#8884d8" stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={false} />
+                    <YAxis domain={[0, 100]} unit="%" />
+                    <Tooltip />
+                    <Area 
+                      type="basis"
+                      dataKey="value"
+                      stroke="#8884d8"
+                      fill="url(#colorCpu)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* RAM Usage Chart */}
+          <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '40%' }}>
+            <Card
+              elevation={3}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 250      // make card taller
+              }}
+            >
+              <CardContent>
+                <Typography
+                  color="textSecondary"
+                  variant="subtitle2"
+                  sx={{ mb: 2, textAlign: 'center' }}
+                >
+                  RAM Statistics
+                </Typography>
+                <Grid
+                  container
+                  spacing={2}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ mb: 2 }}
+                >
+                  <Grid item xs={6} sx={{ textAlign: 'center' }}>
+                    <Typography color="textSecondary" variant="subtitle2">
+                      RAM Usage
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {attrs.ram_usage}%
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6} sx={{ textAlign: 'center' }}>
+                    <Typography color="textSecondary" variant="subtitle2">
+                      Total RAM
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {attrs.ram_total} GB
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                <Typography color="textSecondary" gutterBottom variant="subtitle2">
+                  RAM Usage (Last 100 Seconds)
+                </Typography>
+                <ResponsiveContainer width="100%" height={250}>  {/* increase graph height */}
+                  <AreaChart data={smoothRam}>
+                    <defs>
+                      <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.4}/>
+                        <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={false} />
+                    <YAxis domain={[0, 100]} unit="%" />
+                    <Tooltip />
+                    <Area 
+                      type="basis"
+                      dataKey="value"
+                      stroke="#82ca9d"
+                      fill="url(#colorRam)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
         {/* Layer 3 – Frequencies & IP side-by-side */}
