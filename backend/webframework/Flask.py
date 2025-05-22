@@ -23,6 +23,8 @@ board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
 tx_power            = TxPower("/du/config/me_config.xml")
 
+raptor_status_timeout = 3
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -33,7 +35,7 @@ def get_attributes():
     # refresh all attributes first
     for attr in (ip_address, cpu_usage, cpu_temp, ram_usage,
                  drive_space, broadcast_frequency, tx_power,
-                 board_date_time, raptor_status):
+                 board_date_time):
         attr.refresh()
 
     # then check core connection once
@@ -61,16 +63,23 @@ def get_attributes():
         "bandwidth_up_link":   broadcast_frequency.upLinkBw,
         "board_date":          board_date_time.boardDate,
         "board_time":          board_date_time.boardTime,
-        "raptor_status":       raptor_status.raptorStatus.name,
         "core_connection":     core_connection.networkStatus.name,
         "tx_power":            tx_power.tx_power,
     }
     return jsonify(data)
 
+@app.route("/api/node_status", methods=["GET"])
+def get_raptor_status():
+    raptor_status.refresh()
+    return jsonify({
+        "node_status": raptor_status.raptorStatus.name
+    }), 200
+
 # Map of allowed “actions” to the real commands
 ACTIONS = {
     "setup": ["python3", "/webdashboard/setup_drive.py"],
-    "setupv2": ["gnb_ctl", "start"]
+    "setupv2": ["gnb_ctl", "start"],
+    "stop" : ["gnb_ctl", "stop"]
 }
 
 @app.route("/api/setup_script", methods=["POST"])
