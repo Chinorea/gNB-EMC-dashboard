@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file, abort
 from flask_cors import CORS
-import subprocess
+import subprocess, os, time, signal
 
 from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
@@ -84,6 +84,7 @@ ACTIONS = {
 
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
+    MAX_WAIT = 180
     data = request.get_json(force=True, silent=True) or {}
     action = data.get("action")
     if action not in ACTIONS:
@@ -91,21 +92,78 @@ def setup_script():
 
     cmd = ACTIONS[action]
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=True
+            bufsize=1,  # line buffering
+            universal_newlines=True
         )
+
+        collected = []
+        start = time.time()
+
+        # read stdout as it appears
+        for line in proc.stdout:
+            collected.append(line)
+
+            # success condition
+            if "CELL_IS_UP" in line:
+                proc.send_signal(signal.SIGINT)
+                break
+
+            # timeout condition
+            if time.time() - start > MAX_WAIT:
+                proc.kill()
+                return jsonify({
+                    "action": action,
+                    "error": "timeout",
+                    "details": f"no CELL_IS_UP within {MAX_WAIT}s"
+                }), 504
+
+        # give it a moment to clean up
+        proc.wait(timeout=5)
+
         return jsonify({
             "action": action,
-            "output": result.stdout.strip()
+            "output": "".join(collected).strip(),
+            "status": "ok"
         }), 200
 
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
+        proc.kill()
         return jsonify({
             "action": action,
-            "error": f"Exit {e.returncode}",
-            "stderr": e.stderr.strip()
+            "error": str(e)
         }), 500
+
+
+# map a URL‐friendly key to the real filesystem path
+FILE_PATHS = {
+    "cu_log":     "/logdump/cu_log.txt",
+    "du_log":     "/logdump/du_log.txt",
+}
+
+@app.route("/api/download/<file_key>", methods=["GET"])
+def download_file(file_key):
+    """
+    Download one of the pre-registered files.
+    e.g. /api/download/cu_log  or  /api/download/du_log
+    """
+    file_path = FILE_PATHS.get(file_key)
+    # 1) key must exist
+    if file_path is None:
+        return jsonify({"error": f"Unknown file key '{file_key}'"}), 404
+
+    # 2) file must exist on disk
+    if not os.path.isfile(file_path):
+        return jsonify({"error": f"File not found on server: {file_path}"}), 404
+
+    # 3) send it as an attachment (will trigger Save‐As in the browser)
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=os.path.basename(file_path),
+        mimetype="text/plain",
+    )
