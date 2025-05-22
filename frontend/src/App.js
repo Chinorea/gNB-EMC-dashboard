@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Link as RouterLink, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link as RouterLink} from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import {
   Box,
   Drawer,
-  Toolbar,
   List,
   ListItemButton,
   ListItemText,
@@ -22,7 +21,6 @@ const drawerWidth = 240;
 
 function Sidebar({ nodes, setNodes, statuses }) {
   const [ip, setIp] = useState('');
-  const navigate = useNavigate();
 
   const addNode = () => {
     if (ip && !nodes.includes(ip)) {
@@ -127,35 +125,50 @@ export default function App() {
     localStorage.setItem("nodes", JSON.stringify(nodes));
   }, [nodes]);
 
-  const [nodeStatuses, setStatuses] = useState({});
-  // new: store the entire attributes JSON per node
+  const [nodeStatuses, setStatuses]   = useState({});
   const [nodeAttrs, setNodeAttrs]     = useState({});
 
-  // poll *all* nodes continuously, regardless of route
   useEffect(() => {
-    if (nodes.length === 0) return;
-    const update = () => {
-      nodes.forEach((n) => {
-        fetch(`http://${n}:5000/api/attributes`)
-          .then(res => {
-            if (!res.ok) throw new Error(res.statusText);
-            return res.json();
-          })
-          .then((data) => {
-            // save both the full attrs and the status
-            setNodeAttrs(prev => ({ ...prev, [n]: data }));
-            setStatuses (prev => ({ ...prev, [n]: data.raptor_status }));
+    if (!nodes.length) return;
+
+    // fetch all the "fast" attrs (no Raptor)
+    const updateAttrs = () => {
+      nodes.forEach(ip => {
+        fetch(`http://${ip}:5000/api/attributes`)
+          .then(res => res.json())
+          .then(data => {
+            setNodeAttrs(prev => ({ ...prev, [ip]: data }));
           })
           .catch(() => {
-            setStatuses(prev => ({ ...prev, [n]: "UNREACHABLE" }));
+            /* handle unreachable basic attrs if you like */
           });
       });
     };
 
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [nodes, setStatuses]);
+    // fetch Raptor status separately
+    const updateRaptor = () => {
+      nodes.forEach(ip => {
+        fetch(`http://${ip}:5000/api/node_status`)
+          .then(res => res.json())
+          .then(({ node_status }) => {
+            setStatuses(prev => ({ ...prev, [ip]: node_status }));
+          })
+          .catch(() => {
+            setStatuses(prev => ({ ...prev, [ip]: "UNREACHABLE" }));
+          });
+      });
+    };
+
+    updateAttrs();
+    updateRaptor();
+
+    const id1 = setInterval(updateAttrs, 1000);    // fast loop
+    const id2 = setInterval(updateRaptor, 3000);   // slower loop
+    return () => {
+      clearInterval(id1);
+      clearInterval(id2);
+    };
+  }, [nodes]);
 
   return (
     <BrowserRouter>
