@@ -94,6 +94,7 @@ export default function NodeDashboard({ nodes, setNodes, statuses }) {
 
   const firstLayerItems = [
     { label: 'Node ID',             value: attrs.gnb_id },
+    { label: 'PCI',                 value: attrs.gnb_pci},
     { label: 'Time',                value: attrs.board_time },
     { label: 'Date',                value: attrs.board_date },
     {
