@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Link as RouterLink, useParams } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import {
