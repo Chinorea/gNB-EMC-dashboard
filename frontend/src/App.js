@@ -128,6 +128,8 @@ export default function App() {
   }, [nodes]);
 
   const [nodeStatuses, setStatuses] = useState({});
+  // new: store the entire attributes JSON per node
+  const [nodeAttrs, setNodeAttrs]     = useState({});
 
   // poll *all* nodes continuously, regardless of route
   useEffect(() => {
@@ -135,9 +137,14 @@ export default function App() {
     const update = () => {
       nodes.forEach((n) => {
         fetch(`http://${n}:5000/api/attributes`)
-          .then((res) => res.json())
+          .then(res => {
+            if (!res.ok) throw new Error(res.statusText);
+            return res.json();
+          })
           .then((data) => {
-            setStatuses(prev => ({ ...prev, [n]: data.raptor_status }));
+            // save both the full attrs and the status
+            setNodeAttrs(prev => ({ ...prev, [n]: data }));
+            setStatuses (prev => ({ ...prev, [n]: data.raptor_status }));
           })
           .catch(() => {
             setStatuses(prev => ({ ...prev, [n]: "UNREACHABLE" }));
@@ -179,6 +186,7 @@ export default function App() {
                   nodes={nodes}
                   setNodes={setNodes}
                   statuses={nodeStatuses}            // ← pass this in
+                  attrs={ nodeAttrs }              // <-- pass the map
                 />
               }
             />

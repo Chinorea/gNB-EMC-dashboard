@@ -11,6 +11,7 @@ from backend.logic.attributes.BroadcastFrequency import BroadcastFrequency
 from backend.logic.attributes.BoardDateTime      import BoardDateTime
 from backend.logic.attributes.RaptorStatus       import RaptorStatus
 from backend.logic.attributes.Network            import Network
+from backend.logic.attributes.TxPower            import TxPower
 
 ip_address          = IpAddress("/cu/config/me_config.xml")
 cpu_usage           = CpuUsage()
@@ -20,6 +21,7 @@ drive_space         = DriveSpace()
 broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
+tx_power            = TxPower("/du/config/me_config.xml")
 
 
 app = Flask(__name__)
@@ -30,7 +32,7 @@ def get_attributes():
     
     # refresh all attributes first
     for attr in (ip_address, cpu_usage, cpu_temp, ram_usage,
-                 drive_space, broadcast_frequency,
+                 drive_space, broadcast_frequency, tx_power,
                  board_date_time, raptor_status):
         attr.refresh()
 
@@ -61,6 +63,7 @@ def get_attributes():
         "board_time":          board_date_time.boardTime,
         "raptor_status":       raptor_status.raptorStatus.name,
         "core_connection":     core_connection.networkStatus.name,
+        "tx_power":            tx_power.tx_power,
     }
     return jsonify(data)
 
