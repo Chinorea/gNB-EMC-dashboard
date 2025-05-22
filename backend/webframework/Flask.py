@@ -1,5 +1,6 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+import subprocess
 
 from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
@@ -55,3 +56,37 @@ def get_attributes():
         "core_connection":     core_connection.networkStatus.name,
     }
     return jsonify(data)
+
+# Map of allowed “actions” to the real commands
+ACTIONS = {
+    "setup": ["python3", "/webdashboard/setup_drive.py"],
+    "setupv2": ["gnb_ctl", "start"]
+}
+
+@app.route("/api/setup_script", methods=["POST"])
+def setup_script():
+    data = request.get_json(force=True, silent=True) or {}
+    action = data.get("action")
+    if action not in ACTIONS:
+        return jsonify({"error": f"Unknown action '{action}'."}), 400
+
+    cmd = ACTIONS[action]
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        return jsonify({
+            "action": action,
+            "output": result.stdout.strip()
+        }), 200
+
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            "action": action,
+            "error": f"Exit {e.returncode}",
+            "stderr": e.stderr.strip()
+        }), 500
