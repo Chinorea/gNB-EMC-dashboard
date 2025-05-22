@@ -20,63 +20,8 @@ import {
 
 const drawerWidth = 240;
 
-function Sidebar({ nodes, setNodes }) {
-  const [ip, setIp] = useState('');
-  const navigate = useNavigate();
-
-  const addNode = () => {
-    if (ip && !nodes.includes(ip)) {
-      setNodes(prev => [...prev, ip]);
-      navigate(`/node/${ip}`);
-      setIp('');
-    }
-  };
-
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
-      }}
-    >
-      <Toolbar />
-      <Box sx={{ p: 2, overflow: 'auto' }}>
-        {/* Navigation at top */}
-        <List subheader={<ListSubheader>Navigation</ListSubheader>}>
-          <ListItemButton component={RouterLink} to="/">
-            <ListItemText primary="Home" />
-          </ListItemButton>
-        </List>
-
-        {/* Nodes below navigation */}
-        <List subheader={<ListSubheader>Nodes</ListSubheader>}>
-          {nodes.map(n => (
-            <ListItemButton key={n} component={RouterLink} to={`/node/${n}`}>
-              <ListItemText primary={n} />
-            </ListItemButton>
-          ))}
-        </List>
-
-        {/* Add Node section at bottom */}
-        <Divider sx={{ my: 2 }} />
-        <TextField
-          fullWidth
-          label="Add Node IP"
-          value={ip}
-          size="small"
-          onChange={e => setIp(e.target.value)}
-        />
-        <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
-          Add
-        </Button>
-      </Box>
-    </Drawer>
-  );
-}
-
-export default function NodeDashboard() {
+// add statuses prop
+export default function NodeDashboard({ nodes, setNodes, statuses }) {
   const { ip } = useParams();
   const nav = useNavigate();
   const [attrs, setAttrs] = useState(null);
@@ -93,11 +38,51 @@ export default function NodeDashboard() {
     return () => clearInterval(id);
   }, [ip]);
 
-  if (!attrs) {
+  // derive connection status the same way Sidebar does
+  const connectionStatus = statuses[ip] || 'UNREACHABLE';
+
+  if (connectionStatus == 'UNREACHABLE' || !attrs) {
     return (
-      <Container sx={{ textAlign: 'center', mt: 8 }}>
-        <Typography variant="h5">Loading…</Typography>
-      </Container>
+      <Box sx={{
+        backgroundColor:
+          statuses[ip] === 'RUNNING'       ? '#f3f7f2'
+        : statuses[ip] === 'INITIALISING'   ? '#f2f1ed'
+        : statuses[ip] === 'OFF'            ? '#faf2f0'
+        /* UNREACHABLE or other */         : '#f2f2f2',
+        minHeight: '100vh'
+      }}>
+        <CssBaseline />
+        <AppBar
+          position="static"
+          elevation={2}
+          sx={{
+            backgroundColor:
+              statuses[ip] === 'RUNNING'       ? '#40613d'
+            : statuses[ip] === 'INITIALISING'   ? '#805c19'
+            : statuses[ip] === 'OFF'            ? '#612a1f'
+            /* grey when disconnected */        : '#2d2e2e',
+          }}
+        >
+          <Toolbar sx={{ justifyContent: 'space-between' }}>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              {ip}
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              sx={{ mr: 2, fontSize: '1.3rem' }}
+            >
+              Status:{' '}
+              {statuses[ip] === 'RUNNING'
+                ? 'Broadcasting'
+                : statuses[ip] === 'INITIALISING'
+                ? 'Initialising'
+                : statuses[ip] === 'OFF'
+                ? 'Not Broadcasting'
+                : 'Disconnected'}
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      </Box>
     );
   }
 
@@ -121,7 +106,7 @@ export default function NodeDashboard() {
   const rawCpu = attrs.cpu_usage_history.slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothCpu = rawCpu.map((pt, i, arr) => {
-    const win = 10;
+    const win = 20;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -137,7 +122,7 @@ export default function NodeDashboard() {
     .slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothRam = rawRam.map((pt, i, arr) => {
-    const win  = 10;
+    const win  = 20;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -147,14 +132,14 @@ export default function NodeDashboard() {
     return { name: pt.name, value: rounded };
   });
 
+
   return (
     <Box sx={{ 
       backgroundColor:
-        attrs.raptor_status === 'RUNNING'
-          ? '#f3f7f2'       // green when RUNNING
-          : attrs.raptor_status === 'INITIALISING'
-          ? '#f2f1ed'       // yellow when INITIALISING
-          : '#faf2f0',      // red when other
+        connectionStatus === 'RUNNING'       ? '#f3f7f2'
+      : connectionStatus === 'INITIALISING'   ? '#f2f1ed'
+      : connectionStatus === 'OFF'            ? '#faf2f0'
+      /* UNREACHABLE or other */             : '#f2f2f2',
       minHeight: '100vh' 
     }}>
       <CssBaseline />
@@ -164,22 +149,20 @@ export default function NodeDashboard() {
         position="static"
         elevation={2}
         sx={{
+          // use the same status map as Sidebar/HomePage
           backgroundColor:
-            attrs.raptor_status === 'RUNNING'
-              ? '#40613d' // green
-              : attrs.raptor_status === 'INITIALISING'
-              ? '#805c19' // yellow
-              : '#612a1f', // red
+            statuses[ip] === 'RUNNING'
+              ? '#40613d'
+              : statuses[ip] === 'INITIALISING'
+              ? '#805c19'
+              : statuses[ip] === 'OFF'
+              ? '#612a1f'
+              : '#2d2e2e',  // grey when disconnected
         }}
       >
-        <Toolbar sx={{
-          justifyContent: 'space-between',}}>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ fontSize: '1.5rem' }} 
-          >
-            {`5G Node ${attrs.gnb_id}`}
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            {ip}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center'}}>
             <Typography
@@ -190,34 +173,36 @@ export default function NodeDashboard() {
               }}
             >
               Status:{' '}
-              {attrs.raptor_status === 'RUNNING'
+              {statuses[ip] === 'RUNNING'
                 ? 'Broadcasting'
-                : attrs.raptor_status === 'INITIALISING'
+                : statuses[ip] === 'INITIALISING'
                 ? 'Initialising'
-                : 'Not Broadcasting'}
+                : statuses[ip] === 'OFF'
+                ? 'Not Broadcasting'
+                : 'Disconnected'}
             </Typography>
-            <Button
-              variant="contained"
-              sx={{
-                fontSize: '1.1rem',
-                backgroundColor:
-                  attrs.raptor_status === 'RUNNING'
-                    ? '#612a1f'      // red when running
-                    : attrs.raptor_status === 'INITIALISING'
-                    ? '#805c19'      // yellow when init
-                    : '#40613d',     // green otherwise
-                '&:hover': {
-                  backgroundColor:
-                    attrs.raptor_status === 'RUNNING'
-                      ? '#4d1914'
-                      : attrs.raptor_status === 'INITIALISING'
-                      ? '#7a4d17'
-                      : '#335e2e',
-                },
-              }}
-            >
-              {attrs.raptor_status === 'RUNNING' ? 'Turn Off' : 'Turn On'}
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {(connectionStatus === 'RUNNING' || connectionStatus === 'OFF') && (
+                <Button
+                  variant="contained"
+                  onClick={() => {}}
+                  disabled={connectionStatus === 'INITIALISING'}
+                  sx={{
+                    backgroundColor:
+                      connectionStatus === 'RUNNING' ? '#612a1f' : '#40613d',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor:
+                        connectionStatus === 'RUNNING'
+                          ? '#4d1914'
+                          : '#335e2e',
+                    },
+                  }}
+                >
+                  {connectionStatus === 'RUNNING' ? 'Turn Off' : 'Turn On'}
+                </Button>
+              )}
+            </Box>
           </Box>
         </Toolbar>
       </AppBar>
@@ -319,8 +304,8 @@ export default function NodeDashboard() {
                     {/* optional gradient for nicer shading */}
                     <defs>
                       <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8884d8" stopOpacity={0.4}/>
-                        <stop offset="75%" stopColor="#8884d8" stopOpacity={0.05}/>
+                        <stop offset="0%" stopColor="#8884d8" stopOpacity={0.6}/>
+                        <stop offset="75%" stopColor="#8884d8" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -334,7 +319,7 @@ export default function NodeDashboard() {
                     />
                     <YAxis domain={[0, 100]} unit="%" />
                     <Tooltip
-                      formatter={(value) => `${value}%`}
+                      formatter={(value, name) => [`${value}%`, 'Usage']}
                       labelFormatter={(val) => `${100 - val}s ago`}
                     />
                     <Area 
@@ -343,6 +328,7 @@ export default function NodeDashboard() {
                       stroke="#8884d8"
                       strokeWidth={3}         // make the line thicker
                       fill="url(#colorCpu)"
+                      fillOpacity={0.6}    // make the shaded area more opaque
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -401,8 +387,8 @@ export default function NodeDashboard() {
                   <AreaChart data={smoothRam}>
                     <defs>
                       <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.4}/>
-                        <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.05}/>
+                        <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.6}/>
+                        <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -416,7 +402,7 @@ export default function NodeDashboard() {
                     />
                     <YAxis domain={[0, 100]} unit="%" />
                     <Tooltip
-                      formatter={(value) => `${value}%`}
+                      formatter={(value, name) => [`${value}%`, 'Usage']}
                       labelFormatter={(val) => `${100 - val}s ago`}
                     />
                     <Area 
@@ -425,6 +411,7 @@ export default function NodeDashboard() {
                       stroke="#82ca9d"
                       strokeWidth={3}         // make the line thicker
                       fill="url(#colorRam)"
+                      fillOpacity={0.6}    // more solid shading
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -656,13 +643,6 @@ export default function NodeDashboard() {
             </Card>
           </Grid>
         </Grid>
-
-        {/* Footer */}
-        <Box sx={{ mt: 4, textAlign: 'center', color: 'text.secondary' }}>
-          <Typography variant="caption">
-            &copy; {new Date().getFullYear()} 5G Dashboard
-          </Typography>
-        </Box>
       </Container>
     </Box>
   );

@@ -178,6 +178,7 @@ export default function App() {
                 <NodeDashboard
                   nodes={nodes}
                   setNodes={setNodes}
+                  statuses={nodeStatuses}            // ← pass this in
                 />
               }
             />
