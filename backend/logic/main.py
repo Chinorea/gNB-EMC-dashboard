@@ -9,11 +9,13 @@ from attributes.RamUsage import RamUsage
 from attributes.SocTemp import SocTemp
 from attributes.DriveSpace import DriveSpace
 from attributes.Network import Network
+from attributes.TxPower import TxPower
 
 ip_path = "/cu/config/me_config.xml"
 freq_path = "/du/config/gnb_config.xml"
 raptor_path = "/logdump/du_log.txt"
 ping = "192.168.2.10"
+tx_path = "/du/config/me_config.xml"
 
 ip = IpAddress(ip_path)
 boardDateTime = BoardDateTime()
@@ -24,6 +26,7 @@ ram = RamUsage()
 temp = SocTemp()
 driveSpace = DriveSpace()
 network = Network(ping)
+tx = TxPower(tx_path)
 
 boardDateTime.print_Current_time()
 
@@ -52,3 +55,5 @@ temp.print_core_temp()
 driveSpace.refresh()
 driveSpace.print_drive_space()
 
+tx.refresh()
+tx.print_tx_power()
