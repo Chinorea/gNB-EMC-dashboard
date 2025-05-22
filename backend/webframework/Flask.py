@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file, abort
 from flask_cors import CORS
-import subprocess
+import subprocess, os
 
 from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
@@ -96,3 +96,33 @@ def setup_script():
             "error": f"Exit {e.returncode}",
             "stderr": e.stderr.strip()
         }), 500
+
+
+# map a URL‐friendly key to the real filesystem path
+FILE_PATHS = {
+    "cu_log":     "/logdump/cu_log.txt",
+    "du_log":     "/logdump/du_log.txt",
+}
+
+@app.route("/api/download/<file_key>", methods=["GET"])
+def download_file(file_key):
+    """
+    Download one of the pre-registered files.
+    e.g. /api/download/cu_log  or  /api/download/du_log
+    """
+    file_path = FILE_PATHS.get(file_key)
+    # 1) key must exist
+    if file_path is None:
+        return jsonify({"error": f"Unknown file key '{file_key}'"}), 404
+
+    # 2) file must exist on disk
+    if not os.path.isfile(file_path):
+        return jsonify({"error": f"File not found on server: {file_path}"}), 404
+
+    # 3) send it as an attachment (will trigger Save‐As in the browser)
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=os.path.basename(file_path),
+        mimetype="text/plain",
+    )
