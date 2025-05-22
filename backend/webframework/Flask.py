@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, send_file, abort
 from flask_cors import CORS
-import subprocess, os
+import subprocess, os, time, signal
 
 from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
@@ -75,6 +75,7 @@ ACTIONS = {
 
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
+    MAX_WAIT = 180
     data = request.get_json(force=True, silent=True) or {}
     action = data.get("action")
     if action not in ACTIONS:
@@ -82,23 +83,50 @@ def setup_script():
 
     cmd = ACTIONS[action]
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=True
+            bufsize=1,  # line buffering
+            universal_newlines=True
         )
+
+        collected = []
+        start = time.time()
+
+        # read stdout as it appears
+        for line in proc.stdout:
+            collected.append(line)
+
+            # success condition
+            if "CELL_IS_UP" in line:
+                proc.send_signal(signal.SIGINT)
+                break
+
+            # timeout condition
+            if time.time() - start > MAX_WAIT:
+                proc.kill()
+                return jsonify({
+                    "action": action,
+                    "error": "timeout",
+                    "details": f"no CELL_IS_UP within {MAX_WAIT}s"
+                }), 504
+
+        # give it a moment to clean up
+        proc.wait(timeout=5)
+
         return jsonify({
             "action": action,
-            "output": result.stdout.strip()
+            "output": "".join(collected).strip(),
+            "status": "ok"
         }), 200
 
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
+        proc.kill()
         return jsonify({
             "action": action,
-            "error": f"Exit {e.returncode}",
-            "stderr": e.stderr.strip()
+            "error": str(e)
         }), 500
 
 
