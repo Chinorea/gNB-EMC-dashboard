@@ -15,7 +15,7 @@ def start_raptor2():
         print("Failed to even launch systemctl:", e, file=sys.stderr)
         return False
 
-
+"""
 # adjust these to exactly match your scripts' final output lines
 SETUP_DONE_RE = re.compile(r"Finished setting up L23SW binaries environment")
 PROMPT = re.compile(r"gnb-\d+:/webdashboard#\s*$")
@@ -54,3 +54,15 @@ print("All steps completed, exit status:", child.exitstatus)
 
 start_raptor2()
 
+"""
+
+child = pexpect.spawn("/bin/bash", ["-i"], encoding="utf-8", timeout=120)
+child.setecho(False)
+child.logfile = sys.stdout  # echo everything into our stdout
+
+# 1) run setup.sh and wait for its last line
+child.sendline("gnb_ctl\s+start")
+child.expect(r"CELL_IS_UP,\s+CELL_ID:1")
+
+child.close()
+print("All steps completed, exit status:", child.exitstatus)

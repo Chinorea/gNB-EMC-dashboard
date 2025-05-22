@@ -10,6 +10,7 @@ from attributes.SocTemp import SocTemp
 from attributes.DriveSpace import DriveSpace
 from attributes.Network import Network
 from attributes.TxPower import TxPower
+from attributes.ThroughPut import ThroughPut
 
 ip_path = "/cu/config/me_config.xml"
 freq_path = "/du/config/gnb_config.xml"
@@ -27,6 +28,7 @@ temp = SocTemp()
 driveSpace = DriveSpace()
 network = Network(ping)
 tx = TxPower(tx_path)
+tp = ThroughPut()
 
 boardDateTime.print_Current_time()
 
@@ -57,3 +59,6 @@ driveSpace.print_drive_space()
 
 tx.refresh()
 tx.print_tx_power()
+
+tp.refresh()
+tp.print_core_throughput()
