@@ -51,6 +51,12 @@ function Sidebar({ nodes, setNodes, statuses }) {
           value={ip}
           size="small"
           onChange={e => setIp(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addNode();
+            }
+          }}
         />
         <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
           Add
@@ -97,6 +103,9 @@ function Sidebar({ nodes, setNodes, statuses }) {
                     primaryTypographyProps={{ fontWeight: 'bold' }}
                   />
                 </ListItemButton>
+                <IconButton edge="end" onClick={() => removeNode(n)} sx={{ mr: 1 }}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
               </ListItem>
             );
           })}
@@ -107,7 +116,17 @@ function Sidebar({ nodes, setNodes, statuses }) {
 }
 
 export default function App() {
-  const [nodes, setNodes]         = useState([]);
+  // load saved nodes from localStorage (or start empty)
+  const [nodes, setNodes] = useState(() => {
+    const saved = localStorage.getItem("nodes");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // whenever nodes changes, persist it
+  useEffect(() => {
+    localStorage.setItem("nodes", JSON.stringify(nodes));
+  }, [nodes]);
+
   const [nodeStatuses, setStatuses] = useState({});
 
   // poll *all* nodes continuously, regardless of route
