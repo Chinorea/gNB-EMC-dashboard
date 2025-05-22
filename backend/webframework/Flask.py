@@ -12,35 +12,41 @@ from backend.logic.attributes.BoardDateTime      import BoardDateTime
 from backend.logic.attributes.RaptorStatus       import RaptorStatus
 from backend.logic.attributes.Network            import Network
 
+ip_address          = IpAddress("/cu/config/me_config.xml")
+cpu_usage           = CpuUsage()
+cpu_temp            = SocTemp()
+ram_usage           = RamUsage()
+drive_space         = DriveSpace()
+broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
+board_date_time     = BoardDateTime()
+raptor_status       = RaptorStatus("/logdump/du_log.txt")
+
+
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
-    ip_address          = IpAddress("/cu/config/me_config.xml")
-    cpu_usage           = CpuUsage()
-    cpu_temp            = SocTemp()
-    ram_usage           = RamUsage()
-    drive_space         = DriveSpace()
-    broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
-    board_date_time     = BoardDateTime()
-    raptor_status       = RaptorStatus("/logdump/du_log.txt")
-
-    # refresh all
-    for attr in (ip_address, cpu_usage, cpu_temp, ram_usage, drive_space,
-                 broadcast_frequency, board_date_time, raptor_status):
-        attr.refresh()
     
-        core_connection     = Network(ip_address.ipAddressNgc)
-        core_connection.refresh()
+    # refresh all attributes first
+    for attr in (ip_address, cpu_usage, cpu_temp, ram_usage,
+                 drive_space, broadcast_frequency,
+                 board_date_time, raptor_status):
+        attr.refresh()
+
+    # then check core connection once
+    core_connection = Network(ip_address.ipAddressNgc)
+    core_connection.refresh()
 
     data = {
         "ip_address_gnb":      ip_address.ipAddressGnb,
         "ip_address_ngc":      ip_address.ipAddressNgc,
         "ip_address_ngu":      ip_address.ipAddressNgu,
         "cpu_usage":           cpu_usage.cpuUsage,
+        "cpu_usage_history":   list(cpu_usage.usage_history),
         "cpu_temp":            cpu_temp.core_temp,
         "ram_usage":           ram_usage.ramUsage,
+        "ram_usage_history":   list(ram_usage.usage_history),
         "ram_total":           ram_usage.totalRam,
         "drive_total":         drive_space.drive_data[0],
         "drive_used":          drive_space.drive_data[1],
