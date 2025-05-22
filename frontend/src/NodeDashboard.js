@@ -121,7 +121,7 @@ export default function NodeDashboard() {
   const rawCpu = attrs.cpu_usage_history.slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothCpu = rawCpu.map((pt, i, arr) => {
-    const win = 30;
+    const win = 10;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -137,7 +137,7 @@ export default function NodeDashboard() {
     .slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothRam = rawRam.map((pt, i, arr) => {
-    const win  = 30;
+    const win  = 10;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -324,13 +324,24 @@ export default function NodeDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={false} />
+                    <XAxis
+                      dataKey="name"
+                      type="number"
+                      domain={[1, 100]}
+                      // only show every 25th second: 1, 25, 50, 75, 100
+                      ticks={[100]}
+                      tickFormatter={(val) => `current usage`}
+                    />
                     <YAxis domain={[0, 100]} unit="%" />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => `${value}%`}
+                      labelFormatter={(val) => `${100 - val}s ago`}
+                    />
                     <Area 
                       type="basis"
                       dataKey="value"
                       stroke="#8884d8"
+                      strokeWidth={3}         // make the line thicker
                       fill="url(#colorCpu)"
                     />
                   </AreaChart>
@@ -395,13 +406,24 @@ export default function NodeDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={false} />
+                    <XAxis
+                      dataKey="name"
+                      type="number"
+                      domain={[1, 100]}
+                      // show start, middle, end
+                      ticks={[100]}
+                      tickFormatter={(val) => `current usage`}
+                    />
                     <YAxis domain={[0, 100]} unit="%" />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => `${value}%`}
+                      labelFormatter={(val) => `${100 - val}s ago`}
+                    />
                     <Area 
                       type="basis"
                       dataKey="value"
                       stroke="#82ca9d"
+                      strokeWidth={3}         // make the line thicker
                       fill="url(#colorRam)"
                     />
                   </AreaChart>
