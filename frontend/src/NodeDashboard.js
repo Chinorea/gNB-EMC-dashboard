@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
-  Container, Grid, Card, CardContent, Button, Box,
-  Drawer, List, ListItemButton, ListItemText, ListSubheader, Divider, TextField
+  Container, Grid, Card, CardContent, Button, Box
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   XAxis,
@@ -18,110 +14,103 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const drawerWidth = 240;
+export default function NodeDashboard({ statuses, attrs }) {
+  const { ip } = useParams();
+  // track in-flight POST
+  const [loading, setLoading] = useState(false);
 
-function Sidebar({ nodes, setNodes }) {
-  const [ip, setIp] = useState('');
-  const navigate = useNavigate();
-
-  const addNode = () => {
-    if (ip && !nodes.includes(ip)) {
-      setNodes(prev => [...prev, ip]);
-      navigate(`/node/${ip}`);
-      setIp('');
+  // 1) define toggle handler inside component so ip & setLoading are in scope
+  const handleToggle = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // run 'setupv2' when currently OFF, else 'setup' to stop
+          action: nodeStatus === 'OFF' ? 'setupv2' : 'setup'
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      console.log('setup_script success', json);
+    } catch (e) {
+      console.error('setup_script error', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
-      }}
-    >
-      <Toolbar />
-      <Box sx={{ p: 2, overflow: 'auto' }}>
-        {/* Navigation at top */}
-        <List subheader={<ListSubheader>Navigation</ListSubheader>}>
-          <ListItemButton component={RouterLink} to="/">
-            <ListItemText primary="Home" />
-          </ListItemButton>
-        </List>
+  const nodeStatus = statuses[ip] || 'UNREACHABLE';
+  const data = attrs[ip];
 
-        {/* Nodes below navigation */}
-        <List subheader={<ListSubheader>Nodes</ListSubheader>}>
-          {nodes.map(n => (
-            <ListItemButton key={n} component={RouterLink} to={`/node/${n}`}>
-              <ListItemText primary={n} />
-            </ListItemButton>
-          ))}
-        </List>
-
-        {/* Add Node section at bottom */}
-        <Divider sx={{ my: 2 }} />
-        <TextField
-          fullWidth
-          label="Add Node IP"
-          value={ip}
-          size="small"
-          onChange={e => setIp(e.target.value)}
-        />
-        <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
-          Add
-        </Button>
-      </Box>
-    </Drawer>
-  );
-}
-
-export default function NodeDashboard() {
-  const { ip } = useParams();
-  const nav = useNavigate();
-  const [attrs, setAttrs] = useState(null);
-
-  useEffect(() => {
-    const fetchAttrs = () => {
-      fetch(`http://${ip}:5000/api/attributes`)
-        .then(res => { if (!res.ok) throw new Error(res.statusText); return res.json(); })
-        .then(data => setAttrs(data))
-        .catch(err => console.error(err));
-    };
-    fetchAttrs();
-    const id = setInterval(fetchAttrs, 1000);
-    return () => clearInterval(id);
-  }, [ip]);
-
-  if (!attrs) {
+  // if unreachable, show only AppBar
+  if (nodeStatus === 'UNREACHABLE') {
     return (
-      <Container sx={{ textAlign: 'center', mt: 8 }}>
-        <Typography variant="h5">Loading…</Typography>
-      </Container>
+      <Box sx={{
+        backgroundColor:
+          nodeStatus === 'RUNNING'     ? '#f3f7f2'
+        : nodeStatus === 'INITIALISING' ? '#f2f1ed'
+        : nodeStatus === 'OFF'          ? '#faf2f0'
+        :                                   '#f2f2f2',
+        minHeight: '100vh'
+      }}>
+        <CssBaseline />
+        <AppBar position="static" elevation={2}
+          sx={{
+            backgroundColor:
+              nodeStatus === 'RUNNING'     ? '#40613d'
+            : nodeStatus === 'INITIALISING' ? '#805c19'
+            : nodeStatus === 'OFF'          ? '#612a1f'
+            :                                   '#2d2e2e',
+          }}
+        >
+          <Toolbar sx={{ justifyContent: 'space-between' }}>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              {ip}
+            </Typography>
+            <Typography variant="subtitle1" sx={{ mr: 2, fontSize: '1.3rem' }}>
+              Status:{' '}
+              {nodeStatus === 'RUNNING'
+                ? 'Broadcasting'
+                : nodeStatus === 'INITIALISING'
+                ? 'Initialising'
+                : nodeStatus === 'OFF'
+                ? 'Not Broadcasting'
+                : 'Disconnected'}
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      </Box>
     );
   }
 
-  const connectionStatusMap = {
+  const coreConnectionMap = {
     UP:        'Connected',
     DOWN:      'Disconnected',
-    UNSTABLE:  'unstable'
+    UNSTABLE:  'Unstable'
   };
 
   const firstLayerItems = [
-    { label: 'Node ID',             value: attrs.gnb_id },
-    { label: 'Time',                value: attrs.board_time },
-    { label: 'Date',                value: attrs.board_date },
+    { label: 'Node ID',             value: data.gnb_id },
+    { label: 'PCI',                 value: data.gnb_pci},
+    { label: 'Time',                value: data.board_time },
+    { label: 'Date',                value: data.board_date },
     {
-      label: 'Connection to Core',
-      value: connectionStatusMap[attrs.core_connection] || attrs.core_connection
+      label: 'Connection to 5G Core',
+      // use the combined status for display
+      value: coreConnectionMap[data.core_connection]
     }
   ];
 
   // prepare & smooth last 100 CPU points
-  const rawCpu = attrs.cpu_usage_history.slice(-100)
+  const rawCpu = data.cpu_usage_history.slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothCpu = rawCpu.map((pt, i, arr) => {
-    const win = 10;
+    const win = 20;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -133,11 +122,11 @@ export default function NodeDashboard() {
   });
 
   // prepare & smooth last 100 RAM points
-  const rawRam = attrs.ram_usage_history
+  const rawRam = data.ram_usage_history
     .slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothRam = rawRam.map((pt, i, arr) => {
-    const win  = 10;
+    const win  = 20;
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -147,14 +136,14 @@ export default function NodeDashboard() {
     return { name: pt.name, value: rounded };
   });
 
+
   return (
     <Box sx={{ 
       backgroundColor:
-        attrs.raptor_status === 'RUNNING'
-          ? '#f3f7f2'       // green when RUNNING
-          : attrs.raptor_status === 'INITIALISING'
-          ? '#f2f1ed'       // yellow when INITIALISING
-          : '#faf2f0',      // red when other
+        nodeStatus === 'RUNNING'       ? '#f3f7f2'
+      : nodeStatus === 'INITIALISING'   ? '#f2f1ed'
+      : nodeStatus === 'OFF'            ? '#faf2f0'
+      /* UNREACHABLE or other */             : '#f2f2f2',
       minHeight: '100vh' 
     }}>
       <CssBaseline />
@@ -164,22 +153,20 @@ export default function NodeDashboard() {
         position="static"
         elevation={2}
         sx={{
+          // use the same status map as Sidebar/HomePage
           backgroundColor:
-            attrs.raptor_status === 'RUNNING'
-              ? '#40613d' // green
-              : attrs.raptor_status === 'INITIALISING'
-              ? '#805c19' // yellow
-              : '#612a1f', // red
+            statuses[ip] === 'RUNNING'
+              ? '#40613d'
+              : statuses[ip] === 'INITIALISING'
+              ? '#805c19'
+              : statuses[ip] === 'OFF'
+              ? '#612a1f'
+              : '#2d2e2e',  // grey when disconnected
         }}
       >
-        <Toolbar sx={{
-          justifyContent: 'space-between',}}>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ fontSize: '1.5rem' }} 
-          >
-            {`5G Node ${attrs.gnb_id}`}
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            {ip}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center'}}>
             <Typography
@@ -190,40 +177,50 @@ export default function NodeDashboard() {
               }}
             >
               Status:{' '}
-              {attrs.raptor_status === 'RUNNING'
+              {statuses[ip] === 'RUNNING'
                 ? 'Broadcasting'
-                : attrs.raptor_status === 'INITIALISING'
+                : statuses[ip] === 'INITIALISING'
                 ? 'Initialising'
-                : 'Not Broadcasting'}
+                : statuses[ip] === 'OFF'
+                ? 'Not Broadcasting'
+                : 'Disconnected'}
             </Typography>
-            <Button
-              variant="contained"
-              sx={{
-                fontSize: '1.1rem',
-                backgroundColor:
-                  attrs.raptor_status === 'RUNNING'
-                    ? '#612a1f'      // red when running
-                    : attrs.raptor_status === 'INITIALISING'
-                    ? '#805c19'      // yellow when init
-                    : '#40613d',     // green otherwise
-                '&:hover': {
-                  backgroundColor:
-                    attrs.raptor_status === 'RUNNING'
-                      ? '#4d1914'
-                      : attrs.raptor_status === 'INITIALISING'
-                      ? '#7a4d17'
-                      : '#335e2e',
-                },
-              }}
-            >
-              {attrs.raptor_status === 'RUNNING' ? 'Turn Off' : 'Turn On'}
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {(nodeStatus === 'RUNNING' || nodeStatus === 'OFF') && (
+                <Button
+                  variant="contained"
+                  onClick={handleToggle}
+                  disabled={loading || nodeStatus === 'INITIALISING'}
+                  sx={{
+                    backgroundColor:
+                      nodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
+                    color: 'white',
+                    '&:hover': {
+                      backgroundColor:
+                        nodeStatus === 'RUNNING'
+                          ? '#4d1914'
+                          : '#335e2e',
+                    },
+                  }}
+                >
+                  {loading
+                    ? 'Working…'
+                    : nodeStatus === 'RUNNING'
+                    ? 'Turn Off'
+                    : 'Turn On'}
+                </Button>
+              )}
+            </Box>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Main content */}
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* span full viewport width */}
+      <Container
+        maxWidth={false}     // disable default max‐width
+        disableGutters       // remove left/right padding
+        sx={{ mt: 4, px: 2 }} // keep a bit of horizontal padding
+      >
         {/* Layer 1 */}
         <Grid
           container
@@ -297,7 +294,7 @@ export default function NodeDashboard() {
                       CPU Usage
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {attrs.cpu_usage}%
+                      {data.cpu_usage}%
                     </Typography>
                   </Grid>
                   <Grid item xs={6} sx={{ textAlign: 'center' }}>
@@ -305,7 +302,7 @@ export default function NodeDashboard() {
                       CPU Temp
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {attrs.cpu_temp}°C
+                      {data.cpu_temp}°C
                     </Typography>
                   </Grid>
                 </Grid>
@@ -319,8 +316,8 @@ export default function NodeDashboard() {
                     {/* optional gradient for nicer shading */}
                     <defs>
                       <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8884d8" stopOpacity={0.4}/>
-                        <stop offset="75%" stopColor="#8884d8" stopOpacity={0.05}/>
+                        <stop offset="0%" stopColor="#8884d8" stopOpacity={0.6}/>
+                        <stop offset="75%" stopColor="#8884d8" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -334,7 +331,7 @@ export default function NodeDashboard() {
                     />
                     <YAxis domain={[0, 100]} unit="%" />
                     <Tooltip
-                      formatter={(value) => `${value}%`}
+                      formatter={(value, name) => [`${value}%`, 'Usage']}
                       labelFormatter={(val) => `${100 - val}s ago`}
                     />
                     <Area 
@@ -343,6 +340,7 @@ export default function NodeDashboard() {
                       stroke="#8884d8"
                       strokeWidth={3}         // make the line thicker
                       fill="url(#colorCpu)"
+                      fillOpacity={0.6}    // make the shaded area more opaque
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -381,7 +379,7 @@ export default function NodeDashboard() {
                       RAM Usage
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {attrs.ram_usage}%
+                      {data.ram_usage}%
                     </Typography>
                   </Grid>
                   <Grid item xs={6} sx={{ textAlign: 'center' }}>
@@ -389,7 +387,7 @@ export default function NodeDashboard() {
                       Total RAM
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                      {attrs.ram_total} GB
+                      {data.ram_total} GB
                     </Typography>
                   </Grid>
                 </Grid>
@@ -401,8 +399,8 @@ export default function NodeDashboard() {
                   <AreaChart data={smoothRam}>
                     <defs>
                       <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.4}/>
-                        <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.05}/>
+                        <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.6}/>
+                        <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -416,7 +414,7 @@ export default function NodeDashboard() {
                     />
                     <YAxis domain={[0, 100]} unit="%" />
                     <Tooltip
-                      formatter={(value) => `${value}%`}
+                      formatter={(value, name) => [`${value}%`, 'Usage']}
                       labelFormatter={(val) => `${100 - val}s ago`}
                     />
                     <Area 
@@ -425,6 +423,7 @@ export default function NodeDashboard() {
                       stroke="#82ca9d"
                       strokeWidth={3}         // make the line thicker
                       fill="url(#colorRam)"
+                      fillOpacity={0.6}    // more solid shading
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -457,7 +456,7 @@ export default function NodeDashboard() {
 
                 {/* nested grid for horizontal layout with extra horizontal gutter */}
                 <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }}>
-                  <Grid item xs={6}>
+                  <Grid item xs={4}>
                     <Typography
                     color="textSecondary"
                     gutterBottom variant="subtitle2"
@@ -466,16 +465,16 @@ export default function NodeDashboard() {
                       Downlink
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                      {attrs.frequency_down_link} GHz
+                      {data.frequency_down_link} GHz
                     </Typography>
                     <Typography variant="h5" sx={{
                       fontWeight: 'bold',
                       fontSize: '1.3rem',
                       mt: 0.5 }}>
-                      {attrs.bandwidth_down_link} MHz
+                      {data.bandwidth_down_link} MHz
                     </Typography>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={4}>
                     <Typography
                     color="textSecondary"
                     gutterBottom variant="subtitle2"
@@ -484,13 +483,25 @@ export default function NodeDashboard() {
                       Uplink
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                      {attrs.frequency_up_link} GHz
+                      {data.frequency_up_link} GHz
                     </Typography>
                     <Typography variant="h5" sx={{
                       fontWeight: 'bold',
                       fontSize: '1.3rem',
                       mt: 0.5 }}>
-                      {attrs.bandwidth_up_link} MHz
+                      {data.bandwidth_up_link} MHz
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography
+                      color="textSecondary"
+                      gutterBottom variant="subtitle2"
+                      sx={{fontSize: '1.0rem'}}
+                    >
+                      TX Power
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                      {data.tx_power}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -526,7 +537,7 @@ export default function NodeDashboard() {
                       fontWeight: 'bold',
                       fontSize: '1.5rem'
                       }}>
-                      {attrs.ip_address_gnb}
+                      {data.ip_address_gnb}
                     </Typography>
                   </Grid>
                   <Grid item xs={4}>
@@ -540,7 +551,7 @@ export default function NodeDashboard() {
                       fontWeight: 'bold',
                       fontSize: '1.5rem'
                       }}>
-                      {attrs.ip_address_ngc}
+                      {data.ip_address_ngc}
                     </Typography>
                   </Grid>
                   <Grid item xs={4}>
@@ -554,7 +565,7 @@ export default function NodeDashboard() {
                       fontWeight: 'bold',
                       fontSize: '1.5rem'
                       }}>
-                      {attrs.ip_address_ngu}
+                      {data.ip_address_ngu}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -602,7 +613,7 @@ export default function NodeDashboard() {
                         mt: 0.25,      // optional: tighten top margin
                       }}
                     >
-                      {attrs.drive_total} GB
+                      {data.drive_total} GB
                     </Typography>
                   </Grid>
 
@@ -625,7 +636,7 @@ export default function NodeDashboard() {
                         mt: 0.25,      // tighten top margin
                       }}
                     >
-                      {attrs.drive_used} GB
+                      {data.drive_used} GB
                     </Typography>
                   </Grid>
 
@@ -648,7 +659,7 @@ export default function NodeDashboard() {
                         mt: 0.25,      // tighten top margin
                       }}
                     >
-                      {attrs.drive_free} GB
+                      {data.drive_free} GB
                     </Typography>
                   </Grid>
                 </Grid>
@@ -656,13 +667,6 @@ export default function NodeDashboard() {
             </Card>
           </Grid>
         </Grid>
-
-        {/* Footer */}
-        <Box sx={{ mt: 4, textAlign: 'center', color: 'text.secondary' }}>
-          <Typography variant="caption">
-            &copy; {new Date().getFullYear()} 5G Dashboard
-          </Typography>
-        </Box>
       </Container>
     </Box>
   );
