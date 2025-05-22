@@ -10,13 +10,11 @@ class RamUsage(Attribute):
         self.totalRam = ""
         # history deques with fixed maxlen=100
         self.usage_history = deque(maxlen=100)
-        self.total_history = deque(maxlen=100)
 
 
     def refresh(self):
         self.ramUsage = self.get_ram_usage()
         self.usage_history.append(self.ramUsage)
-        self.total_history.append(self.totalRam)
 
 
     def get_ram_usage(self):
