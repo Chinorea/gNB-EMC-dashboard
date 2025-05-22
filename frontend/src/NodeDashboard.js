@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
@@ -16,6 +16,33 @@ import {
 
 export default function NodeDashboard({ statuses, attrs }) {
   const { ip } = useParams();
+  // track in-flight POST
+  const [loading, setLoading] = useState(false);
+
+  // 1) define toggle handler inside component so ip & setLoading are in scope
+  const handleToggle = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // run 'setupv2' when currently OFF, else 'setup' to stop
+          action: nodeStatus === 'OFF' ? 'setupv2' : 'setup'
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      console.log('setup_script success', json);
+    } catch (e) {
+      console.error('setup_script error', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const nodeStatus = statuses[ip] || 'UNREACHABLE';
   const data = attrs[ip];
@@ -162,8 +189,8 @@ export default function NodeDashboard({ statuses, attrs }) {
               {(nodeStatus === 'RUNNING' || nodeStatus === 'OFF') && (
                 <Button
                   variant="contained"
-                  onClick={() => {}}
-                  disabled={nodeStatus === 'INITIALISING'}
+                  onClick={handleToggle}
+                  disabled={loading || nodeStatus === 'INITIALISING'}
                   sx={{
                     backgroundColor:
                       nodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
@@ -176,7 +203,11 @@ export default function NodeDashboard({ statuses, attrs }) {
                     },
                   }}
                 >
-                  {nodeStatus === 'RUNNING' ? 'Turn Off' : 'Turn On'}
+                  {loading
+                    ? 'Working…'
+                    : nodeStatus === 'RUNNING'
+                    ? 'Turn Off'
+                    : 'Turn On'}
                 </Button>
               )}
             </Box>

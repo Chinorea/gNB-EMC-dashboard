@@ -44,12 +44,13 @@ class RaptorStatus(Attribute):
         return True if last_line == self.du_Check else False
 
     def check_process_status(self) -> bool:
-        # Use -i so ~/.bashrc (or your company’s profile) gets loaded
-        cmd = ["/bin/bash", "-i", "-c", "gnb_ctl status"]
+        # call gnb_ctl status non‐interactively
+        cmd = ["gnb_ctl", "status"]
 
         print("DEBUG: running command:", " ".join(cmd))
         result = subprocess.run(
             cmd,
+            stdin=subprocess.DEVNULL,     # don’t expect any input
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -128,5 +129,3 @@ class RaptorStatus(Attribute):
 
     def print_Raptor_Status(self):
         print(self.raptorStatus)
-
-
