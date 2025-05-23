@@ -19,7 +19,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 
 const drawerWidth = 240;
 
-function Sidebar({ nodes, setNodes, statuses }) {
+function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
   const [ip, setIp] = useState('');
 
   const addNode = () => {
@@ -73,7 +73,10 @@ function Sidebar({ nodes, setNodes, statuses }) {
 
         <List subheader={<ListSubheader>Nodes</ListSubheader>}>
           {nodes.map(n => {
-            const status = statuses[n] || 'UNREACHABLE';
+            // if the toggle button is in-flight for this node, treat as INITIALISING
+            const status = loadingMap[n]
+              ? 'INITIALISING'
+              : statuses[n] || 'UNREACHABLE';
             let bg;
             switch (status) {
               case 'RUNNING':
@@ -183,6 +186,7 @@ export default function App() {
           nodes={nodes}
           setNodes={setNodes}
           statuses={nodeStatuses}
+          loadingMap={loadingMap}
         />
 
         <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
@@ -194,7 +198,7 @@ export default function App() {
                   nodes={nodes}
                   setNodes={setNodes}
                   statuses={nodeStatuses}
-                  setStatuses={setStatuses}
+                  loadingMap={loadingMap}           // ← add this
                 />
               }
             />
