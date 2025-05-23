@@ -126,7 +126,8 @@ export default function App() {
   }, [nodes]);
 
   const [nodeStatuses, setStatuses]   = useState({});
-  const [nodeAttrs, setNodeAttrs]     = useState({});
+  const [nodeAttrs, setNodeAttrs]       = useState({});
+  const [loadingMap, setLoadingMap]   = useState({});
 
   useEffect(() => {
     if (!nodes.length) return;
@@ -148,6 +149,11 @@ export default function App() {
     // fetch Raptor status separately
     const updateRaptor = () => {
       nodes.forEach(ip => {
+        // if this node is being toggled, show INITIALISING
+        if (loadingMap[ip]) {
+          setStatuses(prev => ({ ...prev, [ip]: "INITIALISING" }));
+          return;
+        }
         fetch(`http://${ip}:5000/api/node_status`)
           .then(res => res.json())
           .then(({ node_status }) => {
@@ -200,6 +206,8 @@ export default function App() {
                   setNodes={setNodes}
                   statuses={nodeStatuses}            // ← pass this in
                   attrs={ nodeAttrs }              // <-- pass the map
+                  loadingMap={loadingMap}
+                  setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
                 />
               }
             />
