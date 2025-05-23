@@ -2,16 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
-  Box,
   Typography,
-  TextField,
-  Button,
   Grid,
   Card,
   CardContent
 } from '@mui/material';
 
-export default function HomePage({ nodes, setNodes, statuses, setStatuses }) {
+export default function HomePage({ nodes, setNodes, statuses, loadingMap }) {
   const [ip, setIp] = useState('');
   const navigate = useNavigate();
 
@@ -37,8 +34,11 @@ export default function HomePage({ nodes, setNodes, statuses, setStatuses }) {
 
       <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
         {nodes.map((node) => {
-          // pick status and color
-          const status = statuses[node] || 'UNREACHABLE';
+          // if toggle is in-flight for this node, override to INITIALISING
+          const status =
+            loadingMap?.[node] ? 'INITIALISING'
+          : statuses[node]    ? statuses[node]
+          :                   'UNREACHABLE';
           let bg;
           let label;
           switch (status) {
