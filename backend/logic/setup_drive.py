@@ -61,7 +61,7 @@ child.setecho(False)
 child.logfile = sys.stdout  # echo everything into our stdout
 
 # 1) run setup.sh and wait for its last line
-child.sendline("gnb_ctl\s+start")
+child.sendline("gnb_ctl start")
 child.expect(r"CELL_IS_UP,\s+CELL_ID:1")
 
 child.close()
