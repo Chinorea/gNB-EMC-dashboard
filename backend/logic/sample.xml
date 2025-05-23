@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+	<gNB>
+		<NgC>
+		 <IP>10.10.0.5</IP>
+		</NgC>
+		<NgU>
+		 <IP>192.168</IP>
+		</NgU>
+	</gNB>
+	<Other>
+		<IP>9.9.9.9</IP>
+	</Other>
+</root>
