@@ -14,21 +14,26 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-export default function NodeDashboard({ statuses, attrs }) {
+export default function NodeDashboard({
+  statuses,
+  attrs,
+  loadingMap,
+  setAppLoading
+}) {
   const { ip } = useParams();
-  // track in-flight POST
-  const [loading, setLoading] = useState(false);
+  // use app-level loading flag
+  const loading = loadingMap[ip] || false;
 
   // 1) define toggle handler inside component so ip & setLoading are in scope
   const handleToggle = async () => {
-    setLoading(true);
+    setAppLoading(ip, true);
     try {
       const res = await fetch(`http://${ip}:5000/api/setup_script`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // run 'setupv2' when currently OFF, else 'setup' to stop
-          action: nodeStatus === 'OFF' ? 'setupv2' : 'setup'
+          // run 'setupv2' when currently OFF, else 'stop' to stop
+          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
         })
       });
       if (!res.ok) {
@@ -40,33 +45,33 @@ export default function NodeDashboard({ statuses, attrs }) {
     } catch (e) {
       console.error('setup_script error', e);
     } finally {
-      setLoading(false);
+      setAppLoading(ip, false);
     }
   };
 
   const nodeStatus = statuses[ip] || 'UNREACHABLE';
   const data = attrs[ip];
 
+  // override colors to yellow when loading
+  const bgColor = loading
+    ? 'f2f1ed'    // light yellow
+    : nodeStatus === 'RUNNING'     ? '#f3f7f2'
+    : nodeStatus === 'OFF'         ? '#faf2f0'
+                                   : '#f2f2f2';
+
+  const appBarColor = loading
+    ? '#805c19'    // darker yellow
+    : nodeStatus === 'RUNNING'     ? '#40613d'
+    : nodeStatus === 'OFF'         ? '#612a1f'
+                                   : '#2d2e2e';
+
   // if unreachable, show only AppBar
   if (nodeStatus === 'UNREACHABLE') {
     return (
-      <Box sx={{
-        backgroundColor:
-          nodeStatus === 'RUNNING'     ? '#f3f7f2'
-        : nodeStatus === 'INITIALISING' ? '#f2f1ed'
-        : nodeStatus === 'OFF'          ? '#faf2f0'
-        :                                   '#f2f2f2',
-        minHeight: '100vh'
-      }}>
+      <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
         <AppBar position="static" elevation={2}
-          sx={{
-            backgroundColor:
-              nodeStatus === 'RUNNING'     ? '#40613d'
-            : nodeStatus === 'INITIALISING' ? '#805c19'
-            : nodeStatus === 'OFF'          ? '#612a1f'
-            :                                   '#2d2e2e',
-          }}
+          sx={{ backgroundColor: appBarColor }}
         >
           <Toolbar sx={{ justifyContent: 'space-between' }}>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -76,8 +81,6 @@ export default function NodeDashboard({ statuses, attrs }) {
               Status:{' '}
               {nodeStatus === 'RUNNING'
                 ? 'Broadcasting'
-                : nodeStatus === 'INITIALISING'
-                ? 'Initialising'
                 : nodeStatus === 'OFF'
                 ? 'Not Broadcasting'
                 : 'Disconnected'}
@@ -138,31 +141,14 @@ export default function NodeDashboard({ statuses, attrs }) {
 
 
   return (
-    <Box sx={{ 
-      backgroundColor:
-        nodeStatus === 'RUNNING'       ? '#f3f7f2'
-      : nodeStatus === 'INITIALISING'   ? '#f2f1ed'
-      : nodeStatus === 'OFF'            ? '#faf2f0'
-      /* UNREACHABLE or other */             : '#f2f2f2',
-      minHeight: '100vh' 
-    }}>
+    <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
       <CssBaseline />
 
       {/* Top bar with status */}
       <AppBar
         position="static"
         elevation={2}
-        sx={{
-          // use the same status map as Sidebar/HomePage
-          backgroundColor:
-            statuses[ip] === 'RUNNING'
-              ? '#40613d'
-              : statuses[ip] === 'INITIALISING'
-              ? '#805c19'
-              : statuses[ip] === 'OFF'
-              ? '#612a1f'
-              : '#2d2e2e',  // grey when disconnected
-        }}
+        sx={{ backgroundColor: appBarColor }}
       >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -177,11 +163,11 @@ export default function NodeDashboard({ statuses, attrs }) {
               }}
             >
               Status:{' '}
-              {statuses[ip] === 'RUNNING'
-                ? 'Broadcasting'
-                : statuses[ip] === 'INITIALISING'
+              {loading
                 ? 'Initialising'
-                : statuses[ip] === 'OFF'
+                : nodeStatus === 'RUNNING'
+                ? 'Broadcasting'
+                : nodeStatus === 'OFF'
                 ? 'Not Broadcasting'
                 : 'Disconnected'}
             </Typography>
@@ -190,7 +176,7 @@ export default function NodeDashboard({ statuses, attrs }) {
                 <Button
                   variant="contained"
                   onClick={handleToggle}
-                  disabled={loading || nodeStatus === 'INITIALISING'}
+                  disabled={loading}
                   sx={{
                     backgroundColor:
                       nodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',

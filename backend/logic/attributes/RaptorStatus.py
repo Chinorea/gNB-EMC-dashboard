@@ -14,9 +14,9 @@ class RaptorStatus(Attribute):
         self.log_path = new_log_path
 
     def refresh(self):
-        #self.duStatus = self.check_Du_Log()
+        self.duStatus = self.check_Du_Log()
         #self.check_Cell_Status()
-        self.duStatus= self.check_process_status()
+        self.gnbStatus= self.check_process_status()
         self.check_Cell_Status()
 
     def check_Du_Log(self) -> bool:
@@ -122,7 +122,7 @@ class RaptorStatus(Attribute):
         return False
 
     def check_Cell_Status(self):
-        if self.duStatus:
+        if self.duStatus and self.gnbStatus:
             self.raptorStatus = RaptorStatusType.RUNNING
         else:
             self.raptorStatus = RaptorStatusType.OFF
