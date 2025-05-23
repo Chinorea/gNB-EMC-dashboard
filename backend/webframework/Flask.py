@@ -120,7 +120,7 @@ def setup_script():
             if "CELL_IS_UP" in line:
                 # success: send Ctrl-C and return immediately
                 proc.send_signal(signal.SIGINT)
-                proc.wait(timeout=2)
+                proc.wait(timeout=5)
                 return jsonify({
                     "action": action,
                     "status": "ok",
