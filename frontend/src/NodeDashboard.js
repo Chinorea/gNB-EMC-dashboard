@@ -116,37 +116,6 @@ export default function NodeDashboard({
     UNSTABLE:  'Unstable'
   };
 
-  // prepare & smooth last 100 CPU points
-  const rawCpu = data.cpu_usage_history.slice(-100)
-    .map((v,i) => ({ name: i+1, value: v }));
-  const smoothCpu = rawCpu.map((pt, i, arr) => {
-    const win = 20;      // increase smoothing window for 100 samples
-    const half = Math.floor(win/2);
-    const start = Math.max(0, i-half);
-    const end   = Math.min(arr.length, i+half+1);
-    const slice = arr.slice(start, end).map(x => x.value);
-    const avg   = slice.reduce((s,v) => s+v, 0) / slice.length;
-    // round to 1 decimal place
-    const rounded = Math.round(avg * 10) / 10;
-    return { name: pt.name, value: rounded };
-  });
-
-  // prepare & smooth last 100 RAM points
-  const rawRam = data.ram_usage_history
-    .slice(-100)
-    .map((v,i) => ({ name: i+1, value: v }));
-  const smoothRam = rawRam.map((pt, i, arr) => {
-    const win  = 20;    // match CPU smoothing window
-    const half = Math.floor(win/2);
-    const start = Math.max(0, i-half);
-    const end   = Math.min(arr.length, i+half+1);
-    const slice = arr.slice(start, end).map(x => x.value);
-    const avg   = slice.reduce((s,v) => s+v, 0) / slice.length;
-    const rounded = Math.round(avg * 10) / 10;  // 1dp
-    return { name: pt.name, value: rounded };
-  });
-
-
   return (
     <>
       {/* move Dialog to top‐level so it’s never clipped */}
@@ -195,8 +164,8 @@ export default function NodeDashboard({
             alignItems="stretch"
             justifyContent={'center'}  // center items horizontally
           >
-            <CpuUsageChartCard data={data} smoothCpu={smoothCpu} isLoading={loading} />
-            <RamUsageChartCard data={data} smoothRam={smoothRam} isLoading={loading} />
+            <CpuUsageChartCard data={data} isLoading={loading} />
+            <RamUsageChartCard data={data} isLoading={loading} />
           </Grid>
 
           {/* Layer 3 – Frequencies & IP side-by-side */}

@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/Chinorea/gNB-EMC-dashboard/issues"
   },
-  "homepage": "https://github.com/Chinorea/gNB-EMC-dashboard#readme"
+  "homepage": "https://github.com/Chinorea/gNB-EMC-dashboard#readme",
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  }
 }
