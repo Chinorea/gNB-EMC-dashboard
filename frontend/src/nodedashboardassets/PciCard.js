@@ -18,7 +18,7 @@ export default function PciCard({ pci, isLoading }) {
             transform: 'scale(1.01)',
             boxShadow: 6,
           },
-          backgroundColor: isLoading ? '#fff3cd' : undefined,
+          backgroundColor: '#fff'
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
