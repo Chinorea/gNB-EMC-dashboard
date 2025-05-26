@@ -1,6 +1,6 @@
 # gNB-EMC-Dashboard
 
-gNB-EMC-Dashboard is a web dashboard meant for monitoring and setup of gNB for the purpose of 5G
+A dashboard web interface to visualize live status updates and statuses of 5G RAN board (gNB-Metanoia)
 
 Useful links:
 * [Developer Guide](DeveloperGuide.md)
