@@ -15,12 +15,13 @@ export default function IpAddressesCard({ data, isLoading }) {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          transition: 'transform 0.1s ease-in-out',
+          transition: 'transform 0.1s ease-in-out, background-color 0.2s ease-in-out', // Added background-color to transition
+          backgroundColor: '#fafafa', // Default slight grey, or loading color
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
+            backgroundColor: '#ffffff', // White on hover
           },
-          backgroundColor: '#fff'
         }}
       >
         <CardContent sx={{ textAlign: 'center', py: 1 }}>
