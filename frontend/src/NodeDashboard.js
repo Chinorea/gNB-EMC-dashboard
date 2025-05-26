@@ -21,7 +21,8 @@ import CoreConnectionCard from './nodedashboardassets/CoreConnectionCard';
 import CpuUsageChartCard from './nodedashboardassets/CpuUsageChartCard';
 import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
-import IpAddressesCard from './nodedashboardassets/IpAddressesCard'; 
+import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
+
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import TopBar from './nodedashboardassets/TopBar';
 import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; 
@@ -177,7 +178,7 @@ export default function NodeDashboard({
             alignItems="stretch"
           >
             <FrequencyOverviewCard data={data} isLoading={loading} />
-            <IpAddressesCard data={data} isLoading={loading} />
+            <IpAddressesCard data={data} isLoading={loading} nodeStatus={nodeStatus} />
             <DiskOverviewCard data={data} isLoading={loading} />
           </Grid>
         </Container>
