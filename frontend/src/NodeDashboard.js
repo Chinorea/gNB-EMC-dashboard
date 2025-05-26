@@ -124,10 +124,10 @@ export default function NodeDashboard({
   ];
 
   // prepare & smooth last 100 CPU points
-  const rawCpu = data.cpu_usage_history.slice(-200)
+  const rawCpu = data.cpu_usage_history.slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothCpu = rawCpu.map((pt, i, arr) => {
-    const win = 5;      // increase smoothing window for 200 samples
+    const win = 20;      // increase smoothing window for 100 samples
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
@@ -140,10 +140,10 @@ export default function NodeDashboard({
 
   // prepare & smooth last 100 RAM points
   const rawRam = data.ram_usage_history
-    .slice(-200)
+    .slice(-100)
     .map((v,i) => ({ name: i+1, value: v }));
   const smoothRam = rawRam.map((pt, i, arr) => {
-    const win  = 5;    // match CPU smoothing window
+    const win  = 20;    // match CPU smoothing window
     const half = Math.floor(win/2);
     const start = Math.max(0, i-half);
     const end   = Math.min(arr.length, i+half+1);
