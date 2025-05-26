@@ -18,7 +18,7 @@ export default function CoreConnectionCard({ coreConnectionStatus, isLoading }) 
             transform: 'scale(1.01)',
             boxShadow: 6,
           },
-          backgroundColor: isLoading ? '#fff3cd' : (coreConnectionStatus === 'Connected' ? '#d4edda' : coreConnectionStatus === 'Disconnected' ? '#f8d7da' : coreConnectionStatus === 'Unstable' ? '#fff3cd' : undefined),
+          backgroundColor: (coreConnectionStatus === 'Connected' ? '#e1ede4' : coreConnectionStatus === 'Disconnected' ? '#f8d7da' : coreConnectionStatus === 'Unstable' ? '#fff3cd' : undefined),
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -36,7 +36,7 @@ export default function CoreConnectionCard({ coreConnectionStatus, isLoading }) 
               fontWeight: 'bold',
               fontSize: '1.5rem',
               wordBreak: 'break-word',
-              color: coreConnectionStatus === 'Connected' ? 'green' : coreConnectionStatus === 'Disconnected' ? 'red' : coreConnectionStatus === 'Unstable' ? 'orange' : 'inherit',
+              color: coreConnectionStatus === 'Connected' ? '#324a38' : coreConnectionStatus === 'Disconnected' ? 'red' : coreConnectionStatus === 'Unstable' ? 'orange' : 'inherit',
             }}
           >
             {coreConnectionStatus !== undefined && coreConnectionStatus !== null ? String(coreConnectionStatus) : 'N/A'}
