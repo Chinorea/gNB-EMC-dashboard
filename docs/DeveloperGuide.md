@@ -1,5 +1,3 @@
-Collecting workspace information
-
 # gNB-EMC Dashboard Developer Guide
 
 ---
@@ -292,5 +290,4 @@ A classic client–server model:
 [react]: https://reactjs.org/  
 [mui]: https://mui.com/  
 [flask]: https://flask.palletsprojects.com/  
-[recharts]: https://recharts.org/  
-[raptorstatus]: RaptorStatusType.py
+[recharts]: https://recharts.org/
