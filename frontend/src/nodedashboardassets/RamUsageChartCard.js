@@ -37,8 +37,9 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
+            backgroundColor: '#fff'
           },
-          backgroundColor: '#fff'
+          backgroundColor: '#fafafa'
         }}
       >
         <CardContent>

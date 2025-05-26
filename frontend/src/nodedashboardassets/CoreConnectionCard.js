@@ -17,6 +17,7 @@ export default function CoreConnectionCard({ coreConnectionStatus, isLoading }) 
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
+            backgroundColor: (coreConnectionStatus === 'Connected' ? '#e9f2eb' : coreConnectionStatus === 'Disconnected' ? '#fae1e3' : coreConnectionStatus === 'Unstable' ? '#fff7db' : undefined),
           },
           backgroundColor: (coreConnectionStatus === 'Connected' ? '#e1ede4' : coreConnectionStatus === 'Disconnected' ? '#f8d7da' : coreConnectionStatus === 'Unstable' ? '#fff3cd' : undefined),
         }}

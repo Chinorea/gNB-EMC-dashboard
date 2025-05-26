@@ -19,8 +19,9 @@ export default function DiskOverviewCard({ data, isLoading }) {
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
+            backgroundColor: '#fff'
           },
-          backgroundColor: '#fff'
+          backgroundColor: '#fafafa'
         }}
       >
         <CardContent sx={{ textAlign: 'center', py: 1 }}>

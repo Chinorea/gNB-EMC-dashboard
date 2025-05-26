@@ -17,8 +17,9 @@ export default function PciCard({ pci, isLoading }) {
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
+            backgroundColor: '#fff'
           },
-          backgroundColor: '#fff'
+          backgroundColor: '#fafafa'
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
