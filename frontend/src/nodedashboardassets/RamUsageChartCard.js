@@ -3,10 +3,26 @@ import React from 'react';
 import { Card, CardContent, Typography, Grid } from '@mui/material';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function RamUsageChartCard({ data, smoothRam, isLoading }) {
-  if (!data || !smoothRam) {
-    return null; // Or a loading indicator specific to this card
+export default function RamUsageChartCard({ data, isLoading }) { // Removed smoothRam from props
+  if (!data || !data.ram_usage_history) { // Check for history existence
+    return null;
   }
+
+  // --- Start of moved smoothing logic ---
+  const rawRam = data.ram_usage_history
+    .slice(-100)
+    .map((v,i) => ({ name: i+1, value: v }));
+  const smoothRam = rawRam.map((pt, i, arr) => {
+    const win  = 20;
+    const half = Math.floor(win/2);
+    const start = Math.max(0, i-half);
+    const end   = Math.min(arr.length, i+half+1);
+    const slice = arr.slice(start, end).map(x => x.value);
+    const avg   = slice.reduce((s,v) => s+v, 0) / slice.length;
+    const rounded = Math.round(avg * 10) / 10;
+    return { name: pt.name, value: rounded };
+  });
+  // --- End of moved smoothing logic ---
 
   return (
     <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '40%' }}>
@@ -62,6 +78,7 @@ export default function RamUsageChartCard({ data, smoothRam, isLoading }) {
             RAM Usage (Last 100 Seconds)
           </Typography>
           <ResponsiveContainer width="100%" height={250}>
+            {/* Use the internally calculated smoothRam */}
             <AreaChart data={smoothRam}>
               <defs>
                 <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
