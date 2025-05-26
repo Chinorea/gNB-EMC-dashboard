@@ -20,6 +20,11 @@ import {
   DialogContentText,
   DialogActions
 } from '@mui/material';
+import NodeIdCard from './nodedashboardassets/NodeIdCard';
+import PciCard from './nodedashboardassets/PciCard';
+import TimeCard from './nodedashboardassets/TimeCard';
+import DateCard from './nodedashboardassets/DateCard';
+import CoreConnectionCard from './nodedashboardassets/CoreConnectionCard';
 
 export default function NodeDashboard({
   statuses,
@@ -110,18 +115,6 @@ export default function NodeDashboard({
     DOWN:      'Disconnected',
     UNSTABLE:  'Unstable'
   };
-
-  const firstLayerItems = [
-    { label: 'Node ID',             value: data.gnb_id },
-    { label: 'PCI',                 value: data.gnb_pci},
-    { label: 'Time',                value: data.board_time },
-    { label: 'Date',                value: data.board_date },
-    {
-      label: 'Connection to 5G Core',
-      // use the combined status for display
-      value: coreConnectionMap[data.core_connection]
-    }
-  ];
 
   // prepare & smooth last 100 CPU points
   const rawCpu = data.cpu_usage_history.slice(-100)
@@ -265,43 +258,11 @@ export default function NodeDashboard({
             justifyContent="center"   // center items horizontally
             alignItems="stretch"          // ← stretch all items to same height
           >
-            {firstLayerItems.map(item => (
-              <Grid item xs={12} sm={6} md={3} key={item.label} sx={{ display: 'flex' }}>
-                <Card
-                  elevation={3}
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    flex: 1,
-                    transition: 'transform 0.1s ease-in-out',
-                    '&:hover': {
-                      transform: 'scale(1.01)',
-                      boxShadow: 6,
-                    },
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Typography 
-                      color="textSecondary" 
-                      gutterBottom 
-                      variant="subtitle2" 
-                      sx={{ fontSize: '1.2rem' }}  // adjust label size
-                    >
-                      {item.label}
-                    </Typography>
-                    <Typography 
-                      variant="h5" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: '1.75rem'      // adjust value size
-                      }}
-                    >
-                      {item.value}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            <NodeIdCard nodeId={data.gnb_id} isLoading={loading} />
+            <PciCard pci={data.gnb_pci} isLoading={loading} />
+            <TimeCard boardTime={data.board_time} isLoading={loading} />
+            <DateCard boardDate={data.board_date} isLoading={loading} />
+            <CoreConnectionCard coreConnectionStatus={coreConnectionMap[data.core_connection]} isLoading={loading} />
           </Grid>
 
           {/* Layer 2 – Usage Charts */}
