@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request, send_file, abort
 from flask_cors import CORS
 import subprocess, os, time, signal
+from pathlib import Path
+from backend.logic.editConfig import update_xml_by_path, read_xml_by_path
 
 from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
@@ -167,3 +169,79 @@ def download_file(file_key):
         download_name=os.path.basename(file_path),
         mimetype="text/plain",
     )
+
+# Map logical field names → (file path, xml xpath)
+XML_MAPPING = {
+    "gnbIP": {
+        "file": Path("/cu/config/me_config.xml"),
+        "xpath": "GNBCUFunction/EP_NgC/localIpAddress"
+    },
+    "PCI": {
+        "file": Path("/cu/config/me_config.xml"),
+        "xpath": "GNBCUFunction/DPCIConfigurationFunction/nRPciList/NRPci"
+    },
+    "gnbId": {
+        "file": Path("/cu/config/me_config.xml"),
+        "xpath": "GNBCUFunction/gNBId"
+    },
+    "ngcIp": {
+        "file": Path("/cu/config/me_config.xml"),
+        "xpath": "GNBCUFunction/EP_NgC/remoteAddress"
+    },
+    "nguIp": {
+        "file": Path("/cu/config/me_config.xml"),
+        "xpath": "GNBCUFunction/EP_NgU/remoteAddress"
+    },
+    "ulFreq": {
+        "file": Path("/du/config/gnb_config.xml"),
+        "xpath": "gnbDuCfg/gnbCellDuVsCfg/l1-CfgInfo/nUlCenterFreq"
+    },
+    "dlFreq": {
+        "file": Path("/du/config/gnb_config.xml"),
+        "xpath": "gnbDuCfg/gnbCellDuVsCfg/l1-CfgInfo/nDlCenterFreq"
+    },
+    "maxTx": {
+        "file": Path("/du/config/me_config.xml"),
+        "xpath": "GNBDUFunction/NRSectorCarrier/configuredMaxTxPower"
+    }
+    # …your other writable fields…
+}
+
+@app.route("/api/config", methods=["POST"])
+def set_config():
+    """
+    Expects JSON { "field":"gnbIP", "value":"1.2.3.4" }
+    """
+    data = request.get_json(force=True)
+    field = data.get("field")
+    val   = data.get("value")
+
+    if field not in XML_MAPPING:
+        return jsonify({"error": f"Unknown field '{field}'"}), 400
+
+    spec = XML_MAPPING[field]
+    try:
+        update_xml_by_path(spec["file"], { spec["xpath"]: val })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"field": field, "value": val}), 200
+
+@app.route("/api/config", methods=["GET"])
+def get_config():
+    """
+    Returns a JSON mapping each writable field in XML_MAPPING to its current value.
+    """
+    snapshot = {}
+    for field, spec in XML_MAPPING.items():
+        try:
+            # read_xml_by_path returns { xpath: [list of matches] }
+            values = read_xml_by_path(spec["file"], [spec["xpath"]])[spec["xpath"]]
+            # if multiple nodes match, we take the first; else None
+            snapshot[field] = values[0] if values else None
+        except Exception as e:
+            # on error (file missing, parse error, etc.) report null
+            snapshot[field] = None
+
+    return jsonify(snapshot), 200
+
