@@ -39,29 +39,13 @@ Collecting workspace information
 ## **Setting up, getting started**
 
 ### Frontend Setup
-1. Navigate to the 
-
-frontend
-
- directory
+1. Navigate to the frontend directory
 2. Install dependencies with `npm install`
-3. Start the development server with 
-
-npm start
-
-
+3. Start the development server with `npm start`
 
 ### Backend Setup
 1. Ensure Python 3.9+ is installed
-2. Install required Python packages: 
-
-flask
-
-, 
-
-flask-cors
-
-
+2. Install required Python packages: `flask`, `flask-cors`
 3. Run the Flask server: `python3 WebDashboard.py`
 
 ---
