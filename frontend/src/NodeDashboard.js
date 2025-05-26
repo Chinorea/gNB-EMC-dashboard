@@ -13,13 +13,6 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions
-} from '@mui/material';
 import NodeIdCard from './nodedashboardassets/NodeIdCard';
 import PciCard from './nodedashboardassets/PciCard';
 import TimeCard from './nodedashboardassets/TimeCard';
@@ -30,6 +23,8 @@ import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
 import IpAddressesCard from './nodedashboardassets/IpAddressesCard'; 
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
+import TopBar from './nodedashboardassets/TopBar';
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; 
 
 export default function NodeDashboard({
   statuses,
@@ -155,100 +150,22 @@ export default function NodeDashboard({
   return (
     <>
       {/* move Dialog to top‐level so it’s never clipped */}
-      <Dialog
-        open={showRebootAlert}
+      <RebootAlertDialog
+        open={showRebootAlert} // Pass the state variable
         onClose={() => setShowRebootAlert(false)}
-        aria-labelledby="reboot-alert-title"
-        aria-describedby="reboot-alert-description"
-      >
-        <DialogTitle
-          id="reboot-alert-title"
-          sx={{
-            textAlign: 'center',
-            fontSize: '1.8rem',
-            fontWeight: 'bold'
-          }}
-        >
-          Initialisation Timeout
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText
-            id="reboot-alert-description"
-            sx={{
-              textAlign: 'center',
-              fontSize: '1.2rem'
-            }}
-          >
-            The initialisation has timed out. In this version the node cannot start
-            again once stopped—you must do a hard reboot.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowRebootAlert(false)} autoFocus>
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
 
       <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
 
         {/* Top bar with status */}
-        <AppBar
-          position="static"
-          elevation={2}
-          sx={{ backgroundColor: appBarColor }}
-        >
-          <Toolbar sx={{ justifyContent: 'space-between' }}>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              {ip}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center'}}>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  mr: 2,
-                  fontSize: '1.3rem', 
-                }}
-              >
-                Status:{' '}
-                {loading
-                  ? 'Initialising'
-                  : nodeStatus === 'RUNNING'
-                  ? 'Broadcasting'
-                  : nodeStatus === 'OFF'
-                  ? 'Not Broadcasting'
-                  : 'Disconnected'}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {(nodeStatus === 'RUNNING' || nodeStatus === 'OFF') && (
-                  <Button
-                    variant="contained"
-                    onClick={handleToggle}
-                    disabled={loading}
-                    sx={{
-                      backgroundColor:
-                        nodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor:
-                          nodeStatus === 'RUNNING'
-                            ? '#4d1914'
-                            : '#335e2e',
-                      },
-                    }}
-                  >
-                    {loading
-                      ? 'Working…'
-                      : nodeStatus === 'RUNNING'
-                      ? 'Turn Off'
-                      : 'Turn On'}
-                  </Button>
-                )}
-              </Box>
-            </Box>
-          </Toolbar>
-        </AppBar>
+        <TopBar
+          ip={ip}
+          loading={loading}
+          nodeStatus={nodeStatus}
+          appBarColor={appBarColor}
+          handleToggle={handleToggle}
+        />
 
         {/* span full viewport width */}
         <Container
