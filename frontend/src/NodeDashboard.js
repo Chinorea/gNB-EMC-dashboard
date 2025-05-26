@@ -267,7 +267,19 @@ export default function NodeDashboard({
           >
             {firstLayerItems.map(item => (
               <Grid item xs={12} sm={6} md={3} key={item.label} sx={{ display: 'flex' }}>
-                <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                <Card
+                  elevation={3}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flex: 1,
+                    transition: 'transform 0.1s ease-in-out',
+                    '&:hover': {
+                      transform: 'scale(1.01)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
                   <CardContent sx={{ textAlign: 'center' }}>
                     <Typography 
                       color="textSecondary" 
@@ -308,7 +320,12 @@ export default function NodeDashboard({
                   display: 'flex',
                   flexDirection: 'column',
                   flex: 1,
-                  minHeight: 250      // make card taller
+                  minHeight: 250,      // make card taller
+                  transition: 'transform 0.1s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6,
+                  },
                 }}
               >
                 <CardContent>
@@ -393,7 +410,12 @@ export default function NodeDashboard({
                   display: 'flex',
                   flexDirection: 'column',
                   flex: 1,
-                  minHeight: 250      // make card taller
+                  minHeight: 250,      // make card taller
+                  transition: 'transform 0.1s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6,
+                  },
                 }}
               >
                 <CardContent>
@@ -479,14 +501,38 @@ export default function NodeDashboard({
           >
             {/* Frequency Card */}
             <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-              <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <Card
+                elevation={3}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  // Add or merge the following sx properties:
+                  transition: 'transform 0.1s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6,
+                  },
+                }}
+              >
                 <CardContent sx={{ textAlign: 'center', py: 1 }}>
                   {/* add a title above the nested grid */}
                   <Typography
                     color="textSecondary"
                     gutterBottom
                     variant="subtitle2"
-                    sx={{ fontSize: '1.2rem' }}
+                    sx={{
+                      fontSize: '1.2rem',
+                      // REMOVE HOVER STYLES FROM HERE
+                      // display: 'flex', // These likely don't belong on Typography anyway
+                      // flexDirection: 'column',
+                      // flex: 1,
+                      // transition: 'transform 0.1s ease-in-out',
+                      // '&:hover': {
+                      //   transform: 'scale(1.01)',
+                      //   boxShadow: 6,
+                      // },
+                    }}
                   >
                     Frequency Overview
                   </Typography>
@@ -548,7 +594,19 @@ export default function NodeDashboard({
 
             {/* IP Addresses Card */}
             <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-              <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <Card
+                elevation={3}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  transition: 'transform 0.1s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6,
+                  },
+                }}
+              >
                 <CardContent sx={{ textAlign: 'center', py: 1 }}>
                   {/* add a title above the nested grid */}
                   <Typography
@@ -611,8 +669,22 @@ export default function NodeDashboard({
             </Grid>
 
             {/* Disk Overview Card */}
-            <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-              <Card elevation={3} sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <Grid item xs={12} md={6} sx={{ display: 'flex' }}> {/* Adjust Grid sizing as needed */}
+              <Card
+                elevation={3}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  // Add or merge the following sx properties:
+                  transition: 'transform 0.1s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6,
+                  },
+                  // any other existing sx properties for this card
+                }}
+              >
                 <CardContent sx={{ textAlign: 'center', py: 1 }}>
                   <Typography
                   color="textSecondary"
