@@ -9,13 +9,26 @@ import {
   Button
 } from '@mui/material';
 
-export default function RebootAlertDialog({ open, onClose }) {
+export default function RebootAlertDialog({ open, onClose: parentOnClose }) { // Renamed onClose to parentOnClose for clarity
+  const handleDialogClose = (event, reason) => {
+    if (reason && reason === 'backdropClick') {
+      // Prevent dialog from closing on backdrop click
+      return;
+    }
+    // For other reasons (like escape key, if not disabled), or if called programmatically without a reason
+    if (parentOnClose) {
+      parentOnClose();
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleDialogClose} // Use the new handler
       aria-labelledby="reboot-alert-title"
       aria-describedby="reboot-alert-description"
+      // To also prevent closing with the Escape key, you could add:
+      // disableEscapeKeyDown={true}
     >
       <DialogTitle
         id="reboot-alert-title"
@@ -40,7 +53,8 @@ export default function RebootAlertDialog({ open, onClose }) {
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} autoFocus>
+        {/* This button will still correctly close the dialog by calling parentOnClose */}
+        <Button onClick={parentOnClose} autoFocus>
           OK
         </Button>
       </DialogActions>
