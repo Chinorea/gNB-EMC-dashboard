@@ -44,8 +44,11 @@ Collecting workspace information
 
 ### Frontend Setup
 
-1. `cd frontend`  
-2. Install deps:  
+1. Navigate to the frontend directory
+    ``` bash
+    cd frontend
+    ```  
+2. Install dependencies:  
    ```bash
    npm install
    ```  
@@ -56,8 +59,11 @@ Collecting workspace information
 
 ### Backend Setup
 
-1. Ensure Python 3.9+ is installed  
-2. Install Python deps:  
+1. Ensure Python 3.9+ is installed. Check with the following command:  
+   ```bash
+    python --version
+    ```
+2. Install Python dependencies:  
    ```bash
    pip install flask flask-cors
    ```  
@@ -124,6 +130,9 @@ A classic client–server model:
    - Fast (1 s) for attributes  
    - Slow (3 s) for status  
 2. State updates flow via props → components  
+   * Sidebar shows node connection status with color coding
+   * HomePage displays card grid with status summaries
+   * NodeDashboard uses status to determine available actions
 
 ### Dashboard visualization
 
@@ -178,16 +187,73 @@ A classic client–server model:
 
 ### Use cases
 
-#### UC01 – Monitor Node Status
+(For all use cases below, the **System** is `gNB-EMC Dashboard` and the **Actor** is the `User`)
+
+### Use Case: UC01 - Monitor Node Status
+
+**Main Success Scenario (MSS):**
+
+1. User opens the dashboard homepage
+2. System displays all configured nodes with their status
+3. System continually updates the status automatically
+4. Use case ends
+
+**Extensions:**
+
+- **2a.** No nodes are configured yet
+  - 2a1. System shows empty node list
+  - 2a2. User adds a node using the sidebar form
+  - Use case resumes from Step 2
+
+### Use Case: UC02 - View Node Details
+
+**MSS:**
+
+1. User clicks on a node card on the homepage
+2. System navigates to the node dashboard view
+3. System displays detailed metrics and controls for the node
+4. Use case ends
+
+**Extensions:**
+
+- **3a.** Node is unreachable
+  - 3a1. System displays limited view with error indication
+  - 3a2. User may navigate back or retry
+  - Use case ends
+
+### Use Case: UC03 - Start/Stop a Node
+
+**MSS:**
+
+1. User navigates to a node's dashboard
+2. User clicks the "Turn On" or "Turn Off" button
+3. System sends the command to the node
+4. System displays operation progress
+5. System updates the node status when complete
+6. Use case ends
+
+**Extensions:**
+
+- **3a.** Command fails or times out
+  - 3a1. System displays error notification
+  - 3a2. User may retry the operation
+  - Use case resumes from Step 3
 
 ### Use Case: UC04 - Add a Node to Dashboard
 
-#### UC02 – View Node Details
+**MSS:**
 
-1. Click node card  
-2. Detailed view + metrics  
+1. User enters a node IP in the sidebar form
+2. User clicks "Add" or presses Enter
+3. System adds the node to the tracked list
+4. System begins polling the node status
+5. Use case ends
 
-*… (and so on)*
+**Extensions:**
+
+- **4a.** Node is unreachable
+  - 4a1. System still adds the node but shows as disconnected
+  - Use case ends
 
 ### Non-Functional Requirements
 
