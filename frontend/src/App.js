@@ -149,8 +149,8 @@ export default function App() {
       });
     };
 
-    // fetch Raptor status separately
-    const updateRaptor = () => {
+    // fetch node (raptor) status separately
+    const updateNodeStatus = () => {
       nodes.forEach(ip => {
         // if this node is being toggled, show INITIALISING
         if (loadingMap[ip]) {
@@ -169,13 +169,13 @@ export default function App() {
     };
 
     updateAttrs();
-    updateRaptor();
+    updateNodeStatus();
 
-    const id1 = setInterval(updateAttrs, 1000);    // fast loop
-    const id2 = setInterval(updateRaptor, 3000);   // slower loop
+    const id1      = setInterval(updateAttrs, 1000);          // fast loop
+    const idStatus = setInterval(updateNodeStatus, 3000);    // slower loop
     return () => {
       clearInterval(id1);
-      clearInterval(id2);
+      clearInterval(idStatus);
     };
   }, [nodes]);
 

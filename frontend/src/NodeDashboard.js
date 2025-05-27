@@ -34,11 +34,8 @@ export default function NodeDashboard({
   setAppLoading
 }) {
   const { ip } = useParams();
-  // use app-level loading flag
-  const loading = loadingMap[ip] || false;
   const [showRebootAlert, setShowRebootAlert] = useState(false);
 
-  // 1) define toggle handler inside component so ip & setLoading are in scope
   const handleToggle = async () => {
     setAppLoading(ip, true);
     try {
@@ -70,7 +67,8 @@ export default function NodeDashboard({
   };
 
   const nodeStatus = statuses[ip] || 'UNREACHABLE';
-  const data = attrs[ip];
+  const data       = attrs[ip];
+  const loading    = loadingMap[ip] || false;
 
   // override colors to yellow when loading
   const bgColor = loading
@@ -147,11 +145,16 @@ export default function NodeDashboard({
           <Grid
             container
             spacing={3}
-            justifyContent="center"   // center items horizontally
-            alignItems="stretch"          // ← stretch all items to same height
+            justifyContent="center"
+            alignItems="center"
+            /* Layer 1 – centered */
           >
-            <NodeIdCard nodeId={data.gnb_id} isLoading={loading} />
-            <PciCard pci={data.gnb_pci} isLoading={loading} />
+            <NodeIdCard
+              nodeId={data.gnb_id}
+              isLoading={loading}
+              nodeStatus={nodeStatus}
+            />
+            <PciCard pci={data.gnb_pci} isLoading={loading} nodeStatus={nodeStatus} />
             <TimeCard boardTime={data.board_time} isLoading={loading} />
             <DateCard boardDate={data.board_date} isLoading={loading} />
             <CoreConnectionCard coreConnectionStatus={coreConnectionMap[data.core_connection]} isLoading={loading} />
@@ -177,8 +180,16 @@ export default function NodeDashboard({
             justifyContent="center"
             alignItems="stretch"
           >
-            <FrequencyOverviewCard data={data} isLoading={loading} />
-            <IpAddressesCard data={data} isLoading={loading} nodeStatus={nodeStatus} />
+            <FrequencyOverviewCard
+              data={data}
+              isLoading={loading}
+              nodeStatus={nodeStatus}
+            />
+            <IpAddressesCard
+              data={data}
+              isLoading={loading}
+              nodeStatus={nodeStatus}
+            />
             <DiskOverviewCard data={data} isLoading={loading} />
           </Grid>
         </Container>
