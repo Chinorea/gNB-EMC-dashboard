@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link as RouterLink} from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import {
@@ -17,9 +17,16 @@ import {
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 
-const drawerWidth = 240;
+const drawerWidth = 320;  // increased width to fit "Node: x.x.x.x"
 
-function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
+function Sidebar({
+  nodes,
+  setNodes,
+  statuses,
+  loadingMap,
+  secondaryIps,
+  setSecondaryIps
+}) {
   const [ip, setIp] = useState('');
 
   const addNode = () => {
@@ -39,7 +46,10 @@ function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
-        '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
+        '& .MuiDrawer-paper': {
+          width: drawerWidth,
+          boxSizing: 'border-box'
+        },
       }}
     >
       <Box sx={{ p: 2, overflow: 'auto' }}>
@@ -93,15 +103,16 @@ function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
             }
 
             return (
-              <ListItem
-                key={n}
-                disablePadding
-                sx={{ backgroundColor: bg}}
-              >
+              <ListItem key={n} disablePadding sx={{ backgroundColor: bg }}>
                 <ListItemButton component={RouterLink} to={`/node/${n}`}>
                   <ListItemText
-                    primary={n}
+                    primary={`Node: ${n}`}
+                    secondary={`Marnet: ${secondaryIps[n] || 'Not configured'}`}
                     primaryTypographyProps={{ fontWeight: 'bold' }}
+                    secondaryTypographyProps={{
+                      fontSize: '0.8rem',
+                      color: 'textSecondary'
+                    }}
                   />
                 </ListItemButton>
                 <IconButton edge="end" onClick={() => removeNode(n)} sx={{ mr: 1 }}>
@@ -118,19 +129,19 @@ function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
 
 export default function App() {
   // load saved nodes from localStorage (or start empty)
-  const [nodes, setNodes] = useState(() => {
+  const [nodes, setNodes]         = useState(() => {
     const saved = localStorage.getItem("nodes");
     return saved ? JSON.parse(saved) : [];
   });
+  const [nodeStatuses, setStatuses] = useState({});
+  const [nodeAttrs, setNodeAttrs]   = useState({});
+  const [loadingMap, setLoadingMap] = useState({});
+  const [secondaryIps, setSecondaryIps] = useState({});
 
   // whenever nodes changes, persist it
   useEffect(() => {
     localStorage.setItem("nodes", JSON.stringify(nodes));
   }, [nodes]);
-
-  const [nodeStatuses, setStatuses]   = useState({});
-  const [nodeAttrs, setNodeAttrs]       = useState({});
-  const [loadingMap, setLoadingMap]   = useState({});
 
   useEffect(() => {
     if (!nodes.length) return;
@@ -187,6 +198,8 @@ export default function App() {
           setNodes={setNodes}
           statuses={nodeStatuses}
           loadingMap={loadingMap}
+          secondaryIps={secondaryIps}
+          setSecondaryIps={setSecondaryIps}
         />
 
         <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
@@ -198,7 +211,7 @@ export default function App() {
                   nodes={nodes}
                   setNodes={setNodes}
                   statuses={nodeStatuses}
-                  loadingMap={loadingMap}           // ← add this
+                  loadingMap={loadingMap}
                 />
               }
             />
@@ -208,8 +221,8 @@ export default function App() {
                 <NodeDashboard
                   nodes={nodes}
                   setNodes={setNodes}
-                  statuses={nodeStatuses}            // ← pass this in
-                  attrs={ nodeAttrs }              // <-- pass the map
+                  statuses={nodeStatuses}
+                  attrs={ nodeAttrs }
                   loadingMap={loadingMap}
                   setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
                 />
@@ -217,6 +230,7 @@ export default function App() {
             />
           </Routes>
         </Box>
+
       </Box>
     </BrowserRouter>
   );
