@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
 import 'leaflet/dist/leaflet.css';
 
 const theme = createTheme({
@@ -15,32 +16,16 @@ const theme = createTheme({
   },
   components: {
     MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
+      styleOverrides: { root: { borderRadius: 8 } },
     },
     MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
+      styleOverrides: { root: { borderRadius: 8 } },
     },
     MuiOutlinedInput: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
+      styleOverrides: { root: { borderRadius: 8 } },
     },
     MuiInputBase: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
+      styleOverrides: { root: { borderRadius: 8 } },
     },
   },
 });
@@ -49,6 +34,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <App />
     </ThemeProvider>
   </React.StrictMode>
