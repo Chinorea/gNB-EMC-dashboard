@@ -45,10 +45,15 @@ def update_xml_by_path(xml_path: Path,
             print(f"[WARN] no elements found for path '{full_path}' (expr={expr})")
             continue
 
-        for el in found:
-            old = el.text or ""
-            print(f"[INFO] updating {expr} (was '{old}') → '{new_text}'")
-            el.text = new_text
+        # for el in found:
+        #     old = el.text or ""
+        #     print(f"[INFO] updating {expr} (was '{old}') → '{new_text}'")
+        #     el.text = new_text
+          # only update the first match:
+        el = found[0]
+        old = el.text or ""
+        print(f"[INFO] updating {expr} (was '{old}') → '{new_text}')")
+        el.text = new_text
 
     # and finally write
     tree.write(xml_path, encoding="utf-8", xml_declaration=True)

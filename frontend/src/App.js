@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link as RouterLink} from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
+import MapView from './Map'
 import {
   Box,
   Drawer,
@@ -16,8 +17,26 @@ import {
   IconButton
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet';
 
 const drawerWidth = 240;
+
+// define your data
+const myMarkers = [
+  {
+    coords: [1.3362, 103.7432],
+    popup:  "This is marker #1",
+    label:  "M1"
+  },
+  {
+    coords: [1.3372, 103.7452],
+    popup:  "Second location",
+    label:  "M2"
+  },
+  // … more …
+];
+
 
 function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
   const [ip, setIp] = useState('');
@@ -66,6 +85,12 @@ function Sidebar({ nodes, setNodes, statuses, loadingMap }) {
           <ListItemButton component={RouterLink} to="/">
             <ListItemText
               primary="Home"
+              primaryTypographyProps={{ fontWeight: 'bold' }}
+            />
+          </ListItemButton>
+          <ListItemButton component={RouterLink} to="/map">
+            <ListItemText
+              primary="Map"
               primaryTypographyProps={{ fontWeight: 'bold' }}
             />
           </ListItemButton>
@@ -181,7 +206,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: 'flex' , height: '100vh'}}>
         <Sidebar
           nodes={nodes}
           setNodes={setNodes}
@@ -189,7 +214,7 @@ export default function App() {
           loadingMap={loadingMap}
         />
 
-        <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
+        <Box component="main" sx={{ flexGrow: 1, p: 0 , height: '100vh'}}>
           <Routes>
             <Route
               path="/"
@@ -212,6 +237,16 @@ export default function App() {
                   attrs={ nodeAttrs }              // <-- pass the map
                   loadingMap={loadingMap}
                   setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
+                />
+              }
+            />
+            <Route
+              path="/map"
+              element={
+                <MapView
+                  initialCenter={[1.3362, 103.7442]}  // e.g. New York City
+                  initialZoom={18}
+                  markers={myMarkers}
                 />
               }
             />
