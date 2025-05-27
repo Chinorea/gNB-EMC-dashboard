@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import 'leaflet/dist/leaflet.css';
 
 const theme = createTheme({
   typography: {
