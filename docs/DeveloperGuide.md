@@ -272,22 +272,9 @@ A classic client–server model:
 
 ---
 
-## Publishing on GitHub Pages
-
-1. Create a repo named `<your-username>.github.io`.  
-2. Add this file as `index.md` in the root (or rename to `README.md`).  
-3. (Optional) Add `_config.yml` for custom Jekyll settings.  
-4. Push and go to **Settings → Pages** → choose `main` branch.  
-5. Visit:  
-   ```
-   https://<your-username>.github.io/
-   ```
-
----
-
 ## References
 
-[react]: https://reactjs.org/  
-[mui]: https://mui.com/  
-[flask]: https://flask.palletsprojects.com/  
-[recharts]: https://recharts.org/
+- **React**: https://reactjs.org/  
+- **Mui**: https://mui.com/  
+- **Flask**: https://flask.palletsprojects.com/  
+- **Recharts**: https://recharts.org/
