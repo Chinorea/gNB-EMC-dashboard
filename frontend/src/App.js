@@ -1,26 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
-import HomePage from './HomePage';
-import NodeDashboard from './NodeDashboard';
-import MapView from './Map'
 import {
   Box,
   Drawer,
   List,
+  ListItem,
+  ListItemIcon,
+  ListItemSecondaryAction,
   ListItemButton,
   ListItemText,
   ListSubheader,
   TextField,
   Button,
   Divider,
-  ListItem,
-  IconButton
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
+import SettingsIcon from '@mui/icons-material/Settings';
+import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
+import HomePage from './HomePage';
+import NodeDashboard from './NodeDashboard';
+import MapView from './Map'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet';
 
-const drawerWidth = 320;  // increased width to fit "Node: x.x.x.x"
+const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
 
 // define your data
 const myMarkers = [
@@ -42,9 +50,16 @@ function Sidebar({
   statuses,
   loadingMap,
   secondaryIps,
-  setSecondaryIps
+  setSecondaryIps,
+  nodeNames,
+  setNodeNames
 }) {
   const [ip, setIp] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState('');
+  const [editPrimary, setEditPrimary] = useState('');
+  const [editSecondary, setEditSecondary] = useState('');
+  const [editName, setEditName] = useState('');
 
   const addNode = () => {
     if (ip && !nodes.includes(ip)) {
@@ -55,6 +70,32 @@ function Sidebar({
 
   const removeNode = (ipToRemove) => {
     setNodes(prev => prev.filter(item => item !== ipToRemove));
+  };
+
+  const openEdit = (n) => {
+    setEditTarget(n);
+    setEditPrimary(n);
+    setEditSecondary(secondaryIps[n] || '');
+    setEditName(nodeNames[n] || '');
+    setEditOpen(true);
+  };
+  const saveEdit = () => {
+    // update primary key if renamed
+    if (editPrimary !== editTarget) {
+      setNodes(prev => prev.map(x => x === editTarget ? editPrimary : x));
+      setSecondaryIps(prev => {
+        const { [editTarget]: _, ...rest } = prev;
+        return { ...rest, [editPrimary]: editSecondary };
+      });
+      setNodeNames(prev => {
+        const { [editTarget]: _, ...rest } = prev;
+        return { ...rest, [editPrimary]: editName };
+      });
+    } else {
+      setSecondaryIps(prev => ({ ...prev, [editTarget]: editSecondary }));
+      setNodeNames(prev => ({ ...prev, [editTarget]: editName }));
+    }
+    setEditOpen(false);
   };
 
   return (
@@ -106,7 +147,6 @@ function Sidebar({
 
         <List subheader={<ListSubheader>Nodes</ListSubheader>}>
           {nodes.map(n => {
-            // if the toggle button is in-flight for this node, treat as INITIALISING
             const status = loadingMap[n]
               ? 'INITIALISING'
               : statuses[n] || 'UNREACHABLE';
@@ -126,25 +166,115 @@ function Sidebar({
             }
 
             return (
-              <ListItem key={n} disablePadding sx={{ backgroundColor: bg }}>
-                <ListItemButton component={RouterLink} to={`/node/${n}`}>
+              <ListItem
+                key={n}
+                disablePadding
+                sx={{
+                  width: '100%',           // full width
+                  backgroundColor: bg,     // highlight whole row
+                }}
+              >
+                {/* left‐aligned cog */}
+                <ListItemIcon sx={{ pl: 1 }}>
+                  <IconButton onClick={() => openEdit(n)} size="small">
+                    <SettingsIcon fontSize="small" />
+                  </IconButton>
+                </ListItemIcon>
+
+                {/* main link */}
+                <ListItemButton
+                  component={RouterLink}
+                  to={`/node/${n}`}
+                  sx={{ flex: 1 }}         // fill available space
+                >
                   <ListItemText
-                    primary={`Node: ${n}`}
-                    secondary={`Marnet: ${secondaryIps[n] || 'Not configured'}`}
-                    primaryTypographyProps={{ fontWeight: 'bold' }}
+                    primary={ nodeNames[n] || `Node: ${n}` }
+                    primaryTypographyProps={{
+                      fontWeight: nodeNames[n] ? 'bold' : 'bold',
+                      variant: nodeNames[n] ? 'body1' : 'body1',
+                      fontSize: '1.0rem'
+                    }}
+                    secondary={
+                      nodeNames[n]
+                        ? (
+                          <>
+                            <Typography
+                              component="span"
+                              variant="body1"
+                              color="textSecondary"
+                              sx={{ fontSize: '0.9rem' }}
+                            >
+                              Node: {n}
+                            </Typography>
+                            <br/>
+                            <Typography
+                              component="span"
+                              variant="body1"
+                              color="textSecondary"
+                              sx={{ fontSize: '0.9rem' }}
+                            >
+                              Marnet: {secondaryIps[n] || 'Not configured'}
+                            </Typography>
+                          </>
+                        )
+                        : `Marnet: ${secondaryIps[n] || 'Not configured'}`
+                    }
                     secondaryTypographyProps={{
-                      fontSize: '0.8rem',
-                      color: 'textSecondary'
+                      component: 'div',
+                      sx: { mt: nodeNames[n] ? 0 : 0.5, fontSize: '0.9rem' }
                     }}
                   />
                 </ListItemButton>
-                <IconButton edge="end" onClick={() => removeNode(n)} sx={{ mr: 1 }}>
-                  <ClearIcon fontSize="small" />
-                </IconButton>
+
+                {/* right‐aligned remove */}
+                <ListItemSecondaryAction>
+                  <IconButton onClick={() => removeNode(n)} size="small">
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </ListItemSecondaryAction>
               </ListItem>
             );
           })}
         </List>
+
+        {/* Edit Node / Marnet IP / Name Dialog */}
+        <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+          <Box
+            component="form"
+            onSubmit={e => { e.preventDefault(); saveEdit(); }}
+          >
+            <DialogTitle>Edit Node Settings</DialogTitle>
+            <DialogContent>
+              <TextField
+                margin="dense"
+                label="Node Name"
+                fullWidth
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+              />
+              <TextField
+                margin="dense"
+                label="Node IP"
+                fullWidth
+                value={editPrimary}
+                onChange={e => setEditPrimary(e.target.value)}
+              />
+              <TextField
+                margin="dense"
+                label="Marnet IP"
+                fullWidth
+                value={editSecondary}
+                onChange={e => setEditSecondary(e.target.value)}
+                sx={{ mt: 2 }}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="submit" variant="contained">Save</Button>
+            </DialogActions>
+          </Box>
+        </Dialog>
+
       </Box>
     </Drawer>
   );
@@ -160,6 +290,7 @@ export default function App() {
   const [nodeAttrs, setNodeAttrs]   = useState({});
   const [loadingMap, setLoadingMap] = useState({});
   const [secondaryIps, setSecondaryIps] = useState({});
+  const [nodeNames, setNodeNames]       = useState({});
 
   // whenever nodes changes, persist it
   useEffect(() => {
@@ -222,6 +353,8 @@ export default function App() {
           loadingMap={loadingMap}
           secondaryIps={secondaryIps}
           setSecondaryIps={setSecondaryIps}
+          nodeNames={nodeNames}
+          setNodeNames={setNodeNames}
         />
 
         <Box component="main" sx={{ flexGrow: 1, p: 0 , height: '100vh'}}>
@@ -234,6 +367,7 @@ export default function App() {
                   setNodes={setNodes}
                   statuses={nodeStatuses}
                   loadingMap={loadingMap}
+                  nodeNames={nodeNames}
                 />
               }
             />
