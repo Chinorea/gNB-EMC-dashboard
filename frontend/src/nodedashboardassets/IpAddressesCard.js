@@ -253,7 +253,9 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
 
        {/* Edit Dialog */}
        <Dialog open={editDialog.open} onClose={handleEditClose} maxWidth="sm" fullWidth>
-         <DialogTitle>Edit {editDialog.label}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          Edit {editDialog.label}
+        </DialogTitle>
          <DialogContent>
            <TextField
              autoFocus
@@ -263,6 +265,9 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
              variant="outlined"
              value={editValue}
              onChange={(e) => setEditValue(e.target.value)}
+             InputProps={{
+              sx: { fontSize: '1.2rem' }  // larger input text
+            }}
            />
          </DialogContent>
          <DialogActions>

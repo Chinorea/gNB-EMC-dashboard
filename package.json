@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/Chinorea/gNB-EMC-dashboard#readme",
   "dependencies": {
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "react-transition-group": "^4.4.5"
   }
 }
