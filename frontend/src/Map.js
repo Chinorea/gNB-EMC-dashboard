@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // pull in all three images from the Leaflet package
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl     from 'leaflet/dist/images/marker-shadow.png';
-
 // tell Leaflet to use these instead of its hard-coded paths
 L.Icon.Default.mergeOptions({
   iconRetinaUrl,
@@ -15,86 +14,83 @@ L.Icon.Default.mergeOptions({
 
 
 export default function MapView({
-  initialCenter = [1.3362, 103.7542],
-  initialZoom   = 13,
-  markers = [],                // <-- e.g. [ [51.5, -0.09], [51.51, -0.1] ]
+  initialCenter = [0,0],
+  initialZoom   = 2,
+  markers       = []
 }) {
-  const mapEl    = useRef(null);
-  const mapRef   = useRef(null);
+  const mapEl = useRef(null);
+  const map   = useRef(null);
+  const layer = useRef(null);
 
-
+  // initialize map once
   useEffect(() => {
-    // Only do this on first mount:
-    mapRef.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
+    map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mapRef.current);
+      maxZoom:20, attribution:'© OSM'
+    }).addTo(map.current);
+    return () => map.current.remove();
+  }, []);
 
-    L.marker(initialCenter).addTo(mapRef.current).bindPopup('Node ID: ').bindTooltip(
-    "Current location:",
-    {
-      permanent: true,    // stays visible
-      direction: "top",   // can be 'top', 'bottom', 'right', 'left'
-      offset: [0, -10],   // tweak tooltip position if you like
-      className: "my-marker-label"
+  // rebuild circles + polyline whenever `markers` changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    // clear old layer
+    if (layer.current) {
+      map.current.removeLayer(layer.current);
+    }
+
+    const group = L.layerGroup();
+
+    markers.forEach(marker => {
+      const lat = parseFloat(marker.latitude)  || 0;
+      const lng = parseFloat(marker.longitude) || 0;
+
+      const circle = L.circle([lat, lng], {
+        radius:      50,
+        color:       '#007bff',
+        fillColor:   '#30a9de',
+        fillOpacity: 0.4
+      }).addTo(group);
+
+      const { latitude, longitude, ...rest } = marker;
+
+      const popupHtml = Object
+        .entries(rest)
+        .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
+        .join('<br>');
+      circle.bindPopup(popupHtml);
+
+
+      const label = String(marker.id || marker.label || '');
+      circle.bindTooltip(label, {
+        permanent: true,
+        direction: 'top',
+        offset:    [0, -10]
+      });
     });
 
-    // // 3) add two static markers
-    // L.marker([1.3362, 103.7432])
-    //   .bindPopup('Static Marker 1')
-    //   .addTo(mapRef.current);
-    //
-    // L.marker([1.3372, 103.7452])
-    //   .bindPopup('Static Marker 2')
-    //   .addTo(mapRef.current);
-    //
-    // L.circle([1.3372, 103.7452], {
-    // color: 'red',
-    // fillColor: '#f03',
-    // fillOpacity: 0.5,
-    // radius: 50
-    // }).bindPopup('Area 1').addTo(mapRef.current);
+    if (markers.length > 1) {
+      const coords = markers.map(marker => [
+        parseFloat(marker.latitude)  || 0,
+        parseFloat(marker.longitude) || 0
+      ]);
+      L.polyline(coords, {
+        color:     'green',
+        weight:    3,
+        dashArray: '4,6'
+      }).addTo(group);
+    }
 
-        // add each marker from the array
-    // markers.forEach(({ coords, popup, label }) => {
-    //   const m = L.marker(coords).addTo(mapRef.current);
-    //   if (popup) m.bindPopup(popup);
-    //   if (label) {
-    //     m.bindTooltip(label, {
-    //       permanent: true,
-    //       direction: 'top',
-    //       offset: [0, -10],
-    //       className: 'my-marker-label'
-    //     });
-    //   }
-    // });
-
-        // add each circle
-    markers.forEach(({ coords, popup, label }) => {
-      const circle = L.circle(coords, {
-        radius:     50,          // 50 meters
-        color:      '#007bff',   // stroke color
-        fillColor:  '#30a9de',   // fill color
-        fillOpacity: 0.4,
-      }).addTo(mapRef.current);
-
-      if (popup) circle.bindPopup(popup);
-      if (label) {
-        circle.bindTooltip(label, {
-          permanent: true,
-          direction: 'top',
-          offset:    [0, -10],
-          className: 'my-circle-label'
-        });
-      }
-    });
+    group.addTo(map.current);
+    layer.current = group;
+  }, [markers]);
 
 
-
-
-    return () => mapRef.current.remove();
-  }, []);              // ← empty array!  run only once
-
-  return <div ref={mapEl} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div
+      ref={mapEl}
+      style={{ width: '100%', height: '100%' }}
+    />
+  );
 }

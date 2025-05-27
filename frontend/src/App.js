@@ -18,24 +18,9 @@ import {
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 import 'leaflet/dist/leaflet.css'
-import L from 'leaflet';
 
 const drawerWidth = 320;  // increased width to fit "Node: x.x.x.x"
 
-// define your data
-const myMarkers = [
-  {
-    coords: [1.3362, 103.7432],
-    popup:  "This is marker #1",
-    label:  "M1"
-  },
-  {
-    coords: [1.3372, 103.7452],
-    popup:  "Second location",
-    label:  "M2"
-  },
-  // … more …
-];
 function Sidebar({
   nodes,
   setNodes,
@@ -161,6 +146,10 @@ export default function App() {
   const [loadingMap, setLoadingMap] = useState({});
   const [secondaryIps, setSecondaryIps] = useState({});
 
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const API_URL = 'http://192.168.2.142/status';
+
+
   // whenever nodes changes, persist it
   useEffect(() => {
     localStorage.setItem("nodes", JSON.stringify(nodes));
@@ -201,14 +190,29 @@ export default function App() {
       });
     };
 
+    const loadMapData = () => {
+      fetch(API_URL)
+        .then(r => r.json())
+        .then(data => {
+          const infos = Array.isArray(data.nodeInfos)
+            ? data.nodeInfos
+            : Object.values(data.nodeInfos||{});
+          setMapMarkers(infos);
+        })
+        .catch(console.error);
+    };
+
+    loadMapData();
     updateAttrs();
     updateNodeStatus();
 
     const id1      = setInterval(updateAttrs, 1000);          // fast loop
     const idStatus = setInterval(updateNodeStatus, 3000);    // slower loop
+    const idMap = setInterval(loadMapData, 5000000);  // or whatever polling interval you like
     return () => {
       clearInterval(id1);
       clearInterval(idStatus);
+      clearInterval(idMap);
     };
   }, [nodes]);
 
@@ -224,7 +228,7 @@ export default function App() {
           setSecondaryIps={setSecondaryIps}
         />
 
-        <Box component="main" sx={{ flexGrow: 1, p: 0 , height: '100vh'}}>
+        <Box component="main" sx={{ display: 'flex', flexGrow: 1, p: 0 , height: '100vh'}}>
           <Routes>
             <Route
               path="/"
@@ -254,9 +258,9 @@ export default function App() {
               path="/map"
               element={
                 <MapView
-                  initialCenter={[1.3362, 103.7442]}  // e.g. New York City
-                  initialZoom={18}
-                  markers={myMarkers}
+                  initialCenter={[1.3362, 103.7442]}
+                  initialZoom={19}
+                  markers={mapMarkers}
                 />
               }
             />
