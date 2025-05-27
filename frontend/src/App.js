@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
+  CssBaseline,
   Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemSecondaryAction,
-  ListItemButton,
-  ListItemText,
-  ListSubheader,
+  Box,
   TextField,
   Button,
   Divider,
+  List,
+  ListSubheader,
+  ListItem,
+  ListItemIcon,
+  ListItemButton,
+  ListItemText,
+  ListItemSecondaryAction,
+  Typography,
   IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Typography
+  DialogActions
 } from '@mui/material';
+import EditIcon  from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
@@ -52,7 +53,9 @@ function Sidebar({
   secondaryIps,
   setSecondaryIps,
   nodeNames,
-  setNodeNames
+  setNodeNames,
+  onToggleDark,
+  darkMode
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -177,7 +180,7 @@ function Sidebar({
                 {/* left‐aligned cog */}
                 <ListItemIcon sx={{ pl: 1 }}>
                   <IconButton onClick={() => openEdit(n)} size="small">
-                    <SettingsIcon fontSize="small" />
+                    <EditIcon fontSize="small" />
                   </IconButton>
                 </ListItemIcon>
 
@@ -344,59 +347,74 @@ export default function App() {
   }, [nodes]);
 
   return (
-    <BrowserRouter>
-      <Box sx={{ display: 'flex' , height: '100vh'}}>
-        <Sidebar
-          nodes={nodes}
-          setNodes={setNodes}
-          statuses={nodeStatuses}
-          loadingMap={loadingMap}
-          secondaryIps={secondaryIps}
-          setSecondaryIps={setSecondaryIps}
-          nodeNames={nodeNames}
-          setNodeNames={setNodeNames}
-        />
+    <>
+      <CssBaseline />
 
-        <Box component="main" sx={{ flexGrow: 1, p: 0 , height: '100vh'}}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <HomePage
-                  nodes={nodes}
-                  setNodes={setNodes}
-                  statuses={nodeStatuses}
-                  loadingMap={loadingMap}
-                  nodeNames={nodeNames}
-                />
-              }
-            />
-            <Route
-              path="/node/:ip"
-              element={
-                <NodeDashboard
-                  nodes={nodes}
-                  setNodes={setNodes}
-                  statuses={nodeStatuses}
-                  attrs={ nodeAttrs }
-                  loadingMap={loadingMap}
-                  setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
-                />
-              }
-            />
-            <Route
-              path="/map"
-              element={
-                <MapView
-                  initialCenter={[1.3362, 103.7442]}  // e.g. New York City
-                  initialZoom={18}
-                  markers={myMarkers}
-                />
-              }
-            />
-          </Routes>
+      <BrowserRouter>
+        <Box sx={{ display: 'flex', height: '100vh' }}>
+          <Sidebar
+            nodes={nodes}
+            setNodes={setNodes}
+            statuses={nodeStatuses}
+            loadingMap={loadingMap}
+            secondaryIps={secondaryIps}
+            setSecondaryIps={setSecondaryIps}
+            nodeNames={nodeNames}
+            setNodeNames={setNodeNames}
+          />
+
+          <Box 
+            component="main" 
+            sx={{ 
+              flexGrow: 1, 
+              p: 0, 
+              height: '100vh', 
+              overflowY: 'auto',
+              // tell the browser to always leave space for the scrollbar
+              scrollbarGutter: 'stable' 
+            }}
+          >
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <HomePage
+                    nodes={nodes}
+                    setNodes={setNodes}
+                    statuses={nodeStatuses}
+                    loadingMap={loadingMap}
+                    secondaryIps={secondaryIps}
+                    nodeNames={nodeNames}
+                  />
+                }
+              />
+              <Route
+                path="/node/:ip"
+                element={
+                  <NodeDashboard
+                    nodes={nodes}
+                    setNodes={setNodes}
+                    statuses={nodeStatuses}
+                    attrs={ nodeAttrs }
+                    loadingMap={loadingMap}
+                    setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
+                  />
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <MapView
+                    initialCenter={[1.3362, 103.7442]}  // e.g. New York City
+                    initialZoom={18}
+                    markers={myMarkers}
+                  />
+                }
+              />
+            </Routes>
+          </Box>
         </Box>
-      </Box>
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }
