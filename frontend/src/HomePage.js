@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -8,7 +8,13 @@ import {
   CardContent
 } from '@mui/material';
 
-export default function HomePage({ nodes, setNodes, statuses, loadingMap }) {
+export default function HomePage({
+  nodes,
+  setNodes,
+  statuses,
+  loadingMap,
+  nodeNames = {}
+}) {
   const [ip, setIp] = useState('');
   const navigate = useNavigate();
 
@@ -34,13 +40,11 @@ export default function HomePage({ nodes, setNodes, statuses, loadingMap }) {
 
       <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
         {nodes.map((node) => {
-          // if toggle is in-flight for this node, override to INITIALISING
-          const status =
-            loadingMap?.[node] ? 'INITIALISING'
-          : statuses[node]    ? statuses[node]
-          :                   'UNREACHABLE';
-          let bg;
-          let label;
+          const status = loadingMap?.[node]
+            ? 'INITIALISING'
+            : statuses[node] || 'UNREACHABLE';
+
+          let bg, label;
           switch (status) {
             case 'RUNNING':
               bg = '#d4edda'; label = 'Broadcasting'; break;
@@ -48,9 +52,11 @@ export default function HomePage({ nodes, setNodes, statuses, loadingMap }) {
               bg = '#fff3cd'; label = 'Initialising'; break;
             case 'OFF':
               bg = '#f8d7da'; label = 'Not Broadcasting'; break;
-            default: // UNREACHABLE
+            default:
               bg = 'lightgrey'; label = 'No Connection';
           }
+
+          const displayName = nodeNames[node] || node;
 
           return (
             <Grid item xs={12} sm={6} md={4} key={node}>
@@ -64,7 +70,7 @@ export default function HomePage({ nodes, setNodes, statuses, loadingMap }) {
               >
                 <CardContent sx={{ textAlign: 'center' }}>
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {node}
+                    {displayName}
                   </Typography>
                   <Typography variant="subtitle2" sx={{ mt: 1 }}>
                     {label}
