@@ -2,7 +2,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 
-export default function TopBar({ ip, loading, nodeStatus, appBarColor, handleToggle }) {
+export default function TopBar({ ip, loading, nodeStatus, appBarColor, handleToggle, nodeName }) {
   return (
     <AppBar
       position="static"
@@ -11,7 +11,7 @@ export default function TopBar({ ip, loading, nodeStatus, appBarColor, handleTog
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          {ip}
+          {nodeName || ip} {/* Display nodeName if available, otherwise fall back to ip */}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography
