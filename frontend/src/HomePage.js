@@ -150,7 +150,7 @@ export default function HomePage({
                   onClick={e => { e.stopPropagation(); openEdit(node); }}
                   sx={{
                     position: 'absolute',
-                    top: 19, // theme.spacing(1)
+                    top: 20, // theme.spacing(1)
                     right: 15, // theme.spacing(1)
                     zIndex: 1
                   }}
@@ -204,7 +204,7 @@ export default function HomePage({
                           disabled={loadingMap?.[node]}
                           sx={{
                             position: 'absolute',
-                            top: 19,
+                            top: 20,
                             right: 50,
                             backgroundColor:
                               // Color based on the underlying node status, persists during load
