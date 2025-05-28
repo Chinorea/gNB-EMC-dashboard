@@ -92,8 +92,6 @@ export default function MapView({
     //   }
     // }
 
-    console.log(linkQualityMatrix);
-
     for (let i = 0; i < markers.length; i++) {
       for (let j = i + 1; j < markers.length; j++) {
         const id1 = markers[i].id, id2 = markers[j].id;
