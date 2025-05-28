@@ -7,18 +7,18 @@ import {
   Button,
   Divider,
   List,
-  ListSubheader,
-  ListItem,
-  ListItemIcon,
+  ListItem, // Added ListItem
   ListItemButton,
+  ListItemIcon, // Added ListItemIcon
   ListItemText,
-  ListItemSecondaryAction,
-  Typography,
-  IconButton,
+  ListSubheader,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  IconButton,
+  Typography,
+  ListItemSecondaryAction // Added ListItemSecondaryAction
 } from '@mui/material';
 import EditIcon  from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -28,6 +28,7 @@ import NodeDashboard from './NodeDashboard';
 import MapView from './Map'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet';
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Import RebootAlertDialog
 
 const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
 
@@ -286,20 +287,36 @@ function Sidebar({
 export default function App() {
   // load saved nodes from localStorage (or start empty)
   const [nodes, setNodes]         = useState(() => {
-    const saved = localStorage.getItem("nodes");
+    const saved = localStorage.getItem('nodes');
     return saved ? JSON.parse(saved) : [];
   });
   const [nodeStatuses, setStatuses] = useState({});
   const [nodeAttrs, setNodeAttrs]   = useState({});
   const [loadingMap, setLoadingMap] = useState({});
-  const [secondaryIps, setSecondaryIps] = useState({});
-  const [nodeNames, setNodeNames]       = useState({});
+  const [secondaryIps, setSecondaryIps] = useState(() => {
+    const saved = localStorage.getItem('secondaryIps');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [nodeNames, setNodeNames]       = useState(() => {
+    const saved = localStorage.getItem('nodeNames');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [manetConnectionMap, setManetConnectionMap] = useState({});
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // For global reboot alert
 
   // whenever nodes changes, persist it
   useEffect(() => {
-    localStorage.setItem("nodes", JSON.stringify(nodes));
+    localStorage.setItem('nodes', JSON.stringify(nodes));
   }, [nodes]);
+
+  useEffect(() => {
+    localStorage.setItem('secondaryIps', JSON.stringify(secondaryIps));
+  }, [secondaryIps]);
+
+  useEffect(() => {
+    localStorage.setItem('nodeNames', JSON.stringify(nodeNames));
+  }, [nodeNames]);
+
 
   // --- ping MANET connections centrally ---
   useEffect(() => {
@@ -368,10 +385,51 @@ export default function App() {
     };
   }, [nodes]);
 
+  const handleToggle = async (ip) => {
+    setLoadingMap(prev => ({ ...prev, [ip]: true }));
+    const nodeStatus = nodeStatuses[ip] || 'UNREACHABLE';
+
+    try {
+      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
+        })
+      });
+
+      if (res.status === 504) {
+        setLoadingMap(prev => ({ ...prev, [ip]: false }));
+        setRebootAlertNodeIp(ip); // Set the IP for the reboot alert
+        return;
+      }
+      if (!res.ok) {
+        let errorMsg = `HTTP ${res.status}`;
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch (e) {
+          // If response is not JSON, use the original error
+        }
+        throw new Error(errorMsg);
+      }
+      const json = await res.json();
+      console.log(`setup_script success for ${ip}`, json);
+      // After a successful toggle, you might want to immediately re-fetch status for this node
+      // or wait for the regular polling interval. For quicker feedback:
+      // fetchNodeData(ip); // Assuming fetchNodeData is the function that gets status/attrs
+    } catch (e) {
+      console.error(`setup_script error for ${ip}`, e);
+      // Potentially show an error message to the user via another state
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [ip]: false }));
+    }
+  };
+
   return (
     <>
       <CssBaseline />
-
+      <RebootAlertDialog open={!!rebootAlertNodeIp} onClose={() => setRebootAlertNodeIp(null)} />
       <BrowserRouter>
         <Box sx={{ display: 'flex', height: '100vh' }}>
           <Sidebar
@@ -383,6 +441,8 @@ export default function App() {
             setSecondaryIps={setSecondaryIps}
             nodeNames={nodeNames}
             setNodeNames={setNodeNames}
+            // Pass handleToggle to Sidebar if needed, e.g. for a global toggle button there
+            // handleToggle={handleToggle} 
           />
 
           <Box 
@@ -408,6 +468,9 @@ export default function App() {
                     loadingMap={loadingMap}
                     secondaryIps={secondaryIps}
                     nodeNames={nodeNames}
+                    setSecondaryIps={setSecondaryIps} // Keep if HomePage edits these
+                    setNodeNames={setNodeNames}     // Keep if HomePage edits these
+                    handleToggle={handleToggle}
                   />
                 }
               />
@@ -415,14 +478,13 @@ export default function App() {
                 path="/node/:ip"
                 element={
                   <NodeDashboard
-                    nodes={nodes}
-                    setNodes={setNodes}
                     statuses={nodeStatuses}
-                    attrs={ nodeAttrs }
+                    attrs={nodeAttrs}
                     loadingMap={loadingMap}
-                    setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
+                    // setAppLoading prop is removed as handleToggle now handles loading state
                     secondaryIps={secondaryIps}
                     manetConnectionMap={manetConnectionMap}
+                    handleToggle={handleToggle}
                   />
                 }
               />
