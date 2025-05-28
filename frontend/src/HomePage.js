@@ -190,34 +190,45 @@ export default function HomePage({
                   >
                     Manet IP: {secondaryIps[node] && secondaryIps[node] !== '' ? secondaryIps[node] : 'Not Configured'}
                   </Typography>
-                  {(status === 'RUNNING' || status === 'OFF') && (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={(e) => { e.stopPropagation(); handleToggle(node); }}
-                      disabled={loadingMap?.[node]}
-                      sx={{
-                        position: 'absolute', // Changed to absolute
-                        top: 19, // Position at the bottom
-                        right: 50,  // Position at the right
-                        backgroundColor:
-                          status === 'RUNNING' ? '#612a1f' : '#40613d',
-                        color: 'white',
-                        '&:hover': {
-                          backgroundColor:
-                            status === 'RUNNING'
-                              ? '#4d1914'
-                              : '#335e2e',
-                        },
-                      }}
-                    >
-                      {loadingMap?.[node]
-                        ? 'Working…'
-                        : status === 'RUNNING'
-                        ? 'Turn Off'
-                        : 'Turn On'}
-                    </Button>
-                  )}
+                  {(() => {
+                    // Determine the true underlying status for button appearance and action
+                    const underlyingNodeStatus = statuses[node];
+
+                    // Show button if loading OR if underlying status is RUNNING or OFF
+                    if (loadingMap?.[node] || underlyingNodeStatus === 'RUNNING' || underlyingNodeStatus === 'OFF') {
+                      return (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); handleToggle(node); }}
+                          disabled={loadingMap?.[node]}
+                          sx={{
+                            position: 'absolute',
+                            top: 19,
+                            right: 50,
+                            backgroundColor:
+                              // Color based on the underlying node status, persists during load
+                              underlyingNodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
+                            color: 'white',
+                            // Hover effect only when not disabled (i.e., not loading)
+                            '&:hover': !loadingMap?.[node] ? {
+                              backgroundColor:
+                                underlyingNodeStatus === 'RUNNING'
+                                  ? '#4d1914'
+                                  : '#335e2e',
+                            } : {},
+                        }}
+                        >
+                          {loadingMap?.[node]
+                            ? 'Working…'
+                            : underlyingNodeStatus === 'RUNNING'
+                              ? 'Turn Off'
+                              : 'Turn On'}
+                        </Button>
+                      );
+                    }
+                    return null; // Return null if button should not be shown
+                  })()}
                 </CardContent>
               </Card>
             </Grid>
