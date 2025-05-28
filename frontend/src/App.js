@@ -541,15 +541,15 @@ const DUMMY_LQM = [
             // handleToggle={handleToggle} 
           />
 
-          <Box 
-            component="main" 
-            sx={{ display: 'flex', 
-              flexGrow: 1, 
-              p: 0, 
-              height: '100vh', 
+          <Box
+            component="main"
+            sx={{ // display: 'flex', // Removed this to allow child components to take full width
+              flexGrow: 1,
+              p: 0,
+              height: '100vh',
               overflowY: 'auto',
               // tell the browser to always leave space for the scrollbar
-              scrollbarGutter: 'stable' 
+              scrollbarGutter: 'stable'
             }}
           >
             <Routes>
