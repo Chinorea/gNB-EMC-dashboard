@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
@@ -17,48 +17,16 @@ import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
 
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import TopBar from './nodedashboardassets/TopBar';
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; 
 
 export default function NodeDashboard({
   statuses,
   attrs,
   loadingMap,
-  setAppLoading,
   secondaryIps = {},
-  manetConnectionMap = {}
+  manetConnectionMap = {},
+  handleToggle
 }) {
   const { ip } = useParams();
-  const [showRebootAlert, setShowRebootAlert] = useState(false);
-
-  const handleToggle = async () => {
-    setAppLoading(ip, true);
-    try {
-      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // run 'setupv2' when currently OFF, else 'stop' to stop
-          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
-        })
-      });
-      // special 504 handler → stop loading, then show alert
-      if (res.status === 504) {
-        setAppLoading(ip, false);
-        setShowRebootAlert(true);
-        return;
-      }
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const json = await res.json();
-      console.log('setup_script success', json);
-      setAppLoading(ip, false);
-    } catch (e) {
-      console.error('setup_script error', e);
-      setAppLoading(ip, false);
-    }
-  };
 
   const nodeStatus = statuses[ip] || 'UNREACHABLE';
   const data       = attrs[ip];
@@ -111,12 +79,6 @@ export default function NodeDashboard({
 
   return (
     <>
-      {/* move Dialog to top‐level so it’s never clipped */}
-      <RebootAlertDialog
-        open={showRebootAlert} // Pass the state variable
-        onClose={() => setShowRebootAlert(false)}
-      />
-
       <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
 
@@ -126,7 +88,7 @@ export default function NodeDashboard({
           loading={loading}
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
-          handleToggle={handleToggle}
+          handleToggle={() => handleToggle(ip)} // Pass ip to handleToggle
         />
 
         {/* span full viewport width */}

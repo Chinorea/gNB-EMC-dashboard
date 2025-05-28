@@ -51,7 +51,8 @@ export default function HomePage({
   secondaryIps = {},
   nodeNames = {},
   setSecondaryIps,
-  setNodeNames
+  setNodeNames,
+  handleToggle // Added handleToggle prop
 }) {
   const [ip, setIp] = useState('');
   const navigate = useNavigate();
@@ -133,11 +134,9 @@ export default function HomePage({
                 sx={{
                   position: 'relative',  // allow absolute children
                   cursor: 'pointer',
-                  pt: 1,
+                  pt: 2.5,
                   pb: 0,
                   px: 1,
-                  display: 'flex',
-                  alignItems: 'center',
                   transition: 'transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'scale(1.01)',
@@ -146,26 +145,27 @@ export default function HomePage({
                   backgroundColor: bg, // Apply the background color here
                 }}
               >
-                <CardContent>
-                  <Grid container justifyContent="space-between" alignItems="center" sx={{ width: '100%' }}>
-                    <Grid item sx={{ flexGrow: 1 }}>
-                      <Typography
-                        variant="body1"
-                        align="left"
-                        sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
-                      >
-                        {nodeNames[node] || node}
-                      </Typography>
-                    </Grid>
-                    <Grid item>
-                      <IconButton
-                        size="small"
-                        onClick={e => { e.stopPropagation(); openEdit(node); }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Grid>
-                  </Grid>
+                <IconButton
+                  size="small"
+                  onClick={e => { e.stopPropagation(); openEdit(node); }}
+                  sx={{
+                    position: 'absolute',
+                    top: 19, // theme.spacing(1)
+                    right: 15, // theme.spacing(1)
+                    zIndex: 1
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <CardContent sx={{ pt: 0 }}> {/* Added sx={{ pt: 0 }} */}
+                  {/* Grid system removed, IconButton moved out, Typography for title is now direct child */}
+                  <Typography
+                    variant="body1"
+                    align="left"
+                    sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
+                  >
+                    {nodeNames[node] || node}
+                  </Typography>
                   <Typography
                     variant="body2"
                     sx={{ mt: 0, mb: 0, fontSize: '1.1rem', fontWeight: 'bold' }}
@@ -190,6 +190,34 @@ export default function HomePage({
                   >
                     Manet IP: {secondaryIps[node] && secondaryIps[node] !== '' ? secondaryIps[node] : 'Not Configured'}
                   </Typography>
+                  {(status === 'RUNNING' || status === 'OFF') && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); handleToggle(node); }}
+                      disabled={loadingMap?.[node]}
+                      sx={{
+                        position: 'absolute', // Changed to absolute
+                        top: 19, // Position at the bottom
+                        right: 50,  // Position at the right
+                        backgroundColor:
+                          status === 'RUNNING' ? '#612a1f' : '#40613d',
+                        color: 'white',
+                        '&:hover': {
+                          backgroundColor:
+                            status === 'RUNNING'
+                              ? '#4d1914'
+                              : '#335e2e',
+                        },
+                      }}
+                    >
+                      {loadingMap?.[node]
+                        ? 'Working…'
+                        : status === 'RUNNING'
+                        ? 'Turn Off'
+                        : 'Turn On'}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </Grid>
