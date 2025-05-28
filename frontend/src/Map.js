@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // pull in all three images from the Leaflet package
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl     from 'leaflet/dist/images/marker-shadow.png';
-
 // tell Leaflet to use these instead of its hard-coded paths
 L.Icon.Default.mergeOptions({
   iconRetinaUrl,
@@ -15,86 +14,110 @@ L.Icon.Default.mergeOptions({
 
 
 export default function MapView({
-  initialCenter = [1.3362, 103.7542],
-  initialZoom   = 13,
-  markers = [],                // <-- e.g. [ [51.5, -0.09], [51.51, -0.1] ]
+  initialCenter = [0,0],
+  initialZoom   = 2,
+  markers       = [],
+  linkQualityMatrix = []
 }) {
-  const mapEl    = useRef(null);
-  const mapRef   = useRef(null);
+  const mapEl = useRef(null);
+  const map   = useRef(null);
+  const layer = useRef(null);
 
-
+  // initialize map once
   useEffect(() => {
-    // Only do this on first mount:
-    mapRef.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
+    map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(mapRef.current);
+      maxZoom:19, attribution:'© OSM'
+    }).addTo(map.current);
+    return () => map.current.remove();
+  }, []);
 
-    L.marker(initialCenter).addTo(mapRef.current).bindPopup('Node ID: ').bindTooltip(
-    "Current location:",
-    {
-      permanent: true,    // stays visible
-      direction: "top",   // can be 'top', 'bottom', 'right', 'left'
-      offset: [0, -10],   // tweak tooltip position if you like
-      className: "my-marker-label"
+    // helper: map SNR (-10..+30) → color (red→green)
+  function qualityToColor(q) {
+    const min = -10, max = 30;
+    // clamp:
+    const clamped = Math.max(min, Math.min(max, q));
+    const pct = (clamped - min) / (max - min);   // 0..1
+    const hue = pct * 120;                       // 0=red, 120=green
+    return `hsl(${hue},100%,50%)`;
+  }
+
+
+  // rebuild circles + polyline whenever `markers` changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    // clear old layer
+    if (layer.current) {
+      map.current.removeLayer(layer.current);
+    }
+
+    //console.log('markers changed', markers);
+
+    const group = L.layerGroup();
+    markers.forEach(marker => {
+      const lat = parseFloat(marker.latitude)  || 0;
+      const lng = parseFloat(marker.longitude) || 0;
+      const { latitude, longitude, ...rest } = marker;
+      const label = "Id: " + String(marker.id || marker.label || '');
+      const popupHtml = Object
+        .entries(rest)
+        .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
+        .join('<br>');
+      const circle = L.circle([lat, lng], {
+        radius:      10,
+        color:       '#007bff',
+        fillColor:   '#30a9de',
+        fillOpacity: 0.4
+      }).addTo(group)
+        .bindPopup(popupHtml)
+        .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
     });
 
-    // // 3) add two static markers
-    // L.marker([1.3362, 103.7432])
-    //   .bindPopup('Static Marker 1')
-    //   .addTo(mapRef.current);
-    //
-    // L.marker([1.3372, 103.7452])
-    //   .bindPopup('Static Marker 2')
-    //   .addTo(mapRef.current);
-    //
-    // L.circle([1.3372, 103.7452], {
-    // color: 'red',
-    // fillColor: '#f03',
-    // fillOpacity: 0.5,
-    // radius: 50
-    // }).bindPopup('Area 1').addTo(mapRef.current);
+    // draw SNR‐colored links
+    const coords = markers.map(m => [
+      parseFloat(m.latitude)||0,
+      parseFloat(m.longitude)||0
+    ]);
 
-        // add each marker from the array
-    // markers.forEach(({ coords, popup, label }) => {
-    //   const m = L.marker(coords).addTo(mapRef.current);
-    //   if (popup) m.bindPopup(popup);
-    //   if (label) {
-    //     m.bindTooltip(label, {
-    //       permanent: true,
-    //       direction: 'top',
-    //       offset: [0, -10],
-    //       className: 'my-marker-label'
-    //     });
+    // for (let i = 0; i < coords.length; i++) {
+    //   for (let j = i+1; j < coords.length; j++) {
+    //     const q = linkQualityMatrix[i]?.[j];
+    //     if (typeof q === 'number') {
+    //       L.polyline([ coords[i], coords[j] ], {
+    //         color:  qualityToColor(q),
+    //         weight: 3
+    //       }).addTo(group);
+    //     }
     //   }
-    // });
+    // }
 
-        // add each circle
-    markers.forEach(({ coords, popup, label }) => {
-      const circle = L.circle(coords, {
-        radius:     50,          // 50 meters
-        color:      '#007bff',   // stroke color
-        fillColor:  '#30a9de',   // fill color
-        fillOpacity: 0.4,
-      }).addTo(mapRef.current);
+    console.log(linkQualityMatrix);
 
-      if (popup) circle.bindPopup(popup);
-      if (label) {
-        circle.bindTooltip(label, {
-          permanent: true,
-          direction: 'top',
-          offset:    [0, -10],
-          className: 'my-circle-label'
-        });
+    for (let i = 0; i < markers.length; i++) {
+      for (let j = i + 1; j < markers.length; j++) {
+        const id1 = markers[i].id, id2 = markers[j].id;
+        const q = linkQualityMatrix[id1]?.[id2];
+        if (typeof q === 'number') {
+          L.polyline([coords[i], coords[j]], {
+            color: qualityToColor(q),
+            weight: 3
+          }).addTo(group);
+        }
       }
-    });
+    }
 
 
 
+    group.addTo(map.current);
+    layer.current = group;
+  }, [markers]);
 
-    return () => mapRef.current.remove();
-  }, []);              // ← empty array!  run only once
 
-  return <div ref={mapEl} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div
+      ref={mapEl}
+      style={{ width: '100%', height: '100%' }}
+    />
+  );
 }

@@ -25,27 +25,13 @@ import ClearIcon from '@mui/icons-material/Clear';
 import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
-import MapView from './Map'
-import 'leaflet/dist/leaflet.css'
-import L from 'leaflet';
+import MapView from './Map';
+import 'leaflet/dist/leaflet.css';
+import buildStaticsLQM from './utils';
 import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Import RebootAlertDialog
 
 const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
 
-// define your data
-const myMarkers = [
-  {
-    coords: [1.3362, 103.7432],
-    popup:  "This is marker #1",
-    label:  "M1"
-  },
-  {
-    coords: [1.3372, 103.7452],
-    popup:  "Second location",
-    label:  "M2"
-  },
-  // … more …
-];
 function Sidebar({
   nodes,
   setNodes,
@@ -303,6 +289,66 @@ export default function App() {
   });
   const [manetConnectionMap, setManetConnectionMap] = useState({});
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // For global reboot alert
+  const [linkQualityMatrix, setLQM]   = useState([]);
+  const [mapMarkers, setMapMarkers] = useState([]);
+
+  ///— DUMMY TEST DATA —///
+const DUMMY_MARKERS = [
+  {
+    "nodeInfos": [
+    {
+      "id": 20,
+      "ip": "192.168.1.4",
+      "latitude": "1.33631",
+      "longitude": "103.744179",
+      "altitude": 15.2,
+      "resourceRatio": 0.73
+    },
+    {
+      "id": 25,
+      "ip": "192.168.1.5",
+      "latitude": "1.32631",
+      "longitude": "103.745179",
+      "altitude": 22.7,
+      "resourceRatio": 0.45
+    },
+    {
+      "id": 32,
+      "ip": "192.168.1.6",
+      "latitude": "1.33531",
+      "longitude": "103.746179",
+      "altitude":  8.9,
+      "resourceRatio": 0.88
+    },
+    {
+      "id": 36,
+      "ip": "192.168.1.7",
+      "latitude": "1.33731",
+      "longitude": "103.743179",
+      "altitude": 31.4,
+      "resourceRatio": 0.52
+    },
+    {
+      "id": 38,
+      "ip": "192.168.1.8",
+      "latitude": "1.33831",
+      "longitude": "103.740179",
+      "altitude": 19.6,
+      "resourceRatio": 0.29
+    }
+    ]}
+];
+
+// if you originally had 3×3 matrix, extend to 6×6.  Here we just
+// fill new rows/cols with some made-up SNRs between −10 and +30:
+const DUMMY_LQM = [
+  [-10,  12,   5,  30,  -3],  // node 0 to 0–4
+  [ 12, -10,  25,   0,  15],  // node 1
+  [  5,  25, -10,  10,  20],  // node 2
+  [ 30,   0,  10, -10,   8],  // node 3
+  [ -3,  15,  20,   8, -10],  // node 4
+];
+
 
   // whenever nodes changes, persist it
   useEffect(() => {
@@ -374,14 +420,63 @@ export default function App() {
       });
     };
 
+    const API_URL = 'http://192.168.2.141/status';
+    const loadMapData = () => {
+      fetch(API_URL)
+        .then(r => r.json())
+        .then(data => {
+
+          // actual implementation of manet map data call
+          const infos = Array.isArray(data.nodeInfos)
+            ? data.nodeInfos
+            : Object.values(data.nodeInfos||{});
+          const enriched = infos.map(info => ({
+            ...info,
+            batteryLevel:
+              data.selfId === info.id
+                ? (data.batteryLevel * 10).toFixed(2) + '%'
+                : 'unknown'
+          }));
+          const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+          console.log(selfNodeInfo);
+          setMapMarkers(enriched);
+          const rawLQM = Array.isArray(data.linkQuality)
+              ? data.linkQuality
+              :[]
+          const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          setLQM(fullLQM);
+
+          //for dummy testing
+          // setMapMarkers(DUMMY_MARKERS);
+          // setLQM(DUMMY_LQM);
+          //
+          // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
+          //                       ? DUMMY_MARKERS[0].nodeInfos
+          //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
+          //
+          // const rawLQM = Array.isArray(DUMMY_LQM)
+          //     ? DUMMY_LQM
+          //     :[]
+          //
+          // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          // setMapMarkers(infos);
+          // setLQM(fullLQM);
+
+        })
+        .catch(console.error);
+    };
+
+    loadMapData();
     updateAttrs();
     updateNodeStatus();
 
     const id1      = setInterval(updateAttrs, 1000);          // fast loop
     const idStatus = setInterval(updateNodeStatus, 3000);    // slower loop
+    const idMap = setInterval(loadMapData, 5000000);  // or whatever polling interval you like
     return () => {
       clearInterval(id1);
       clearInterval(idStatus);
+      clearInterval(idMap);
     };
   }, [nodes]);
 
@@ -447,7 +542,7 @@ export default function App() {
 
           <Box 
             component="main" 
-            sx={{ 
+            sx={{ display: 'flex', 
               flexGrow: 1, 
               p: 0, 
               height: '100vh', 
@@ -492,10 +587,11 @@ export default function App() {
                 path="/map"
                 element={
                   <MapView
-                    initialCenter={[1.3362, 103.7442]}  // e.g. New York City
+                    initialCenter={[1.3362, 103.7442]}
                     initialZoom={18}
-                    markers={myMarkers}
-                  />
+                    markers={mapMarkers}
+                    linkQualityMatrix ={linkQualityMatrix}
+                />
                 }
               />
             </Routes>
