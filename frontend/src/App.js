@@ -439,6 +439,7 @@ const DUMMY_LQM = [
           }));
           const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
           console.log(selfNodeInfo);
+          console.log(secondaryIps);
           setMapMarkers(enriched);
           const rawLQM = Array.isArray(data.linkQuality)
               ? data.linkQuality
@@ -472,7 +473,7 @@ const DUMMY_LQM = [
 
     const id1      = setInterval(updateAttrs, 1000);          // fast loop
     const idStatus = setInterval(updateNodeStatus, 3000);    // slower loop
-    const idMap = setInterval(loadMapData, 5000000);  // or whatever polling interval you like
+    const idMap = setInterval(loadMapData, 60000);  // 1 min
     return () => {
       clearInterval(id1);
       clearInterval(idStatus);
