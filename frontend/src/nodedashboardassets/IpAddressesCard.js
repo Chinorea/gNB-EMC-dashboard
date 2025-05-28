@@ -95,7 +95,7 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
             flexDirection: 'column',
             flex: 1,
             transition: 'transform 0.1s ease-in-out, background-color 0.2s ease-in-out',
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#fafafa',
             '&:hover': {
               transform: 'scale(1.01)',
               boxShadow: 6,
