@@ -17,10 +17,36 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 
+function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
+  if (nodeId === undefined || nodeId === null) return null;
+
+  return (
+    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box>
+        <Typography color="textSecondary" variant="subtitle2">
+          Node ID
+        </Typography>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          {String(nodeId)}
+        </Typography>
+      </Box>
+      {nodeStatus === 'OFF' && !isLoading && (
+        <IconButton
+          onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
+          size="small"
+        >
+          <EditIcon />
+        </IconButton>
+      )}
+    </Box>
+  );
+}
+
 export default function HomePage({
   nodes,
   setNodes,
   statuses,
+  attrs = {},  // <-- default to an empty object
   loadingMap,
   secondaryIps = {},
   nodeNames = {},
@@ -67,10 +93,16 @@ export default function HomePage({
     setIp('');
   };
 
+  const coreConnectionMap = {
+    UP:        'Connected',
+    DOWN:      'Disconnected',
+    UNSTABLE:  'Unstable'
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Node Dashboard
+        Node Overview
       </Typography>
 
       <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
@@ -79,64 +111,85 @@ export default function HomePage({
             ? 'INITIALISING'
             : statuses[node] || 'UNREACHABLE';
 
-          let bg, label;
+          let bg;
           switch (status) {
             case 'RUNNING':
-              bg = '#d4edda'; label = 'Broadcasting'; break;
+              bg = '#d4edda'; // green
+              break;
             case 'INITIALISING':
-              bg = '#fff3cd'; label = 'Initialising'; break;
+              bg = '#fff3cd'; // yellow
+              break;
             case 'OFF':
-              bg = '#f8d7da'; label = 'Not Broadcasting'; break;
-            default:
-              bg = 'lightgrey'; label = 'No Connection';
+              bg = '#f8d7da'; // red
+              break;
+            default: // UNREACHABLE
+              bg = 'lightgrey';
           }
 
-          const displayName = nodeNames[node] || node;
-          const marnetIp    = secondaryIps[node] || 'Not configured';
-
           return (
-            <Grid item xs={12} sm={6} md={6} key={node} sx={{ display: 'flex' }}>
+            <Grid item key={node} sx={{ flex: '0 0 45%', maxWidth: '45%' }}>
               <Card
                 onClick={() => navigate(`/node/${encodeURIComponent(node)}`)}
                 sx={{
+                  position: 'relative',  // allow absolute children
                   cursor: 'pointer',
-                  flex: 1,
-                  p: 2,
-                  backgroundColor: bg,
-                  minWidth: '350px',
+                  pt: 1,
+                  pb: 0,
+                  px: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.01)',
+                    boxShadow: 6
+                  },
+                  backgroundColor: bg, // Apply the background color here
                 }}
               >
-                <CardContent sx={{ textAlign: 'left', pt: 0.5, px: 1, pb: 0.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
+                <CardContent>
+                  <Grid container justifyContent="space-between" alignItems="center" sx={{ width: '100%' }}>
+                    <Grid item sx={{ flexGrow: 1 }}>
                       <Typography
-                        variant="h5"
-                        sx={{ fontWeight: 'bold', mb: 0, fontSize: '1.4rem', lineHeight: 1.2 }}
+                        variant="body1"
+                        align="left"
+                        sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
                       >
-                        {displayName}
+                        {nodeNames[node] || node}
                       </Typography>
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 'bold', mt: 0, fontSize: '1.2rem', lineHeight: 1 }}
+                    </Grid>
+                    <Grid item>
+                      <IconButton
+                        size="small"
+                        onClick={e => { e.stopPropagation(); openEdit(node); }}
                       >
-                        {label}
-                      </Typography>
-                    </Box>
-                    <IconButton
-                      size="small"
-                      onClick={e => { e.stopPropagation(); openEdit(node); }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                  <Box sx={{ mt: 1, mb: 0.2, display: 'flex', flexDirection: 'column', gap: 0.01 }}>
-                    <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>
-                      {`IP: ${node}`}
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>
-                      {`Marnet IP: ${marnetIp}`}
-                    </Typography>
-                  </Box>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 0, mb: 0, fontSize: '1.1rem', fontWeight: 'bold' }}
+                  >
+                    {loadingMap[node]
+                      ? 'Initialising'
+                      : statuses[node] === 'RUNNING'
+                      ? 'Broadcasting'
+                      : statuses[node] === 'OFF'
+                      ? 'Not Broadcasting'
+                      : 'Disconnected'}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 3, mb: 0, fontSize: '1.1rem' }}
+                  >
+                    IP: {node}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 0, mb: 0, fontSize: '1.1rem' }}
+                  >
+                    Manet IP: {secondaryIps[node] && secondaryIps[node] !== '' ? secondaryIps[node] : 'Not Configured'}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>

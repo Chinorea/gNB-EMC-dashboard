@@ -2,22 +2,14 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
-  Container, Grid, Card, CardContent, Button, Box
+  Container, Grid, Box
 } from '@mui/material';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
 import NodeIdCard from './nodedashboardassets/NodeIdCard';
 import PciCard from './nodedashboardassets/PciCard';
 import TimeCard from './nodedashboardassets/TimeCard';
 import DateCard from './nodedashboardassets/DateCard';
 import CoreConnectionCard from './nodedashboardassets/CoreConnectionCard';
+import ManetConnectionCard from './nodedashboardassets/ManetConnectionCard';
 import CpuUsageChartCard from './nodedashboardassets/CpuUsageChartCard';
 import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
@@ -31,7 +23,9 @@ export default function NodeDashboard({
   statuses,
   attrs,
   loadingMap,
-  setAppLoading
+  setAppLoading,
+  secondaryIps = {},
+  manetConnectionMap = {}
 }) {
   const { ip } = useParams();
   const [showRebootAlert, setShowRebootAlert] = useState(false);
@@ -147,7 +141,6 @@ export default function NodeDashboard({
             spacing={3}
             justifyContent="center"
             alignItems="center"
-            /* Layer 1 – centered */
           >
             <NodeIdCard
               nodeId={data.gnb_id}
@@ -158,6 +151,7 @@ export default function NodeDashboard({
             <TimeCard boardTime={data.board_time} isLoading={loading} />
             <DateCard boardDate={data.board_date} isLoading={loading} />
             <CoreConnectionCard coreConnectionStatus={coreConnectionMap[data.core_connection]} isLoading={loading} />
+            <ManetConnectionCard manetStatus={manetConnectionMap[ip]} isLoading={loading} />
           </Grid>
 
           {/* Layer 2 – Usage Charts */}
@@ -189,6 +183,7 @@ export default function NodeDashboard({
               data={data}
               isLoading={loading}
               nodeStatus={nodeStatus}
+              secondaryIp={secondaryIps[ip]}
             />
             <DiskOverviewCard data={data} isLoading={loading} />
           </Grid>

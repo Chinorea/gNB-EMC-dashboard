@@ -216,11 +216,11 @@ function Sidebar({
                               color="textSecondary"
                               sx={{ fontSize: '0.9rem' }}
                             >
-                              Marnet: {secondaryIps[n] || 'Not configured'}
+                              MANET: {secondaryIps[n] || 'Not configured'}
                             </Typography>
                           </>
                         )
-                        : `Marnet: ${secondaryIps[n] || 'Not configured'}`
+                        : `MANET: ${secondaryIps[n] || 'Not configured'}`
                     }
                     secondaryTypographyProps={{
                       component: 'div',
@@ -294,14 +294,36 @@ export default function App() {
   const [loadingMap, setLoadingMap] = useState({});
   const [secondaryIps, setSecondaryIps] = useState({});
   const [nodeNames, setNodeNames]       = useState({});
+  const [manetConnectionMap, setManetConnectionMap] = useState({});
 
   // whenever nodes changes, persist it
   useEffect(() => {
     localStorage.setItem("nodes", JSON.stringify(nodes));
   }, [nodes]);
+
+  // --- ping MANET connections centrally ---
+  useEffect(() => {
+    const updateManet = () => {
+      Object.entries(secondaryIps).forEach(([ip, manetIp]) => {
+        if (!manetIp) {
+          // no secondary IP configured
+          setManetConnectionMap(prev => ({ ...prev, [ip]: 'Not Configured' }));
+        } else {
+          // check connectivity
+          fetch(`http://${manetIp}`, { method: 'HEAD', mode: 'no-cors' })
+            .then(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Connected' })))
+            .catch(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Disconnected' })));
+        }
+      });
+    };
+    updateManet();
+    const id = setInterval(updateManet, 3000);
+    return () => clearInterval(id);
+  }, [secondaryIps]);
+  
   useEffect(() => {
     if (!nodes.length) return;
-
+    
     // fetch all the "fast" attrs (no Raptor)
     const updateAttrs = () => {
       nodes.forEach(ip => {
@@ -382,6 +404,7 @@ export default function App() {
                     nodes={nodes}
                     setNodes={setNodes}
                     statuses={nodeStatuses}
+                    attrs={nodeAttrs}
                     loadingMap={loadingMap}
                     secondaryIps={secondaryIps}
                     nodeNames={nodeNames}
@@ -398,6 +421,8 @@ export default function App() {
                     attrs={ nodeAttrs }
                     loadingMap={loadingMap}
                     setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
+                    secondaryIps={secondaryIps}
+                    manetConnectionMap={manetConnectionMap}
                   />
                 }
               />
