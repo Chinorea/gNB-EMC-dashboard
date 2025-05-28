@@ -24,7 +24,8 @@ export default function NodeDashboard({
   loadingMap,
   secondaryIps = {},
   manetConnectionMap = {},
-  handleToggle
+  handleToggle,
+  nodeNames // Add nodeNames to props
 }) {
   const { ip } = useParams();
 
@@ -88,7 +89,8 @@ export default function NodeDashboard({
           loading={loading}
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
-          handleToggle={() => handleToggle(ip)} // Pass ip to handleToggle
+          handleToggle={() => handleToggle(ip)}
+          nodeName={nodeNames[ip]} // Pass the specific nodeName for this IP
         />
 
         {/* span full viewport width */}

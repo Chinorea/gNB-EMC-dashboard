@@ -481,10 +481,10 @@ export default function App() {
                     statuses={nodeStatuses}
                     attrs={nodeAttrs}
                     loadingMap={loadingMap}
-                    // setAppLoading prop is removed as handleToggle now handles loading state
                     secondaryIps={secondaryIps}
                     manetConnectionMap={manetConnectionMap}
                     handleToggle={handleToggle}
+                    nodeNames={nodeNames} // Pass nodeNames to NodeDashboard
                   />
                 }
               />
