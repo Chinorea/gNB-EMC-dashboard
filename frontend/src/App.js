@@ -395,6 +395,8 @@ const DUMMY_LQM = [
                 ? (data.batteryLevel * 10).toFixed(2) + '%'
                 : 'unknown'
           }));
+          const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+          console.log(selfNodeInfo);
           setMapMarkers(enriched);
           const rawLQM = Array.isArray(data.linkQuality)
               ? data.linkQuality
