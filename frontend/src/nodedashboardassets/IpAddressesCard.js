@@ -33,7 +33,7 @@ const modalStyle = {
   borderRadius: 2,
 };
 
-export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
+export default function IpAddressesCard({ data, isLoading, nodeStatus, secondaryIp }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editDialog, setEditDialog] = useState({ open: false, field: '', currentValue: '', label: '' });
   const [editValue, setEditValue] = useState('');
@@ -95,7 +95,7 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
             flexDirection: 'column',
             flex: 1,
             transition: 'transform 0.1s ease-in-out, background-color 0.2s ease-in-out',
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#fafafa',
             '&:hover': {
               transform: 'scale(1.01)',
               boxShadow: 6,
@@ -158,6 +158,20 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus }) {
                     fontSize: '1.5rem'
                     }}>
                     {data.ip_address_ngu}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4} sm={4}>
+                  <Typography
+                    color="textSecondary"
+                    gutterBottom variant="subtitle2"
+                    sx={{fontSize: '1.0rem'}}>
+                    MANET IP
+                  </Typography>
+                  <Typography variant="body1" sx={{
+                    fontWeight: 'bold',
+                    fontSize: '1.5rem'
+                    }}>
+                    {secondaryIp || 'Not Configured'}
                   </Typography>
                 </Grid>
               </Grid>

@@ -1,32 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
+  CssBaseline,
   Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemSecondaryAction,
-  ListItemButton,
-  ListItemText,
-  ListSubheader,
+  Box,
   TextField,
   Button,
   Divider,
-  IconButton,
+  List,
+  ListItem, // Added ListItem
+  ListItemButton,
+  ListItemIcon, // Added ListItemIcon
+  ListItemText,
+  ListSubheader,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Typography
+  IconButton,
+  Typography,
+  ListItemSecondaryAction // Added ListItemSecondaryAction
 } from '@mui/material';
+import EditIcon  from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Import RebootAlertDialog
 
 const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
 
@@ -38,7 +40,9 @@ function Sidebar({
   secondaryIps,
   setSecondaryIps,
   nodeNames,
-  setNodeNames
+  setNodeNames,
+  onToggleDark,
+  darkMode
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -163,7 +167,7 @@ function Sidebar({
                 {/* left‐aligned cog */}
                 <ListItemIcon sx={{ pl: 1 }}>
                   <IconButton onClick={() => openEdit(n)} size="small">
-                    <SettingsIcon fontSize="small" />
+                    <EditIcon fontSize="small" />
                   </IconButton>
                 </ListItemIcon>
 
@@ -199,11 +203,11 @@ function Sidebar({
                               color="textSecondary"
                               sx={{ fontSize: '0.9rem' }}
                             >
-                              Marnet: {secondaryIps[n] || 'Not configured'}
+                              MANET: {secondaryIps[n] || 'Not configured'}
                             </Typography>
                           </>
                         )
-                        : `Marnet: ${secondaryIps[n] || 'Not configured'}`
+                        : `MANET: ${secondaryIps[n] || 'Not configured'}`
                     }
                     secondaryTypographyProps={{
                       component: 'div',
@@ -269,14 +273,22 @@ function Sidebar({
 export default function App() {
   // load saved nodes from localStorage (or start empty)
   const [nodes, setNodes]         = useState(() => {
-    const saved = localStorage.getItem("nodes");
+    const saved = localStorage.getItem('nodes');
     return saved ? JSON.parse(saved) : [];
   });
   const [nodeStatuses, setStatuses] = useState({});
   const [nodeAttrs, setNodeAttrs]   = useState({});
   const [loadingMap, setLoadingMap] = useState({});
-  const [secondaryIps, setSecondaryIps] = useState({});
-  const [nodeNames, setNodeNames]       = useState({});
+  const [secondaryIps, setSecondaryIps] = useState(() => {
+    const saved = localStorage.getItem('secondaryIps');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [nodeNames, setNodeNames]       = useState(() => {
+    const saved = localStorage.getItem('nodeNames');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [manetConnectionMap, setManetConnectionMap] = useState({});
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // For global reboot alert
   const [linkQualityMatrix, setLQM]   = useState([]);
   const [mapMarkers, setMapMarkers] = useState([]);
 
@@ -340,11 +352,41 @@ const DUMMY_LQM = [
 
   // whenever nodes changes, persist it
   useEffect(() => {
-    localStorage.setItem("nodes", JSON.stringify(nodes));
+    localStorage.setItem('nodes', JSON.stringify(nodes));
   }, [nodes]);
+
+  useEffect(() => {
+    localStorage.setItem('secondaryIps', JSON.stringify(secondaryIps));
+  }, [secondaryIps]);
+
+  useEffect(() => {
+    localStorage.setItem('nodeNames', JSON.stringify(nodeNames));
+  }, [nodeNames]);
+
+
+  // --- ping MANET connections centrally ---
+  useEffect(() => {
+    const updateManet = () => {
+      Object.entries(secondaryIps).forEach(([ip, manetIp]) => {
+        if (!manetIp) {
+          // no secondary IP configured
+          setManetConnectionMap(prev => ({ ...prev, [ip]: 'Not Configured' }));
+        } else {
+          // check connectivity
+          fetch(`http://${manetIp}`, { method: 'HEAD', mode: 'no-cors' })
+            .then(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Connected' })))
+            .catch(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Disconnected' })));
+        }
+      });
+    };
+    updateManet();
+    const id = setInterval(updateManet, 3000);
+    return () => clearInterval(id);
+  }, [secondaryIps]);
+  
   useEffect(() => {
     if (!nodes.length) return;
-
+    
     // fetch all the "fast" attrs (no Raptor)
     const updateAttrs = () => {
       nodes.forEach(ip => {
@@ -438,61 +480,125 @@ const DUMMY_LQM = [
       clearInterval(idMap);
     };
   }, [nodes]);
-  return (
-    <BrowserRouter>
-      <Box sx={{ display: 'flex' , height: '100vh'}}>
-        <Sidebar
-          nodes={nodes}
-          setNodes={setNodes}
-          statuses={nodeStatuses}
-          loadingMap={loadingMap}
-          secondaryIps={secondaryIps}
-          setSecondaryIps={setSecondaryIps}
-          nodeNames={nodeNames}
-          setNodeNames={setNodeNames}
-        />
 
-        <Box component="main" sx={{ display: 'flex', flexGrow: 1, p: 0 , height: '100vh'}}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <HomePage
-                  nodes={nodes}
-                  setNodes={setNodes}
-                  statuses={nodeStatuses}
-                  loadingMap={loadingMap}
-                  nodeNames={nodeNames}
+  const handleToggle = async (ip) => {
+    setLoadingMap(prev => ({ ...prev, [ip]: true }));
+    const nodeStatus = nodeStatuses[ip] || 'UNREACHABLE';
+
+    try {
+      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
+        })
+      });
+
+      if (res.status === 504) {
+        setLoadingMap(prev => ({ ...prev, [ip]: false }));
+        setRebootAlertNodeIp(ip); // Set the IP for the reboot alert
+        return;
+      }
+      if (!res.ok) {
+        let errorMsg = `HTTP ${res.status}`;
+        try {
+          const err = await res.json();
+          errorMsg = err.error || errorMsg;
+        } catch (e) {
+          // If response is not JSON, use the original error
+        }
+        throw new Error(errorMsg);
+      }
+      const json = await res.json();
+      console.log(`setup_script success for ${ip}`, json);
+      // After a successful toggle, you might want to immediately re-fetch status for this node
+      // or wait for the regular polling interval. For quicker feedback:
+      // fetchNodeData(ip); // Assuming fetchNodeData is the function that gets status/attrs
+    } catch (e) {
+      console.error(`setup_script error for ${ip}`, e);
+      // Potentially show an error message to the user via another state
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [ip]: false }));
+    }
+  };
+
+  return (
+    <>
+      <CssBaseline />
+      <RebootAlertDialog open={!!rebootAlertNodeIp} onClose={() => setRebootAlertNodeIp(null)} />
+      <BrowserRouter>
+        <Box sx={{ display: 'flex', height: '100vh' }}>
+          <Sidebar
+            nodes={nodes}
+            setNodes={setNodes}
+            statuses={nodeStatuses}
+            loadingMap={loadingMap}
+            secondaryIps={secondaryIps}
+            setSecondaryIps={setSecondaryIps}
+            nodeNames={nodeNames}
+            setNodeNames={setNodeNames}
+            // Pass handleToggle to Sidebar if needed, e.g. for a global toggle button there
+            // handleToggle={handleToggle} 
+          />
+
+          <Box 
+            component="main" 
+            sx={{ display: 'flex', 
+              flexGrow: 1, 
+              p: 0, 
+              height: '100vh', 
+              overflowY: 'auto',
+              // tell the browser to always leave space for the scrollbar
+              scrollbarGutter: 'stable' 
+            }}
+          >
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <HomePage
+                    nodes={nodes}
+                    setNodes={setNodes}
+                    statuses={nodeStatuses}
+                    attrs={nodeAttrs}
+                    loadingMap={loadingMap}
+                    secondaryIps={secondaryIps}
+                    nodeNames={nodeNames}
+                    setSecondaryIps={setSecondaryIps} // Keep if HomePage edits these
+                    setNodeNames={setNodeNames}     // Keep if HomePage edits these
+                    handleToggle={handleToggle}
+                  />
+                }
+              />
+              <Route
+                path="/node/:ip"
+                element={
+                  <NodeDashboard
+                    statuses={nodeStatuses}
+                    attrs={nodeAttrs}
+                    loadingMap={loadingMap}
+                    secondaryIps={secondaryIps}
+                    manetConnectionMap={manetConnectionMap}
+                    handleToggle={handleToggle}
+                    nodeNames={nodeNames} // Pass nodeNames to NodeDashboard
+                  />
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <MapView
+                    initialCenter={[1.3362, 103.7442]}
+                    initialZoom={18}
+                    markers={mapMarkers}
+                    linkQualityMatrix ={linkQualityMatrix}
                 />
-              }
-            />
-            <Route
-              path="/node/:ip"
-              element={
-                <NodeDashboard
-                  nodes={nodes}
-                  setNodes={setNodes}
-                  statuses={nodeStatuses}
-                  attrs={ nodeAttrs }
-                  loadingMap={loadingMap}
-                  setAppLoading={(ip, v) => setLoadingMap(prev => ({ ...prev, [ip]: v }))}
-                />
-              }
-            />
-            <Route
-              path="/map"
-              element={
-                <MapView
-                  initialCenter={[1.3362, 103.7442]}
-                  initialZoom={18}
-                  markers={mapMarkers}
-                  linkQualityMatrix ={linkQualityMatrix}
-                />
-              }
-            />
-          </Routes>
+                }
+              />
+            </Routes>
+          </Box>
         </Box>
-      </Box>
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }

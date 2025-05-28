@@ -1,23 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
   CssBaseline, AppBar, Toolbar, Typography,
-  Container, Grid, Card, CardContent, Button, Box
+  Container, Grid, Box
 } from '@mui/material';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
 import NodeIdCard from './nodedashboardassets/NodeIdCard';
 import PciCard from './nodedashboardassets/PciCard';
 import TimeCard from './nodedashboardassets/TimeCard';
 import DateCard from './nodedashboardassets/DateCard';
 import CoreConnectionCard from './nodedashboardassets/CoreConnectionCard';
+import ManetConnectionCard from './nodedashboardassets/ManetConnectionCard';
 import CpuUsageChartCard from './nodedashboardassets/CpuUsageChartCard';
 import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
@@ -25,46 +17,17 @@ import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
 
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import TopBar from './nodedashboardassets/TopBar';
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; 
 
 export default function NodeDashboard({
   statuses,
   attrs,
   loadingMap,
-  setAppLoading
+  secondaryIps = {},
+  manetConnectionMap = {},
+  handleToggle,
+  nodeNames // Add nodeNames to props
 }) {
   const { ip } = useParams();
-  const [showRebootAlert, setShowRebootAlert] = useState(false);
-
-  const handleToggle = async () => {
-    setAppLoading(ip, true);
-    try {
-      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // run 'setupv2' when currently OFF, else 'stop' to stop
-          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
-        })
-      });
-      // special 504 handler → stop loading, then show alert
-      if (res.status === 504) {
-        setAppLoading(ip, false);
-        setShowRebootAlert(true);
-        return;
-      }
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const json = await res.json();
-      console.log('setup_script success', json);
-      setAppLoading(ip, false);
-    } catch (e) {
-      console.error('setup_script error', e);
-      setAppLoading(ip, false);
-    }
-  };
 
   const nodeStatus = statuses[ip] || 'UNREACHABLE';
   const data       = attrs[ip];
@@ -117,12 +80,6 @@ export default function NodeDashboard({
 
   return (
     <>
-      {/* move Dialog to top‐level so it’s never clipped */}
-      <RebootAlertDialog
-        open={showRebootAlert} // Pass the state variable
-        onClose={() => setShowRebootAlert(false)}
-      />
-
       <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
 
@@ -132,7 +89,8 @@ export default function NodeDashboard({
           loading={loading}
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
-          handleToggle={handleToggle}
+          handleToggle={() => handleToggle(ip)}
+          nodeName={nodeNames[ip]} // Pass the specific nodeName for this IP
         />
 
         {/* span full viewport width */}
@@ -147,7 +105,6 @@ export default function NodeDashboard({
             spacing={3}
             justifyContent="center"
             alignItems="center"
-            /* Layer 1 – centered */
           >
             <NodeIdCard
               nodeId={data.gnb_id}
@@ -158,6 +115,7 @@ export default function NodeDashboard({
             <TimeCard boardTime={data.board_time} isLoading={loading} />
             <DateCard boardDate={data.board_date} isLoading={loading} />
             <CoreConnectionCard coreConnectionStatus={coreConnectionMap[data.core_connection]} isLoading={loading} />
+            <ManetConnectionCard manetStatus={manetConnectionMap[ip]} isLoading={loading} />
           </Grid>
 
           {/* Layer 2 – Usage Charts */}
@@ -189,6 +147,7 @@ export default function NodeDashboard({
               data={data}
               isLoading={loading}
               nodeStatus={nodeStatus}
+              secondaryIp={secondaryIps[ip]}
             />
             <DiskOverviewCard data={data} isLoading={loading} />
           </Grid>
