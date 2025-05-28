@@ -24,8 +24,9 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
-import MapView from './Map'
-import 'leaflet/dist/leaflet.css'
+import MapView from './Map';
+import 'leaflet/dist/leaflet.css';
+import buildStaticsLQM from './utils';
 
 const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
 
@@ -279,6 +280,64 @@ export default function App() {
   const [linkQualityMatrix, setLQM]   = useState([]);
   const [mapMarkers, setMapMarkers] = useState([]);
 
+  ///— DUMMY TEST DATA —///
+const DUMMY_MARKERS = [
+  {
+    "nodeInfos": [
+    {
+      "id": 20,
+      "ip": "192.168.1.4",
+      "latitude": "1.33631",
+      "longitude": "103.744179",
+      "altitude": 15.2,
+      "resourceRatio": 0.73
+    },
+    {
+      "id": 25,
+      "ip": "192.168.1.5",
+      "latitude": "1.32631",
+      "longitude": "103.745179",
+      "altitude": 22.7,
+      "resourceRatio": 0.45
+    },
+    {
+      "id": 32,
+      "ip": "192.168.1.6",
+      "latitude": "1.33531",
+      "longitude": "103.746179",
+      "altitude":  8.9,
+      "resourceRatio": 0.88
+    },
+    {
+      "id": 36,
+      "ip": "192.168.1.7",
+      "latitude": "1.33731",
+      "longitude": "103.743179",
+      "altitude": 31.4,
+      "resourceRatio": 0.52
+    },
+    {
+      "id": 38,
+      "ip": "192.168.1.8",
+      "latitude": "1.33831",
+      "longitude": "103.740179",
+      "altitude": 19.6,
+      "resourceRatio": 0.29
+    }
+    ]}
+];
+
+// if you originally had 3×3 matrix, extend to 6×6.  Here we just
+// fill new rows/cols with some made-up SNRs between −10 and +30:
+const DUMMY_LQM = [
+  [-10,  12,   5,  30,  -3],  // node 0 to 0–4
+  [ 12, -10,  25,   0,  15],  // node 1
+  [  5,  25, -10,  10,  20],  // node 2
+  [ 30,   0,  10, -10,   8],  // node 3
+  [ -3,  15,  20,   8, -10],  // node 4
+];
+
+
   // whenever nodes changes, persist it
   useEffect(() => {
     localStorage.setItem("nodes", JSON.stringify(nodes));
@@ -324,6 +383,8 @@ export default function App() {
       fetch(API_URL)
         .then(r => r.json())
         .then(data => {
+
+          // actual implementation of manet map data call
           const infos = Array.isArray(data.nodeInfos)
             ? data.nodeInfos
             : Object.values(data.nodeInfos||{});
@@ -335,13 +396,28 @@ export default function App() {
                 : 'unknown'
           }));
           setMapMarkers(enriched);
-          console.log("testing output")
-          console.log(enriched);
-          console.log(data.linkQuality)
-          setLQM(Array.isArray(data.linkQuality)
-            ? data.linkQuality
-            : []
-          );
+          const rawLQM = Array.isArray(data.linkQuality)
+              ? data.linkQuality
+              :[]
+          const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          setLQM(fullLQM);
+
+          //for dummy testing
+          // setMapMarkers(DUMMY_MARKERS);
+          // setLQM(DUMMY_LQM);
+          //
+          // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
+          //                       ? DUMMY_MARKERS[0].nodeInfos
+          //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
+          //
+          // const rawLQM = Array.isArray(DUMMY_LQM)
+          //     ? DUMMY_LQM
+          //     :[]
+          //
+          // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          // setMapMarkers(infos);
+          // setLQM(fullLQM);
+
         })
         .catch(console.error);
     };
@@ -359,8 +435,6 @@ export default function App() {
       clearInterval(idMap);
     };
   }, [nodes]);
-
-  console.log(mapMarkers);
   return (
     <BrowserRouter>
       <Box sx={{ display: 'flex' , height: '100vh'}}>
@@ -409,7 +483,7 @@ export default function App() {
                   initialCenter={[1.3362, 103.7442]}
                   initialZoom={18}
                   markers={mapMarkers}
-                  //linkQualityMatrix ={linkQualityMatrix}
+                  linkQualityMatrix ={linkQualityMatrix}
                 />
               }
             />

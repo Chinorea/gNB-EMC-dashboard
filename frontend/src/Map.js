@@ -17,7 +17,7 @@ export default function MapView({
   initialCenter = [0,0],
   initialZoom   = 2,
   markers       = [],
-  //linkQualityMatrix = []
+  linkQualityMatrix = []
 }) {
   const mapEl = useRef(null);
   const map   = useRef(null);
@@ -52,47 +52,62 @@ export default function MapView({
       map.current.removeLayer(layer.current);
     }
 
+    //console.log('markers changed', markers);
+
     const group = L.layerGroup();
-    console.log('markers', markers);
     markers.forEach(marker => {
       const lat = parseFloat(marker.latitude)  || 0;
       const lng = parseFloat(marker.longitude) || 0;
-
+      const { latitude, longitude, ...rest } = marker;
+      const label = String(marker.id || marker.label || '');
+      const popupHtml = Object
+        .entries(rest)
+        .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
+        .join('<br>');
       const circle = L.circle([lat, lng], {
         radius:      10,
         color:       '#007bff',
         fillColor:   '#30a9de',
         fillOpacity: 0.4
-      }).addTo(group);
-
-      const { latitude, longitude, ...rest } = marker;
-
-      const popupHtml = Object
-        .entries(rest)
-        .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
-        .join('<br>');
-      circle.bindPopup(popupHtml);
-
-
-      const label = String(marker.id || marker.label || '');
-      circle.bindTooltip(label, {
-        permanent: true,
-        direction: 'top',
-        offset:    [0, -10]
-      });
+      }).addTo(group)
+        .bindPopup(popupHtml)
+        .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
     });
 
-    if (markers.length > 1) {
-      const coords = markers.map(marker => [
-        parseFloat(marker.latitude)  || 0,
-        parseFloat(marker.longitude) || 0
-      ]);
-      L.polyline(coords, {
-        color:     'green',
-        weight:    3,
-        dashArray: '4,6'
-      }).addTo(group);
+    // draw SNR‐colored links
+    const coords = markers.map(m => [
+      parseFloat(m.latitude)||0,
+      parseFloat(m.longitude)||0
+    ]);
+
+    // for (let i = 0; i < coords.length; i++) {
+    //   for (let j = i+1; j < coords.length; j++) {
+    //     const q = linkQualityMatrix[i]?.[j];
+    //     if (typeof q === 'number') {
+    //       L.polyline([ coords[i], coords[j] ], {
+    //         color:  qualityToColor(q),
+    //         weight: 3
+    //       }).addTo(group);
+    //     }
+    //   }
+    // }
+
+    console.log(linkQualityMatrix);
+
+    for (let i = 0; i < markers.length; i++) {
+      for (let j = i + 1; j < markers.length; j++) {
+        const id1 = markers[i].id, id2 = markers[j].id;
+        const q = linkQualityMatrix[id1]?.[id2];
+        if (typeof q === 'number') {
+          L.polyline([coords[i], coords[j]], {
+            color: qualityToColor(q),
+            weight: 3
+          }).addTo(group);
+        }
+      }
     }
+
+
 
     group.addTo(map.current);
     layer.current = group;
