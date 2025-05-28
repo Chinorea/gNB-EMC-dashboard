@@ -276,10 +276,8 @@ export default function App() {
   const [loadingMap, setLoadingMap] = useState({});
   const [secondaryIps, setSecondaryIps] = useState({});
   const [nodeNames, setNodeNames]       = useState({});
-
+  const [linkQualityMatrix, setLQM]   = useState([]);
   const [mapMarkers, setMapMarkers] = useState([]);
-  const API_URL = 'http://192.168.2.142/status';
-
 
   // whenever nodes changes, persist it
   useEffect(() => {
@@ -321,6 +319,7 @@ export default function App() {
       });
     };
 
+    const API_URL = 'http://192.168.2.141/status';
     const loadMapData = () => {
       fetch(API_URL)
         .then(r => r.json())
@@ -328,7 +327,21 @@ export default function App() {
           const infos = Array.isArray(data.nodeInfos)
             ? data.nodeInfos
             : Object.values(data.nodeInfos||{});
-          setMapMarkers(infos);
+          const enriched = infos.map(info => ({
+            ...info,
+            batteryLevel:
+              data.selfId === info.id
+                ? (data.batteryLevel * 10).toFixed(2) + '%'
+                : 'unknown'
+          }));
+          setMapMarkers(enriched);
+          console.log("testing output")
+          console.log(enriched);
+          console.log(data.linkQuality)
+          setLQM(Array.isArray(data.linkQuality)
+            ? data.linkQuality
+            : []
+          );
         })
         .catch(console.error);
     };
@@ -347,6 +360,7 @@ export default function App() {
     };
   }, [nodes]);
 
+  console.log(mapMarkers);
   return (
     <BrowserRouter>
       <Box sx={{ display: 'flex' , height: '100vh'}}>
@@ -393,8 +407,9 @@ export default function App() {
               element={
                 <MapView
                   initialCenter={[1.3362, 103.7442]}
-                  initialZoom={19}
+                  initialZoom={18}
                   markers={mapMarkers}
+                  //linkQualityMatrix ={linkQualityMatrix}
                 />
               }
             />
