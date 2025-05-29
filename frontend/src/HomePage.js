@@ -46,7 +46,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
 }
 
 export default function HomePage({
-  nodes, // Array of IP strings, can be used for iteration order
+  nodes = [], // Array of IP strings, can be used for iteration order
   nodeInfoList, // Array of NodeInfo objects - THIS IS THE NEW PRIMARY DATA SOURCE
   // setNodes, // Keep if HomePage still needs to modify the raw nodes list (e.g. via its own add/remove)
   // setNodeNames, // Keep if HomePage directly edits names (passed up to App.js)
