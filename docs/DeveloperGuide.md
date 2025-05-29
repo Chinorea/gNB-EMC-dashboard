@@ -278,3 +278,7 @@ A classic client–server model:
 - **Mui**: https://mui.com/  
 - **Flask**: https://flask.palletsprojects.com/  
 - **Recharts**: https://recharts.org/
+
+---
+
+[Architecture Diagram](./puml files/architecture.puml)
