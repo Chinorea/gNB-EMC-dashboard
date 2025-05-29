@@ -373,9 +373,21 @@ const DUMMY_LQM = [
           setManetConnectionMap(prev => ({ ...prev, [ip]: 'Not Configured' }));
         } else {
           // check connectivity
-          fetch(`http://${manetIp}`, { method: 'HEAD', mode: 'no-cors' })
-            .then(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Connected' })))
-            .catch(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Disconnected' })));
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second timeout
+
+          fetch(`http://${manetIp}`, { method: 'HEAD', mode: 'no-cors', signal: controller.signal })
+            .then(() => {
+              clearTimeout(timeoutId);
+              setManetConnectionMap(prev => ({ ...prev, [ip]: 'Connected' }));
+            })
+            .catch((error) => {
+              clearTimeout(timeoutId);
+              // if (error.name === 'AbortError') {
+              //   console.log(`MANET ping timed out for ${manetIp}`);
+              // }
+              setManetConnectionMap(prev => ({ ...prev, [ip]: 'Disconnected' }));
+            });
         }
       });
     };
@@ -390,12 +402,22 @@ const DUMMY_LQM = [
     // fetch all the "fast" attrs (no Raptor)
     const updateAttrs = () => {
       nodes.forEach(ip => {
-        fetch(`http://${ip}:5000/api/attributes`)
-          .then(res => res.json())
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second timeout
+
+        fetch(`http://${ip}:5000/api/attributes`, { signal: controller.signal })
+          .then(res => {
+            clearTimeout(timeoutId);
+            return res.json();
+          })
           .then(data => {
             setNodeAttrs(prev => ({ ...prev, [ip]: data }));
           })
-          .catch(() => {
+          .catch((error) => {
+            clearTimeout(timeoutId);
+            // if (error.name === 'AbortError') {
+            //   console.log(`Attributes fetch timed out for ${ip}`);
+            // }
             /* handle unreachable basic attrs if you like */
           });
       });
@@ -404,17 +426,35 @@ const DUMMY_LQM = [
     // fetch node (raptor) status separately
     const updateNodeStatus = () => {
       nodes.forEach(ip => {
-        // if this node is being toggled, show INITIALISING
-        if (loadingMap[ip]) {
-          setStatuses(prev => ({ ...prev, [ip]: "INITIALISING" }));
-          return;
-        }
-        fetch(`http://${ip}:5000/api/node_status`)
-          .then(res => res.json())
-          .then(({ node_status }) => {
-            setStatuses(prev => ({ ...prev, [ip]: node_status }));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second timeout
+
+        fetch(`http://${ip}:5000/api/node_status`, { signal: controller.signal })
+          .then(res => {
+            clearTimeout(timeoutId); // Clear timeout if fetch completes or errors before timeout
+            if (!res.ok) { // Check for HTTP errors like 404, 500 etc.
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
           })
-          .catch(() => {
+          .then(({ node_status }) => {
+            // API call succeeded
+            if (loadingMap[ip]) {
+              // If it's loading (e.g., toggling), show INITIALISING
+              setStatuses(prev => ({ ...prev, [ip]: "INITIALISING" }));
+            } else {
+              // Otherwise, show the actual status from the node
+              setStatuses(prev => ({ ...prev, [ip]: node_status }));
+            }
+          })
+          .catch((error) => { // Catches fetch errors (network error) and errors thrown above
+            clearTimeout(timeoutId); // Ensure timeout is cleared on error too
+            // if (error.name === 'AbortError') {
+            //   console.log(`Node status fetch timed out for ${ip}`);
+            // } else {
+            //   console.error(`Failed to fetch node status for ${ip}:`, error); // Optional: for debugging
+            // }
+            // API call failed or other error, so node is UNREACHABLE
             setStatuses(prev => ({ ...prev, [ip]: "UNREACHABLE" }));
           });
       });
@@ -427,41 +467,41 @@ const DUMMY_LQM = [
         .then(data => {
 
           // actual implementation of manet map data call
-          const infos = Array.isArray(data.nodeInfos)
-            ? data.nodeInfos
-            : Object.values(data.nodeInfos||{});
-          const enriched = infos.map(info => ({
-            ...info,
-            batteryLevel:
-              data.selfId === info.id
-                ? (data.batteryLevel * 10).toFixed(2) + '%'
-                : 'unknown'
-          }));
-          const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-          console.log(selfNodeInfo);
-          console.log(secondaryIps);
-          setMapMarkers(enriched);
-          const rawLQM = Array.isArray(data.linkQuality)
-              ? data.linkQuality
-              :[]
-          const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-          setLQM(fullLQM);
+          // const infos = Array.isArray(data.nodeInfos)
+          //   ? data.nodeInfos
+          //   : Object.values(data.nodeInfos||{});
+          // const enriched = infos.map(info => ({
+          //   ...info,
+          //   batteryLevel:
+          //     data.selfId === info.id
+          //       ? (data.batteryLevel * 10).toFixed(2) + '%'
+          //       : 'unknown'
+          // }));
+          // const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+          // console.log(selfNodeInfo);
+          // console.log(secondaryIps);
+          // setMapMarkers(enriched);
+          // const rawLQM = Array.isArray(data.linkQuality)
+          //     ? data.linkQuality
+          //     :[]
+          // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          // setLQM(fullLQM);
 
           //for dummy testing
-          // setMapMarkers(DUMMY_MARKERS);
-          // setLQM(DUMMY_LQM);
-          //
-          // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
-          //                       ? DUMMY_MARKERS[0].nodeInfos
-          //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
-          //
-          // const rawLQM = Array.isArray(DUMMY_LQM)
-          //     ? DUMMY_LQM
-          //     :[]
-          //
-          // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-          // setMapMarkers(infos);
-          // setLQM(fullLQM);
+          setMapMarkers(DUMMY_MARKERS);
+          setLQM(DUMMY_LQM);
+          
+          const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
+                                ? DUMMY_MARKERS[0].nodeInfos
+                                : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
+          
+          const rawLQM = Array.isArray(DUMMY_LQM)
+              ? DUMMY_LQM
+              :[]
+          
+          const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+          setMapMarkers(infos);
+          setLQM(fullLQM);
 
         })
         .catch(console.error);
