@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react'; // Removed useState as edit dialog is removed
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -6,16 +6,12 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton,
-  TextField,
+  IconButton, // Keep for other potential uses, though EditIcon is removed from cards
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  // Dialog, DialogTitle, DialogContent, DialogActions removed as dialog is removed
   Box
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
+import EditIcon from '@mui/icons-material/Edit'; // Re-added EditIcon import
 
 // NodeIdBox seems to be a remnant or a specific component not directly using the main node loop data.
 // If it were to be used with NodeInfo, it would need similar adjustments.
@@ -33,6 +29,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
           {String(nodeId)}
         </Typography>
       </Box>
+      {/* This EditIcon is part of NodeIdBox, which seems separate. Leaving as is. */}
       {nodeStatus === 'OFF' && !isLoading && (
         <IconButton
           onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
@@ -46,69 +43,16 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
 }
 
 export default function HomePage({
-  nodes, // Array of IP strings, can be used for iteration order
-  nodeInfoList, // Array of NodeInfo objects - THIS IS THE NEW PRIMARY DATA SOURCE
-  // setNodes, // Keep if HomePage still needs to modify the raw nodes list (e.g. via its own add/remove)
-  // setNodeNames, // Keep if HomePage directly edits names (passed up to App.js)
-  // setSecondaryIps, // Keep if HomePage directly edits MANET IPs (passed up to App.js)
+  // nodes prop removed
+  nodeInfoList, // Array of NodeInfo objects - THIS IS THE PRIMARY DATA SOURCE
   handleToggle,
-
-  // Props for the edit dialog, if HomePage still manages its own edit dialog
-  // These would typically be passed from App.js if the dialog logic is shared or lifted up
-  // For now, assuming HomePage might have its own instance of this dialog logic
-  // If Sidebar is the sole editor, these might not be needed here.
-  setNodes: appSetNodes, // Renaming to avoid conflict if HomePage has its own 'setNodes'
-  setNodeNames: appSetNodeNames,
-  setSecondaryIps: appSetSecondaryIps,
+  // Removed props related to App.js setters for edit dialog:
+  // appSetNodes, appSetNodeNames, appSetSecondaryIps
 }) {
   const navigate = useNavigate();
 
-  // Edit dialog state - if HomePage has its own edit functionality
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTargetIp, setEditTargetIp] = useState(''); // IP of the node being edited
-  const [editName, setEditName] = useState('');
-  const [editPrimaryIp, setEditPrimaryIp] = useState(''); // Current primary IP in dialog
-  const [editManetIp, setEditManetIp] = useState('');   // Current MANET IP in dialog
-
-  const openEditDialog = (nodeIp) => {
-    const nodeInfo = nodeInfoList.find(ni => ni.ip === nodeIp);
-    if (nodeInfo) {
-      setEditTargetIp(nodeIp);
-      setEditPrimaryIp(nodeIp); // Initialize with current IP
-      setEditName(nodeInfo.nodeName || '');
-      setEditManetIp(nodeInfo.manetIp || '');
-      setEditOpen(true);
-    }
-  };
-
-  const saveEditDialog = (e) => {
-    e.preventDefault();
-    // Call the setters passed from App.js to update the central state
-    if (editPrimaryIp !== editTargetIp) {
-      // IP has changed - this is a more complex operation.
-      // App.js needs to handle removing the old IP and adding the new one,
-      // along with transferring settings.
-      // For now, we assume App.js handles this when `nodes` array changes.
-      appSetNodes(prevNodes => prevNodes.map(n => n === editTargetIp ? editPrimaryIp : n));
-      // Update names and MANET IPs for the new IP, removing the old.
-      appSetNodeNames(prev => {
-        const { [editTargetIp]: _, ...rest } = prev;
-        return { ...rest, [editPrimaryIp]: editName };
-      });
-      appSetSecondaryIps(prev => {
-        const { [editTargetIp]: _, ...rest } = prev;
-        return { ...rest, [editPrimaryIp]: editManetIp };
-      });
-    } else {
-      // IP is the same, just update name and MANET IP
-      appSetNodeNames(prev => ({ ...prev, [editTargetIp]: editName }));
-      appSetSecondaryIps(prev => ({ ...prev, [editTargetIp]: editManetIp }));
-    }
-    setEditOpen(false);
-  };
-
-  // addNode function seems to be missing from original HomePage, but if needed, it would use appSetNodes.
-  // const addNode = () => { ... };
+  // Edit dialog state and functions (openEditDialog, saveEditDialog) removed.
+  // Editing is now handled by the Sidebar.
 
   const coreConnectionMap = {
     UP:        'Connected',
@@ -123,26 +67,26 @@ export default function HomePage({
       </Typography>
 
       <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
-        {/* Iterate using the `nodes` array to maintain order, but get data from `nodeInfoList` */}
-        {nodes.map(nodeIp => {
-          const nodeInfo = nodeInfoList.find(ni => ni.ip === nodeIp);
+        {/* Iterate directly over nodeInfoList */}
+        {Array.isArray(nodeInfoList) && nodeInfoList.map(nodeInfo => {
+          // nodeIp is now nodeInfo.ip
+          const nodeIp = nodeInfo.ip;
 
-          // If nodeInfo is not found for a given IP (e.g., during a state update delay),
-          // provide a fallback or skip rendering to prevent errors.
           if (!nodeInfo) {
-            // Optionally, render a placeholder or return null
-            // console.warn(`NodeInfo not found for IP: ${nodeIp}`);
+            // This case should ideally not happen if nodeInfoList is well-formed
+            // and contains objects. If nodeIp was derived from a separate list,
+            // this check was more critical. Now, we map directly over objects.
             return (
-              <Grid item key={nodeIp} sx={{ flex: '0 0 45%', maxWidth: '45%' }}>
+              <Grid item key={`loading-${Math.random()}`} sx={{ flex: '0 0 45%', maxWidth: '45%' }}>
                 <Card sx={{ backgroundColor: 'lightgrey', p: 2}}>
-                  <Typography>Loading data for {nodeIp}...</Typography>
+                  <Typography>Loading data for an unknown node...</Typography>
                 </Card>
               </Grid>
             );
           }
 
-          const status = nodeInfo.isToggleLoading
-            ? 'INITIALISING'
+          const status = nodeInfo.isInitializing // Changed from isToggleLoading
+            ? 'INITIALIZING'
             : nodeInfo.status || 'UNREACHABLE';
 
           let bg;
@@ -150,7 +94,7 @@ export default function HomePage({
             case 'RUNNING':
               bg = '#d4edda'; // green
               break;
-            case 'INITIALISING':
+            case 'INITIALIZING': // Corrected from INITIALISING
               bg = '#fff3cd'; // yellow
               break;
             case 'OFF':
@@ -165,7 +109,7 @@ export default function HomePage({
               <Card
                 onClick={() => navigate(`/node/${encodeURIComponent(nodeIp)}`)}
                 sx={{
-                  position: 'relative',  // allow absolute children
+                  position: 'relative',
                   cursor: 'pointer',
                   pt: 2.5,
                   pb: 0,
@@ -175,41 +119,29 @@ export default function HomePage({
                     transform: 'scale(1.01)',
                     boxShadow: 6
                   },
-                  backgroundColor: bg, // Apply the background color here
+                  backgroundColor: bg,
                 }}
               >
-                <IconButton
-                  size="small"
-                  onClick={e => { e.stopPropagation(); openEditDialog(nodeIp); }} // Use openEditDialog
-                  sx={{
-                    position: 'absolute',
-                    top: 20, // theme.spacing(1)
-                    right: 15, // theme.spacing(1)
-                    zIndex: 1
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <CardContent sx={{ pt: 0 }}> {/* Added sx={{ pt: 0 }} */}
-                  {/* Grid system removed, IconButton moved out, Typography for title is now direct child */}
+                {/* EditIcon IconButton removed from here. Editing is via Sidebar. */}
+                <CardContent sx={{ pt: 0 }}>
                   <Typography
                     variant="body1"
                     align="left"
                     sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
                   >
-                    {nodeInfo.nodeName || nodeIp} {/* Use nodeInfo.nodeName */}
+                    {nodeInfo.nodeName || `Node ${nodeIp}`} {/* Ensure consistent default naming */}
                   </Typography>
                   <Typography
                     variant="body2"
                     sx={{ mt: 0, mb: 0, fontSize: '1.1rem', fontWeight: 'bold' }}
                   >
-                    {nodeInfo.isToggleLoading
-                      ? 'Initialising'
+                    {nodeInfo.isInitializing // Changed from isToggleLoading
+                      ? 'Initializing...' // Changed from Initialising
                       : nodeInfo.status === 'RUNNING'
                       ? 'Broadcasting'
                       : nodeInfo.status === 'OFF'
                       ? 'Not Broadcasting'
-                      : 'Disconnected'} {/* Use nodeInfo.status and nodeInfo.isToggleLoading */}
+                      : 'Disconnected'}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -221,28 +153,28 @@ export default function HomePage({
                     variant="body2"
                     sx={{ mt: 0, mb: 0, fontSize: '1.1rem' }}
                   >
-                    Manet IP: {nodeInfo.manetIp && nodeInfo.manetIp !== '' ? nodeInfo.manetIp : 'Not Configured'} {/* Use nodeInfo.manetIp */}
+                    Manet IP: {nodeInfo.manetIp && nodeInfo.manetIp !== '' ? nodeInfo.manetIp : 'Not Configured'}
                   </Typography>
                   {(() => {
-                    const underlyingNodeStatus = nodeInfo.status; // Use nodeInfo.status
+                    const underlyingNodeStatus = nodeInfo.status;
 
-                    if (nodeInfo.isToggleLoading || underlyingNodeStatus === 'RUNNING' || underlyingNodeStatus === 'OFF') {
+                    if (nodeInfo.isInitializing || underlyingNodeStatus === 'RUNNING' || underlyingNodeStatus === 'OFF') { // Changed from isToggleLoading
                       return (
                         <Button
                           variant="contained"
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); handleToggle(nodeIp); }}
-                          disabled={nodeInfo.isToggleLoading} // Use nodeInfo.isToggleLoading
+                          onClick={(e) => { e.stopPropagation(); handleToggle(nodeIp, underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start'); }} // Pass action to handleToggle
+                          disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                           sx={{
                             position: 'absolute',
                             top: 20,
-                            right: 50,
+                            right: 15, // Adjusted right to account for removed edit icon
                             backgroundColor:
                               // Color based on the underlying node status, persists during load
                               underlyingNodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
                             color: 'white',
                             // Hover effect only when not disabled (i.e., not loading)
-                            '&:hover': !nodeInfo.isToggleLoading ? {
+                            '&:hover': !nodeInfo.isInitializing ? { // Changed from isToggleLoading
                               backgroundColor:
                                 underlyingNodeStatus === 'RUNNING'
                                   ? '#4d1914'
@@ -250,7 +182,7 @@ export default function HomePage({
                             } : {},
                         }}
                         >
-                          {nodeInfo.isToggleLoading // Use nodeInfo.isToggleLoading
+                          {nodeInfo.isInitializing // Changed from isToggleLoading
                             ? 'Working…'
                             : underlyingNodeStatus === 'RUNNING'
                               ? 'Turn Off'
@@ -258,7 +190,7 @@ export default function HomePage({
                         </Button>
                       );
                     }
-                    return null; // Return null if button should not be shown
+                    return null;
                   })()}
                 </CardContent>
               </Card>
@@ -267,40 +199,7 @@ export default function HomePage({
         })}
       </Grid>
 
-      {/* Edit Node Settings Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <Box component="form" onSubmit={saveEditDialog}> {/* Use saveEditDialog */}
-          <DialogTitle>Edit Node Settings</DialogTitle>
-          <DialogContent>
-            <TextField
-              margin="dense"
-              label="Node Name"
-              fullWidth
-              value={editName}
-              onChange={e => setEditName(e.target.value)}
-            />
-            <TextField
-              margin="dense"
-              label="Node IP"
-              fullWidth
-              value={editPrimaryIp} // Use editPrimaryIp
-              onChange={e => setEditPrimaryIp(e.target.value)} // Use setEditPrimaryIp
-            />
-            <TextField
-              margin="dense"
-              label="Marnet IP"
-              fullWidth
-              value={editManetIp} // Use editManetIp
-              onChange={e => setEditManetIp(e.target.value)} // Use setEditManetIp
-              sx={{ mt: 2 }}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained">Save</Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+      {/* Edit Node Settings Dialog and its related Box component removed */}
     </Container>
   );
 }
