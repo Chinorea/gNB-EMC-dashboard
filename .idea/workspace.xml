@@ -7,6 +7,24 @@
     <list default="true" id="7506f6a3-bbfe-47d0-aa5a-55b430f098c8" name="Changes" comment="">
       <change afterPath="$PROJECT_DIR$/docs/UserGuide.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/Flask-2.2.5-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/Flask-2.2.5-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/Flask_Cors-3.0.10-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/Flask_Cors-3.0.10-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/Jinja2-3.1.3-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/Jinja2-3.1.3-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/MarkupSafe-2.1.5-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/MarkupSafe-2.1.5-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/Werkzeug-2.2.3-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/Werkzeug-2.2.3-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/blinker-1.9.0-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/blinker-1.9.0-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/click-8.1.8-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/click-8.1.8-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/colorama-0.4.6-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/colorama-0.4.6-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/importlib_metadata-4.13.0-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/importlib_metadata-4.13.0-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/itsdangerous-2.1.2-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/itsdangerous-2.1.2-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/six-1.16.0-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/six-1.16.0-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/flask_pkgs/zipp-3.21.0-py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/flask_pkgs/zipp-3.21.0-py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/pexpect_pkgs/pexpect-4.9.0-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/pexpect_pkgs/pexpect-4.9.0-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dependencies/pexpect_pkgs/ptyprocess-0.7.0-py2.py3-none-any.whl" beforeDir="false" afterPath="$PROJECT_DIR$/dependencies/pexpect_pkgs/ptyprocess-0.7.0-py2.py3-none-any.whl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/utils.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +55,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "On__Board__Logic",
+    "git-widget-placeholder": "Merging branch-Ethan",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/Intern/Documents/GitHub/gNB-EMC-dashboard",
     "node.js.detected.package.eslint": "true",
