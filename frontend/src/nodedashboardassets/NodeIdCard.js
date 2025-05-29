@@ -109,7 +109,7 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
               variant="subtitle2"
               sx={{ fontSize: '1.2rem', mb: 1 }}
             >
-              Node ID
+              Node ID (Configuration)
             </Typography>
             <Typography
               variant="h5"
@@ -181,6 +181,11 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
             variant="outlined"
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleEditSave();
+              }
+            }}
             InputProps={{ sx: { fontSize: '1.2rem' } }}
           />
         </DialogContent>

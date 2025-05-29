@@ -116,7 +116,7 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
               variant="subtitle2"
               sx={{ fontSize: '1.2rem' }}
             >
-              Frequency Overview
+              Frequency Overview (Configuration)
             </Typography>
             <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }}>
               <Grid item xs={4}>
@@ -284,6 +284,11 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
             variant="outlined"
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleEditSave();
+              }
+            }}
             InputProps={{ sx: { fontSize: '1.2rem' } }}
           />
         </DialogContent>

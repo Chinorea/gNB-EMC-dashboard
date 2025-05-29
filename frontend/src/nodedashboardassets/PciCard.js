@@ -35,7 +35,7 @@ const modalStyle = {
 };
 
 export default function PciCard({ pci, isLoading, nodeStatus }) {
-  const label = "PCI";
+  const label = "PCI (Configuration)";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editDialog, setEditDialog] = useState({ open: false, field: '', label: '' });
   const [editValue, setEditValue] = useState('');
@@ -166,6 +166,11 @@ export default function PciCard({ pci, isLoading, nodeStatus }) {
             variant="outlined"
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleEditSave();
+              }
+            }}
             InputProps={{ sx: { fontSize: '1.2rem' } }}
           />
         </DialogContent>

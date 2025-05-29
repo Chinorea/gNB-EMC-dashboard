@@ -113,7 +113,7 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                   variant="subtitle2"
                   sx={{ fontSize: '1.2rem', flexGrow: 1 }}
                 >
-                  IP Addresses
+                  IP Addresses (Configuration)
                 </Typography>
               </Box>
               <Grid container spacing={1} sx={{ mt: 3 }}>
@@ -279,6 +279,11 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
              variant="outlined"
              value={editValue}
              onChange={(e) => setEditValue(e.target.value)}
+             onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleEditSave();
+              }
+            }}
              InputProps={{
               sx: { fontSize: '1.2rem' }  // larger input text
             }}
