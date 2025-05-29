@@ -112,6 +112,15 @@ How to use:
 * The system navigates to a detailed dashboard view for that specific node
 * If a node is unreachable, the system will display a limited view with error indications
 
+#### 3. Node GPS Tracking
+View the current position and any additional information of the attached mesh radio (Manet) with link quality
+
+How to use:
+* Click on the map tab from the sidebar
+* The system navigates to the map overview and plots the position of each mesh location
+* A line signifying link quality will be shown on the map between the mesh (Red: Poor Quality, Green: High Quality)
+* If there is no mesh radio found or connected, there will be no markers or link lines on the map
+
 ### Node Management
 
 ---
