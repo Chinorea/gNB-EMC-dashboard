@@ -449,7 +449,7 @@ const DUMMY_LQM = [
     }
   }, [nodeInfoMap, setRebootAlertNodeIp]); // Added setRebootAlertNodeIp to dependencies
 
-  const nodeInfoList = Object.values(nodeInfoMap);
+  const nodeInfoList = Object.values(nodeInfoMap || {});
 
   return (
     <>
