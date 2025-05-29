@@ -291,6 +291,8 @@ export default function App() {
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // For global reboot alert
   const [linkQualityMatrix, setLQM]   = useState([]);
   const [mapMarkers, setMapMarkers] = useState([]);
+  const [secondaryDataMap, setSecondaryDataMap] = useState({});
+
 
   ///— DUMMY TEST DATA —///
 const DUMMY_MARKERS = [
@@ -349,6 +351,19 @@ const DUMMY_LQM = [
   [ -3,  15,  20,   8, -10],  // node 4
 ];
 
+function saveSelfInfo(primaryIp, info) {
+  console.log(primaryIp, info)
+  setSecondaryIps(prev => {
+    const entry = prev[primaryIp] || { secondaryIp: primaryIp, selfNodeInfo: [] };
+      return {
+        ...prev,
+        [primaryIp]: {
+        secondaryIp: primaryIp,
+        selfNodeInfo: info
+      }
+    };
+  });
+}
 
   // whenever nodes changes, persist it
   useEffect(() => {
@@ -420,16 +435,80 @@ const DUMMY_LQM = [
       });
     };
 
-    const API_URL = 'http://192.168.2.141/status';
-    const loadMapData = () => {
-      fetch(API_URL)
+    // const API_URL = 'http://192.168.2.141/status';
+    // const loadMapData = () => {
+    //   fetch(API_URL)
+    //     .then(r => r.json())
+    //     .then(data => {
+    //
+    //       // actual implementation of manet map data call
+    //       const infos = Array.isArray(data.nodeInfos)
+    //         ? data.nodeInfos
+    //         : Object.values(data.nodeInfos||{});
+    //       const enriched = infos.map(info => ({
+    //         ...info,
+    //         batteryLevel:
+    //           data.selfId === info.id
+    //             ? (data.batteryLevel * 10).toFixed(2) + '%'
+    //             : 'unknown'
+    //       }));
+    //       const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+    //       console.log(selfNodeInfo);
+    //       console.log(secondaryIps);
+    //       setMapMarkers(enriched);
+    //       const rawLQM = Array.isArray(data.linkQuality)
+    //           ? data.linkQuality
+    //           :[]
+    //       const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+    //       setLQM(fullLQM);
+    //
+    //       //for dummy testing
+    //       // setMapMarkers(DUMMY_MARKERS);
+    //       // setLQM(DUMMY_LQM);
+    //       //
+    //       // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
+    //       //                       ? DUMMY_MARKERS[0].nodeInfos
+    //       //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
+    //       //
+    //       // const rawLQM = Array.isArray(DUMMY_LQM)
+    //       //     ? DUMMY_LQM
+    //       //     :[]
+    //       //
+    //       // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
+    //       // setMapMarkers(infos);
+    //       // setLQM(fullLQM);
+    //
+    //     })
+    //     .catch(console.error);
+    // };
+
+  const loadMapData = () => {
+    // build an inverted map: value→key
+    const inverted = Object.fromEntries(
+      Object.entries(secondaryIps)
+            .map(([key, value]) => [value, key])
+    );
+
+    console.log("Inverted map: ",inverted)
+    console.log("Secondary ips: ",secondaryIps)
+
+    // now loop over your secondaryIps array in parallel
+    const ips = Array.isArray(secondaryIps)
+      ? secondaryIps
+      : (secondaryIps && typeof secondaryIps === 'object')
+        ? Object.values(secondaryIps)
+        : [];
+
+    console.log("Manet ips: ",ips)
+    // now map over ips instead of secondaryIps directly
+    const tasks = ips.map(ip => {
+      const url = `http://${ip}/status`;
+      return fetch(url)
         .then(r => r.json())
         .then(data => {
-
-          // actual implementation of manet map data call
           const infos = Array.isArray(data.nodeInfos)
             ? data.nodeInfos
-            : Object.values(data.nodeInfos||{});
+            : Object.values(data.nodeInfos || {});
           const enriched = infos.map(info => ({
             ...info,
             batteryLevel:
@@ -438,34 +517,33 @@ const DUMMY_LQM = [
                 : 'unknown'
           }));
           const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-          console.log(selfNodeInfo);
-          console.log(secondaryIps);
-          setMapMarkers(enriched);
+          const primIp = inverted[ip];
+          console.log("prim Ip: ",primIp);
+          saveSelfInfo(ip, selfNodeInfo);
           const rawLQM = Array.isArray(data.linkQuality)
               ? data.linkQuality
               :[]
           const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
           setLQM(fullLQM);
-
-          //for dummy testing
-          // setMapMarkers(DUMMY_MARKERS);
-          // setLQM(DUMMY_LQM);
-          //
-          // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
-          //                       ? DUMMY_MARKERS[0].nodeInfos
-          //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
-          //
-          // const rawLQM = Array.isArray(DUMMY_LQM)
-          //     ? DUMMY_LQM
-          //     :[]
-          //
-          // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-          // setMapMarkers(infos);
-          // setLQM(fullLQM);
-
+          setMapMarkers(enriched);
+          return { ip, enriched, selfNodeInfo };
         })
-        .catch(console.error);
-    };
+        .catch(err => {
+          console.error(`Failed to fetch ${url}`, err);
+          return { ip, enriched: [], selfNodeInfo: null };
+        });
+    });
+
+  //   // once all are done, stash them by IP
+  //   Promise.all(tasks).then(results => {
+  //     const byIp = results.reduce((acc, { ip, enriched, selfNodeInfo }) => {
+  //       acc[ip] = { enriched, selfNodeInfo };
+  //       return acc;
+  //     }, {});
+  //     setSecondaryDataMap(byIp);
+  //   });
+  };
+
 
     loadMapData();
     updateAttrs();
