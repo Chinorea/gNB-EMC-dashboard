@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CssBaseline,
   Drawer,
@@ -7,9 +7,9 @@ import {
   Button,
   Divider,
   List,
-  ListItem, // Added ListItem
+  ListItem,
   ListItemButton,
-  ListItemIcon, // Added ListItemIcon
+  ListItemIcon,
   ListItemText,
   ListSubheader,
   Dialog,
@@ -18,7 +18,7 @@ import {
   DialogActions,
   IconButton,
   Typography,
-  ListItemSecondaryAction // Added ListItemSecondaryAction
+  ListItemSecondaryAction
 } from '@mui/material';
 import EditIcon  from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -27,22 +27,18 @@ import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
+import NodeInfo from './NodeInfo';
 import buildStaticsLQM from './utils';
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Import RebootAlertDialog
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog';
 
-const drawerWidth = 350;  // increased width to fit "Node: x.x.x.x"
+const drawerWidth = 350;
 
 function Sidebar({
   nodes,
   setNodes,
-  statuses,
-  loadingMap,
-  secondaryIps,
-  setSecondaryIps,
-  nodeNames,
+  nodeInfoMap,
   setNodeNames,
-  onToggleDark,
-  darkMode
+  setSecondaryIps,
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -54,36 +50,47 @@ function Sidebar({
   const addNode = () => {
     if (ip && !nodes.includes(ip)) {
       setNodes(prev => [...prev, ip]);
+      setNodeNames(prev => ({ ...prev, [ip]: '' }));
+      setSecondaryIps(prev => ({ ...prev, [ip]: '' }));
       setIp('');
     }
   };
 
   const removeNode = (ipToRemove) => {
     setNodes(prev => prev.filter(item => item !== ipToRemove));
+    setNodeNames(prev => {
+      const { [ipToRemove]: _, ...rest } = prev;
+      return rest;
+    });
+    setSecondaryIps(prev => {
+      const { [ipToRemove]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const openEdit = (n) => {
+    const nodeInfo = nodeInfoMap[n];
     setEditTarget(n);
     setEditPrimary(n);
-    setEditSecondary(secondaryIps[n] || '');
-    setEditName(nodeNames[n] || '');
+    setEditSecondary(nodeInfo?.manet.ip || ''); // Corrected to nodeInfo.manet.ip
+    setEditName(nodeInfo?.nodeName || '');
     setEditOpen(true);
   };
+
   const saveEdit = () => {
-    // update primary key if renamed
     if (editPrimary !== editTarget) {
       setNodes(prev => prev.map(x => x === editTarget ? editPrimary : x));
-      setSecondaryIps(prev => {
-        const { [editTarget]: _, ...rest } = prev;
-        return { ...rest, [editPrimary]: editSecondary };
-      });
       setNodeNames(prev => {
-        const { [editTarget]: _, ...rest } = prev;
-        return { ...rest, [editPrimary]: editName };
+        const { [editTarget]: oldName, ...rest } = prev;
+        return { ...rest, [editPrimary]: editName || oldName || '' };
+      });
+      setSecondaryIps(prev => {
+        const { [editTarget]: oldManetIp, ...rest } = prev;
+        return { ...rest, [editPrimary]: editSecondary || oldManetIp || '' };
       });
     } else {
-      setSecondaryIps(prev => ({ ...prev, [editTarget]: editSecondary }));
       setNodeNames(prev => ({ ...prev, [editTarget]: editName }));
+      setSecondaryIps(prev => ({ ...prev, [editTarget]: editSecondary }));
     }
     setEditOpen(false);
   };
@@ -137,21 +144,21 @@ function Sidebar({
 
         <List subheader={<ListSubheader>Nodes</ListSubheader>}>
           {nodes.map(n => {
-            const status = loadingMap[n]
-              ? 'INITIALISING'
-              : statuses[n] || 'UNREACHABLE';
+            const nodeInfo = nodeInfoMap[n];
+            const currentStatus = nodeInfo?.status || 'DISCONNECTED'; // Use the new status getter
             let bg;
-            switch (status) {
+            switch (currentStatus) {
               case 'RUNNING':
-                bg = '#d4edda';       // green
+                bg = '#d4edda'; // green
                 break;
-              case 'INITIALISING':
-                bg = '#fff3cd';       // yellow
+              case 'INITIALIZING':
+                bg = '#fff3cd'; // yellow
                 break;
               case 'OFF':
-                bg = '#f8d7da';       // red
+                bg = '#f8d7da'; // red
                 break;
-              default:                // UNREACHABLE
+              case 'DISCONNECTED': // Explicitly handle DISCONNECTED
+              default:
                 bg = 'lightgrey';
             }
 
@@ -160,32 +167,29 @@ function Sidebar({
                 key={n}
                 disablePadding
                 sx={{
-                  width: '100%',           // full width
-                  backgroundColor: bg,     // highlight whole row
+                  width: '100%',
+                  backgroundColor: bg,
                 }}
               >
-                {/* left‐aligned cog */}
                 <ListItemIcon sx={{ pl: 1 }}>
                   <IconButton onClick={() => openEdit(n)} size="small">
                     <EditIcon fontSize="small" />
                   </IconButton>
                 </ListItemIcon>
-
-                {/* main link */}
                 <ListItemButton
                   component={RouterLink}
                   to={`/node/${n}`}
-                  sx={{ flex: 1 }}         // fill available space
+                  sx={{ flex: 1 }}
                 >
                   <ListItemText
-                    primary={ nodeNames[n] || `Node: ${n}` }
+                    primary={nodeInfo?.nodeName || `Node: ${n}`}
                     primaryTypographyProps={{
-                      fontWeight: nodeNames[n] ? 'bold' : 'bold',
-                      variant: nodeNames[n] ? 'body1' : 'body1',
+                      fontWeight: 'bold',
+                      variant: 'body1',
                       fontSize: '1.0rem'
                     }}
                     secondary={
-                      nodeNames[n]
+                      nodeInfo?.nodeName
                         ? (
                           <>
                             <Typography
@@ -196,27 +200,25 @@ function Sidebar({
                             >
                               Node: {n}
                             </Typography>
-                            <br/>
+                            <br />
                             <Typography
                               component="span"
                               variant="body1"
                               color="textSecondary"
                               sx={{ fontSize: '0.9rem' }}
                             >
-                              MANET: {secondaryIps[n] || 'Not configured'}
+                              MANET: {nodeInfo?.manet.ip || 'Not configured'} {/* Corrected to nodeInfo.manet.ip */}
                             </Typography>
                           </>
                         )
-                        : `MANET: ${secondaryIps[n] || 'Not configured'}`
+                        : `MANET: ${nodeInfo?.manet.ip || 'Not configured'}` /* Corrected */
                     }
                     secondaryTypographyProps={{
                       component: 'div',
-                      sx: { mt: nodeNames[n] ? 0 : 0.5, fontSize: '0.9rem' }
+                      sx: { mt: nodeInfo?.nodeName ? 0 : 0.5, fontSize: '0.9rem' }
                     }}
                   />
                 </ListItemButton>
-
-                {/* right‐aligned remove */}
                 <ListItemSecondaryAction>
                   <IconButton onClick={() => removeNode(n)} size="small">
                     <ClearIcon fontSize="small" />
@@ -227,7 +229,7 @@ function Sidebar({
           })}
         </List>
 
-        {/* Edit Node / Marnet IP / Name Dialog */}
+        {/* Edit Node Dialog */}
         <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
           <Box
             component="form"
@@ -251,7 +253,7 @@ function Sidebar({
               />
               <TextField
                 margin="dense"
-                label="Marnet IP"
+                label="Marnet IP" // Typo: Marnet -> MANET
                 fullWidth
                 value={editSecondary}
                 onChange={e => setEditSecondary(e.target.value)}
@@ -271,30 +273,23 @@ function Sidebar({
 }
 
 export default function App() {
-  // load saved nodes from localStorage (or start empty)
-  const [nodes, setNodes]         = useState(() => {
+  const [nodes, setNodes] = useState(() => {
     const saved = localStorage.getItem('nodes');
     return saved ? JSON.parse(saved) : [];
   });
-  const [nodeStatuses, setStatuses] = useState({});
-  const [nodeAttrs, setNodeAttrs]   = useState({});
-  const [loadingMap, setLoadingMap] = useState({});
+  const [nodeNames, setNodeNames] = useState(() => {
+    const saved = localStorage.getItem('nodeNames');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [secondaryIps, setSecondaryIps] = useState(() => {
     const saved = localStorage.getItem('secondaryIps');
     return saved ? JSON.parse(saved) : {};
   });
-  const [nodeNames, setNodeNames]       = useState(() => {
-    const saved = localStorage.getItem('nodeNames');
-    return saved ? JSON.parse(saved) : {};
-  });
-  const [manetConnectionMap, setManetConnectionMap] = useState({});
-  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // For global reboot alert
-  const [linkQualityMatrix, setLQM]   = useState([]);
-  const [mapMarkers, setMapMarkers] = useState([]);
-  const [secondaryDataMap, setSecondaryDataMap] = useState({});
 
+  const [nodeInfoMap, setNodeInfoMap] = useState({});
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
 
-  ///— DUMMY TEST DATA —///
+  const { linkQualityMatrix, mapMarkers } = buildStaticsLQM(nodes, nodeInfoMap);
 const DUMMY_MARKERS = [
   {
     "nodeInfos": [
@@ -341,31 +336,14 @@ const DUMMY_MARKERS = [
     ]}
 ];
 
-// if you originally had 3×3 matrix, extend to 6×6.  Here we just
-// fill new rows/cols with some made-up SNRs between −10 and +30:
 const DUMMY_LQM = [
-  [-10,  12,   5,  30,  -3],  // node 0 to 0–4
-  [ 12, -10,  25,   0,  15],  // node 1
-  [  5,  25, -10,  10,  20],  // node 2
-  [ 30,   0,  10, -10,   8],  // node 3
-  [ -3,  15,  20,   8, -10],  // node 4
+  [-10,  12,   5,  30,  -3],
+  [ 12, -10,  25,   0,  15],
+  [  5,  25, -10,  10,  20],
+  [ 30,   0,  10, -10,   8],
+  [ -3,  15,  20,   8, -10],
 ];
 
-function saveSelfInfo(primaryIp, info) {
-  console.log(primaryIp, info)
-  setSecondaryIps(prev => {
-    const entry = prev[primaryIp] || { secondaryIp: primaryIp, selfNodeInfo: [] };
-      return {
-        ...prev,
-        [primaryIp]: {
-        secondaryIp: primaryIp,
-        selfNodeInfo: info
-      }
-    };
-  });
-}
-
-  // whenever nodes changes, persist it
   useEffect(() => {
     localStorage.setItem('nodes', JSON.stringify(nodes));
   }, [nodes]);
@@ -378,227 +356,100 @@ function saveSelfInfo(primaryIp, info) {
     localStorage.setItem('nodeNames', JSON.stringify(nodeNames));
   }, [nodeNames]);
 
-
-  // --- ping MANET connections centrally ---
+  // Effect to initialize/update nodeInfoMap
   useEffect(() => {
-    const updateManet = () => {
-      Object.entries(secondaryIps).forEach(([ip, manetIp]) => {
-        if (!manetIp) {
-          // no secondary IP configured
-          setManetConnectionMap(prev => ({ ...prev, [ip]: 'Not Configured' }));
+    setNodeInfoMap(prevNodeInfoMap => {
+      const newNodeInfoMap = { ...prevNodeInfoMap };
+      const currentIpsInMap = Object.keys(newNodeInfoMap);
+      const activeIps = new Set(nodes);
+
+      currentIpsInMap.forEach(ip => {
+        if (!activeIps.has(ip)) {
+          delete newNodeInfoMap[ip];
+        }
+      });
+
+      nodes.forEach(ip => {
+        const nodeName = nodeNames[ip] || '';
+        const manetIp = secondaryIps[ip] || '';
+
+        if (newNodeInfoMap[ip]) {
+          const ni = newNodeInfoMap[ip];
+          if (ni.nodeName !== nodeName) {
+            ni.setNodeName(nodeName);
+          }
+          if (ni.manet.ip !== manetIp) {
+            ni.setManetIp(manetIp);
+            if (manetIp) ni.checkManetConnection(); else ni.setManetConnectionStatus('Not Configured');
+          }
         } else {
-          // check connectivity
-          fetch(`http://${manetIp}`, { method: 'HEAD', mode: 'no-cors' })
-            .then(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Connected' })))
-            .catch(() => setManetConnectionMap(prev => ({ ...prev, [ip]: 'Disconnected' })));
+          const ni = new NodeInfo(ip);
+          ni.setNodeName(nodeName);
+          ni.setManetIp(manetIp);
+          // Initial status poll for new nodes. Attributes fetched after status is RUNNING.
+          // isInitializing will be false by default here.
+          ni.refreshStatusFromServer().then(() => {
+            if (ni.status === 'RUNNING') { // status getter will reflect _currentStatus
+              ni.refreshAttributesFromServer();
+            }
+            setNodeInfoMap(prevMap => ({ ...prevMap, [ip]: { ...ni } })); // Trigger update
+          });
+          if (manetIp) ni.checkManetConnection(); else ni.setManetConnectionStatus('Not Configured');
+          newNodeInfoMap[ip] = ni;
         }
       });
-    };
-    updateManet();
-    const id = setInterval(updateManet, 3000);
-    return () => clearInterval(id);
-  }, [secondaryIps]);
-  
-  useEffect(() => {
-    if (!nodes.length) return;
-    
-    // fetch all the "fast" attrs (no Raptor)
-    const updateAttrs = () => {
-      nodes.forEach(ip => {
-        fetch(`http://${ip}:5000/api/attributes`)
-          .then(res => res.json())
-          .then(data => {
-            setNodeAttrs(prev => ({ ...prev, [ip]: data }));
-          })
-          .catch(() => {
-            /* handle unreachable basic attrs if you like */
-          });
-      });
-    };
-
-    // fetch node (raptor) status separately
-    const updateNodeStatus = () => {
-      nodes.forEach(ip => {
-        // if this node is being toggled, show INITIALISING
-        if (loadingMap[ip]) {
-          setStatuses(prev => ({ ...prev, [ip]: "INITIALISING" }));
-          return;
-        }
-        fetch(`http://${ip}:5000/api/node_status`)
-          .then(res => res.json())
-          .then(({ node_status }) => {
-            setStatuses(prev => ({ ...prev, [ip]: node_status }));
-          })
-          .catch(() => {
-            setStatuses(prev => ({ ...prev, [ip]: "UNREACHABLE" }));
-          });
-      });
-    };
-
-    // const API_URL = 'http://192.168.2.141/status';
-    // const loadMapData = () => {
-    //   fetch(API_URL)
-    //     .then(r => r.json())
-    //     .then(data => {
-    //
-    //       // actual implementation of manet map data call
-    //       const infos = Array.isArray(data.nodeInfos)
-    //         ? data.nodeInfos
-    //         : Object.values(data.nodeInfos||{});
-    //       const enriched = infos.map(info => ({
-    //         ...info,
-    //         batteryLevel:
-    //           data.selfId === info.id
-    //             ? (data.batteryLevel * 10).toFixed(2) + '%'
-    //             : 'unknown'
-    //       }));
-    //       const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-    //       console.log(selfNodeInfo);
-    //       console.log(secondaryIps);
-    //       setMapMarkers(enriched);
-    //       const rawLQM = Array.isArray(data.linkQuality)
-    //           ? data.linkQuality
-    //           :[]
-    //       const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-    //       setLQM(fullLQM);
-    //
-    //       //for dummy testing
-    //       // setMapMarkers(DUMMY_MARKERS);
-    //       // setLQM(DUMMY_LQM);
-    //       //
-    //       // const infos = Array.isArray(DUMMY_MARKERS[0].nodeInfos)
-    //       //                       ? DUMMY_MARKERS[0].nodeInfos
-    //       //                       : Object.values(DUMMY_MARKERS[0].nodeInfos||{});
-    //       //
-    //       // const rawLQM = Array.isArray(DUMMY_LQM)
-    //       //     ? DUMMY_LQM
-    //       //     :[]
-    //       //
-    //       // const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-    //       // setMapMarkers(infos);
-    //       // setLQM(fullLQM);
-    //
-    //     })
-    //     .catch(console.error);
-    // };
-
-  const loadMapData = () => {
-    // build an inverted map: value→key
-    const inverted = Object.fromEntries(
-      Object.entries(secondaryIps)
-            .map(([key, value]) => [value, key])
-    );
-
-    console.log("Inverted map: ",inverted)
-    console.log("Secondary ips: ",secondaryIps)
-
-    // now loop over your secondaryIps array in parallel
-    const ips = Array.isArray(secondaryIps)
-      ? secondaryIps
-      : (secondaryIps && typeof secondaryIps === 'object')
-        ? Object.values(secondaryIps)
-        : [];
-
-    console.log("Manet ips: ",ips)
-    // now map over ips instead of secondaryIps directly
-    const tasks = ips.map(ip => {
-      const url = `http://${ip}/status`;
-      return fetch(url)
-        .then(r => r.json())
-        .then(data => {
-          const infos = Array.isArray(data.nodeInfos)
-            ? data.nodeInfos
-            : Object.values(data.nodeInfos || {});
-          const enriched = infos.map(info => ({
-            ...info,
-            batteryLevel:
-              data.selfId === info.id
-                ? (data.batteryLevel * 10).toFixed(2) + '%'
-                : 'unknown'
-          }));
-          const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-          const primIp = inverted[ip];
-          console.log("prim Ip: ",primIp);
-          saveSelfInfo(ip, selfNodeInfo);
-          const rawLQM = Array.isArray(data.linkQuality)
-              ? data.linkQuality
-              :[]
-          const fullLQM = buildStaticsLQM(infos, rawLQM, linkQualityMatrix, 100, null);
-          setLQM(fullLQM);
-          setMapMarkers(enriched);
-          return { ip, enriched, selfNodeInfo };
-        })
-        .catch(err => {
-          console.error(`Failed to fetch ${url}`, err);
-          return { ip, enriched: [], selfNodeInfo: null };
-        });
+      return newNodeInfoMap;
     });
+  }, [nodes, nodeNames, secondaryIps]);
 
-  //   // once all are done, stash them by IP
-  //   Promise.all(tasks).then(results => {
-  //     const byIp = results.reduce((acc, { ip, enriched, selfNodeInfo }) => {
-  //       acc[ip] = { enriched, selfNodeInfo };
-  //       return acc;
-  //     }, {});
-  //     setSecondaryDataMap(byIp);
-  //   });
-  };
-
-
-    loadMapData();
-    updateAttrs();
-    updateNodeStatus();
-
-    const id1      = setInterval(updateAttrs, 1000);          // fast loop
-    const idStatus = setInterval(updateNodeStatus, 3000);    // slower loop
-    const idMap = setInterval(loadMapData, 60000);  // 1 min
-    return () => {
-      clearInterval(id1);
-      clearInterval(idStatus);
-      clearInterval(idMap);
-    };
-  }, [nodes]);
-
-  const handleToggle = async (ip) => {
-    setLoadingMap(prev => ({ ...prev, [ip]: true }));
-    const nodeStatus = nodeStatuses[ip] || 'UNREACHABLE';
-
-    try {
-      const res = await fetch(`http://${ip}:5000/api/setup_script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: nodeStatus === 'OFF' ? 'setupv2' : 'stop'
-        })
-      });
-
-      if (res.status === 504) {
-        setLoadingMap(prev => ({ ...prev, [ip]: false }));
-        setRebootAlertNodeIp(ip); // Set the IP for the reboot alert
-        return;
-      }
-      if (!res.ok) {
-        let errorMsg = `HTTP ${res.status}`;
-        try {
-          const err = await res.json();
-          errorMsg = err.error || errorMsg;
-        } catch (e) {
-          // If response is not JSON, use the original error
+  // Polling effect for node statuses and attributes
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      Object.values(nodeInfoMap).forEach(async nodeInfo => {
+        // Only poll if not currently initializing (i.e., a toggle operation is not active)
+        if (!nodeInfo.isInitializing) {
+          await nodeInfo.refreshStatusFromServer();
+          if (nodeInfo.status === 'RUNNING') { // status getter reflects the new _currentStatus
+            await nodeInfo.refreshAttributesFromServer();
+          }
+          if (nodeInfo.manet.ip) {
+            await nodeInfo.checkManetConnection();
+          }
+          // Trigger re-render for this specific node if its status/attributes might have changed
+          setNodeInfoMap(prevMap => ({ ...prevMap, [nodeInfo.ip]: { ...nodeInfo } }));
         }
-        throw new Error(errorMsg);
+      });
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId); // Cleanup on unmount
+  }, [nodeInfoMap]);
+
+  const handleToggleNodeScript = useCallback(async (ip, action) => {
+    const nodeInfo = nodeInfoMap[ip];
+    if (nodeInfo) {
+      // isInitializing is set to true at the start of nodeInfo.toggleScript
+      // and false at the end.
+      const result = await nodeInfo.toggleScript(action);
+
+      if (result.showRebootAlert) {
+        setRebootAlertNodeIp(ip);
+        // isInitializing remains true from toggleScript, status getter will return INITIALIZING.
+        // Polling will eventually update _currentStatus and isInitializing will be set to false.
       }
-      const json = await res.json();
-      console.log(`setup_script success for ${ip}`, json);
-      // After a successful toggle, you might want to immediately re-fetch status for this node
-      // or wait for the regular polling interval. For quicker feedback:
-      // fetchNodeData(ip); // Assuming fetchNodeData is the function that gets status/attrs
-    } catch (e) {
-      console.error(`setup_script error for ${ip}`, e);
-      // Potentially show an error message to the user via another state
-    } finally {
-      setLoadingMap(prev => ({ ...prev, [ip]: false }));
+
+      // After toggleScript completes (isInitializing is now false):
+      // Refresh status to get the latest state from the server.
+      await nodeInfo.refreshStatusFromServer();
+      if (nodeInfo.status === 'RUNNING') { // status getter reflects the new _currentStatus
+        await nodeInfo.refreshAttributesFromServer();
+      }
+
+      // Update the map to ensure UI reflects the new state post-toggle and refresh.
+      setNodeInfoMap(prevMap => ({ ...prevMap, [ip]: { ...nodeInfo } }));
     }
-  };
+  }, [nodeInfoMap, setRebootAlertNodeIp]); // Added setRebootAlertNodeIp to dependencies
+
+  const nodeInfoList = Object.values(nodeInfoMap);
 
   return (
     <>
@@ -609,69 +460,42 @@ function saveSelfInfo(primaryIp, info) {
           <Sidebar
             nodes={nodes}
             setNodes={setNodes}
-            statuses={nodeStatuses}
-            loadingMap={loadingMap}
-            secondaryIps={secondaryIps}
-            setSecondaryIps={setSecondaryIps}
-            nodeNames={nodeNames}
+            nodeInfoMap={nodeInfoMap}
             setNodeNames={setNodeNames}
-            // Pass handleToggle to Sidebar if needed, e.g. for a global toggle button there
-            // handleToggle={handleToggle} 
+            setSecondaryIps={setSecondaryIps}
           />
-
           <Box
             component="main"
-            sx={{ // display: 'flex', // Removed this to allow child components to take full width
+            sx={{
               flexGrow: 1,
-              p: 0,
-              height: '100vh',
-              overflowY: 'auto',
-              // tell the browser to always leave space for the scrollbar
-              scrollbarGutter: 'stable'
+              p: 3,
+              width: { sm: `calc(100% - ${drawerWidth}px)` },
+              overflowY: 'auto' // Ensure main content area is scrollable if needed
             }}
           >
             <Routes>
               <Route
                 path="/"
-                element={
+                element={(
                   <HomePage
-                    nodes={nodes}
-                    setNodes={setNodes}
-                    statuses={nodeStatuses}
-                    attrs={nodeAttrs}
-                    loadingMap={loadingMap}
-                    secondaryIps={secondaryIps}
-                    nodeNames={nodeNames}
-                    setSecondaryIps={setSecondaryIps} // Keep if HomePage edits these
-                    setNodeNames={setNodeNames}     // Keep if HomePage edits these
-                    handleToggle={handleToggle}
+                    nodeInfoList={nodeInfoList}
+                    handleToggle={handleToggleNodeScript} // Correct prop name
+                    linkQualityMatrix={linkQualityMatrix} // Pass LQM
                   />
-                }
+                )}
               />
               <Route
                 path="/node/:ip"
-                element={
+                element={(
                   <NodeDashboard
-                    statuses={nodeStatuses}
-                    attrs={nodeAttrs}
-                    loadingMap={loadingMap}
-                    secondaryIps={secondaryIps}
-                    manetConnectionMap={manetConnectionMap}
-                    handleToggle={handleToggle}
-                    nodeNames={nodeNames} // Pass nodeNames to NodeDashboard
+                    nodeInfoMap={nodeInfoMap}
+                    handleToggle={handleToggleNodeScript} // Correct prop name
                   />
-                }
+                )}
               />
               <Route
                 path="/map"
-                element={
-                  <MapView
-                    initialCenter={[1.3362, 103.7442]}
-                    initialZoom={18}
-                    markers={mapMarkers}
-                    linkQualityMatrix ={linkQualityMatrix}
-                />
-                }
+                element={<MapView markers={mapMarkers} lqm={linkQualityMatrix} />} // Pass LQM
               />
             </Routes>
           </Box>
