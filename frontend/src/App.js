@@ -259,8 +259,14 @@ function Sidebar({
 }
 
 export default function App() {
-  const [allNodeData, setAllNodeData] = useState([]); // Will hold NodeInfo instances
+  const [allNodeData, setAllNodeData] = useState([]);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
+  const allNodeDataRef = useRef(allNodeData);
+
+  // Effect to keep ref in sync with state
+  useEffect(() => {
+    allNodeDataRef.current = allNodeData;
+  }, [allNodeData]);
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
   const [lqm, setLQM] = useState([]);
@@ -353,20 +359,46 @@ export default function App() {
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
   }, [allNodeData]);
 
-  // Effect 3: Polling using NodeInfo methods
+  // Effect 3: Poll attributes every second with re-entrancy guard
   useEffect(() => {
-    let isMounted = true;
-    const intervalId = setInterval(async () => {
-      if (!isMounted || allNodeData.length === 0) return;
-      await Promise.all(allNodeData.map(async node => {
-        await node.refreshStatusFromServer();
-        await node.refreshAttributesFromServer();
-        await node.checkManetConnection();
-      }));
-      if (isMounted) setAllNodeData(prev => [...prev]);
-    }, 5000);
-    return () => { isMounted = false; clearInterval(intervalId); };
-  }, [allNodeData]);
+    let running = false;
+    const attrInterval = setInterval(async () => {
+      const currentNodes = allNodeDataRef.current; // Use ref
+      if (running || currentNodes.length === 0) return;
+      running = true;
+      try {
+        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
+        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+      } catch (error) {
+        console.error("Error polling attributes:", error);
+      } finally {
+        running = false;
+      }
+    }, 1000);
+    return () => clearInterval(attrInterval);
+  }, []); // Empty dependency array
+
+  // Effect 4: Poll status and MANET every 5 seconds
+  useEffect(() => {
+    let running = false;
+    const statusInterval = setInterval(async () => {
+      const currentNodes = allNodeDataRef.current; // Use ref
+      if (running || currentNodes.length === 0) return;
+      running = true;
+      try {
+        await Promise.all(currentNodes.map(async node => {
+          await node.refreshStatusFromServer();
+          await node.checkManetConnection();
+        }));
+        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+      } catch (error) {
+        console.error("Error polling status/MANET:", error);
+      } finally {
+        running = false;
+      }
+    }, 3000);
+    return () => clearInterval(statusInterval);
+  }, []); // Empty dependency array
 
   const handleToggleNodeScript = useCallback(async (ip, action) => {
     const node = allNodeData.find(n => n.ip === ip);
@@ -411,17 +443,18 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={(<HomePage
-                  nodeInfoList={allNodeData} 
-                  handleToggle={handleToggleNodeScript}
-                  linkQualityMatrix={linkQualityMatrix}
-                />)}
+                element={(
+                  <HomePage
+                    allNodeData={allNodeData}
+                    handleToggle={handleToggleNodeScript}
+                  />
+                )}
               />
               <Route
                 path="/node/:ip"
                 element={(
                   <NodeDashboard
-                    allNodeData={allNodeData} // Pass array of NodeInfo instances
+                    allNodeData={allNodeData}
                     handleToggle={handleToggleNodeScript}
                   />
                 )}
