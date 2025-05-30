@@ -293,11 +293,9 @@ export default function App() {
               ? (data.batteryLevel * 10).toFixed(2) + '%'
               : 'unknown'
         }));
-        const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-        const manetIp = selfNodeInfo.ip || '';
-        if (JSON.stringify(enriched) !== JSON.stringify(mapMarkers)) {
-          setMapMarkers(enriched);
-        }
+        // if (JSON.stringify(enriched) !== JSON.stringify(mapMarkers)) {
+        //   setMapMarkers(enriched);
+        // }
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
           : [];
@@ -315,6 +313,14 @@ export default function App() {
             return node;
           });
         });
+
+        // Use selfManetInfo for map markers
+        const selfManetMarkers = allNodeData
+          .map(node => node.manet.selfManetInfo)
+          .filter(info => info && info.latitude && info.longitude);
+        setMapMarkers(selfManetMarkers);
+
+
       })
       .catch(console.error);
   }, [allNodeData, lqm, setAllNodeData, mapMarkers]);
