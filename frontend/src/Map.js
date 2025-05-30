@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
 
 export default function MapView({
   initialCenter = [1.3362, 103.7440],
-  initialZoom   = 17,
+  initialZoom   = 18,
   markers       = [],
   linkQualityMatrix = []
 }) {
@@ -23,11 +23,12 @@ export default function MapView({
   const map   = useRef(null);
   const layer = useRef(null);
 
+  //console.log("markers: ", markers)
   // initialize map once
   useEffect(() => {
     map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:19, attribution:'© OSM'
+      maxZoom:20, attribution:'© OSM'
     }).addTo(map.current);
     return () => map.current.remove();
   }, []);
@@ -42,8 +43,6 @@ export default function MapView({
     return `hsl(${hue},100%,50%)`;
   }
 
-
-  // rebuild circles + polyline whenever `markers` changes
   useEffect(() => {
     if (!map.current) return;
 
@@ -51,8 +50,6 @@ export default function MapView({
     if (layer.current) {
       map.current.removeLayer(layer.current);
     }
-
-    //console.log('markers changed', markers);
 
     const group = L.layerGroup();
     markers.forEach(marker => {
@@ -72,6 +69,8 @@ export default function MapView({
       }).addTo(group)
         .bindPopup(popupHtml)
         .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
+       
+      console.log("Adding marker: ", marker.id, lat, lng, label);
     });
 
     // draw SNR‐colored links
@@ -79,18 +78,6 @@ export default function MapView({
       parseFloat(m.latitude)||0,
       parseFloat(m.longitude)||0
     ]);
-
-    // for (let i = 0; i < coords.length; i++) {
-    //   for (let j = i+1; j < coords.length; j++) {
-    //     const q = linkQualityMatrix[i]?.[j];
-    //     if (typeof q === 'number') {
-    //       L.polyline([ coords[i], coords[j] ], {
-    //         color:  qualityToColor(q),
-    //         weight: 3
-    //       }).addTo(group);
-    //     }
-    //   }
-    // }
 
     for (let i = 0; i < markers.length; i++) {
       for (let j = i + 1; j < markers.length; j++) {
@@ -104,8 +91,6 @@ export default function MapView({
         }
       }
     }
-
-
 
     group.addTo(map.current);
     layer.current = group;
