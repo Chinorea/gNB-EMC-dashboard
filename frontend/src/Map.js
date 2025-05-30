@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 });
 
 
-export default function MapView({
+function MapView({
   initialCenter = [1.3362, 103.7440],
   initialZoom   = 18,
   markers       = [],
@@ -62,7 +62,6 @@ export default function MapView({
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
         .join('<br>');
 
-      console.log(popupHtml)
       const circle = L.circle([lat, lng], {
         radius:      10,
         color:       '#007bff',
@@ -72,8 +71,6 @@ export default function MapView({
         .bindPopup(popupHtml)
         .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
       circle.on('click', function(e) { this.openPopup(); });
-       
-      //console.log("Adding marker: ", marker.id, lat, lng, label);
     });
 
     // draw SNR‐colored links
@@ -97,8 +94,17 @@ export default function MapView({
 
     group.addTo(map.current);
     layer.current = group;
-  }, [markers]);
 
+    // Clean up on unmount
+    return () => {
+      if (layer.current) {
+        map.current.removeLayer(layer.current);
+        layer.current = null;
+      }
+    };
+  }, [markers, linkQualityMatrix]);
+
+  console.log("MapView rendered, markers:", markers);
 
   return (
     <div
@@ -107,3 +113,12 @@ export default function MapView({
     />
   );
 }
+
+const areEqual = (prevProps, nextProps) => {
+  return (
+    JSON.stringify(prevProps.markers) === JSON.stringify(nextProps.markers) &&
+    JSON.stringify(prevProps.linkQualityMatrix) === JSON.stringify(nextProps.linkQualityMatrix)
+  );
+};
+
+export default React.memo(MapView, areEqual);
