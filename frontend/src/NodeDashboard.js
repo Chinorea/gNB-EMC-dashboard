@@ -31,10 +31,9 @@ export default function NodeDashboard({
   const { ip } = useParams();
     console.log(ip)
   const nodeInfo = allNodeData.find(node => node.ip === ip) || null;
-    console.log("NodeInfo: ", nodeInfo)
 
-  // Fallback for when nodeInfo is not yet available
-  if (!nodeInfo || !nodeInfo.attributes) { // Also check if attributes object exists
+   // Fallback for when nodeInfo is not yet available
+   if (!nodeInfo || !nodeInfo.attributes) {
     return (
       <Box sx={{ backgroundColor: '#f2f2f2', minHeight: '100vh' }}>
         <CssBaseline />
@@ -57,27 +56,26 @@ export default function NodeDashboard({
 
   // Destructure top-level properties from nodeInfo
   const { 
-    status: nodeStatus, 
-    isLoading: loading, 
-    isToggleLoading,
+    status: nodeStatus,
+    isInitializing,
     nodeName,
-    manetIp, 
-    manetConnectionStatus,
-    attributes, // The main nested attributes object
+    attributes,
     rawAttributes 
   } = nodeInfo;
-
-  // Destructure from the nested attributes categories
+  // Alias for loading state
+  const loading = isInitializing;
+  // Extract individual attribute groups
   const { coreData, ramData, diskData, transmitData, ipData } = attributes;
+  const { ip: manetIp, connectionStatus: manetConnectionStatus } = nodeInfo.manet;
 
-  // override colors to yellow when loading or toggling
-  const bgColor = loading || isToggleLoading
+  // override colors to yellow when loading/toggling
+  const bgColor = isInitializing
     ? '#fcfbf2'    // light yellow
     : nodeStatus === 'RUNNING'     ? '#f3f7f2'
     : nodeStatus === 'OFF'         ? '#faf2f0'
                                    : '#f2f2f2'; // Default for UNREACHABLE, INITIALIZING etc.
 
-  const appBarColor = loading || isToggleLoading
+  const appBarColor = isInitializing
     ? '#805c19'    // darker yellow
     : nodeStatus === 'RUNNING'     ? '#40613d'
     : nodeStatus === 'OFF'         ? '#612a1f'
@@ -85,7 +83,7 @@ export default function NodeDashboard({
   
   // if unreachable, show only AppBar (or a more informative "unreachable" page)
   // This condition might be refined based on how `nodeInfo.status` represents unreachability
-  if (nodeStatus === 'UNREACHABLE' && !loading && !isToggleLoading) { // Ensure it's not just a temporary loading state
+  if (nodeStatus === 'UNREACHABLE' && !isInitializing) {
     return (
       <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
@@ -113,8 +111,6 @@ export default function NodeDashboard({
     UP:        'Connected',
     DOWN:      'Disconnected',
     UNSTABLE:  'Unstable',
-    null:      'N/A', // Handle null case
-    undefined: 'N/A' // Handle undefined case if attributes haven't loaded
   };
 
   // Prepare data for child components, using properties from nodeInfo.attributes categories
@@ -164,7 +160,7 @@ export default function NodeDashboard({
         {/* Top bar with status */}
         <TopBar
           ip={ip}
-          loading={loading || isToggleLoading} // Combine loading states for TopBar
+          loading={isInitializing} // Loading state from NodeInfo
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
           // Pass the toggleScript method from the specific NodeInfo instance
@@ -230,9 +226,9 @@ export default function NodeDashboard({
             />
             <IpAddressesCard
               data={cardDataForAttrs} // Continues to use cardDataForAttrs
-              isLoading={loading}
+              isLoading={isInitializing} 
               nodeStatus={nodeStatus}
-              secondaryIp={manetIp} // from nodeInfo (top-level)
+              secondaryIp={manetIp} // from nested manet.ip
             />
             <DiskOverviewCard 
               data={cardDataForAttrs} // Continues to use cardDataForAttrs
