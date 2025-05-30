@@ -123,7 +123,7 @@ export default function HomePage({ allNodeData, handleToggle }) {
                     align="left"
                     sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
                   >
-                    {nodeInfo.nodeName || `Node ${nodeIp}`} {/* Ensure consistent default naming */}
+                    {nodeInfo.nodeName || `${nodeIp}`} {/* Ensure consistent default naming */}
                   </Typography>
                   <Typography
                     variant="body2"
