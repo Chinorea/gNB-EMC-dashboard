@@ -299,19 +299,36 @@ export default function App() {
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
   }, [allNodeData]);
 
-  // Effect 3: Polling using NodeInfo methods
+  // Effect 3: Poll attributes every second with re-entrancy guard
   useEffect(() => {
-    let isMounted = true;
-    const intervalId = setInterval(async () => {
-      if (!isMounted || allNodeData.length === 0) return;
-      await Promise.all(allNodeData.map(async node => {
-        await node.refreshStatusFromServer();
-        await node.refreshAttributesFromServer();
-        await node.checkManetConnection();
-      }));
-      if (isMounted) setAllNodeData(prev => [...prev]);
+    let running = false;
+    const attrInterval = setInterval(async () => {
+      if (running || allNodeData.length === 0) return;
+      running = true;
+      await Promise.all(allNodeData.map(node => node.refreshAttributesFromServer()));
+      setAllNodeData(prev => [...prev]);
+      running = false;
+    }, 1000);
+    return () => clearInterval(attrInterval);
+  }, [allNodeData]);
+
+  // Effect 4: Poll status and MANET every 5 seconds
+  useEffect(() => {
+    let running = false;
+    const statusInterval = setInterval(async () => {
+      if (running || allNodeData.length === 0) return;
+      running = true;
+      try {
+        await Promise.all(allNodeData.map(async node => {
+          await node.refreshStatusFromServer();
+          await node.checkManetConnection();
+        }));
+        setAllNodeData(prev => [...prev]);
+      } finally {
+        running = false;
+      }
     }, 5000);
-    return () => { isMounted = false; clearInterval(intervalId); };
+    return () => clearInterval(statusInterval);
   }, [allNodeData]);
 
   const handleToggleNodeScript = useCallback(async (ip, action) => {
@@ -363,10 +380,8 @@ export default function App() {
                 path="/"
                 element={(
                   <HomePage
-                    // Pass allNodeData as nodeInfoList, HomePage can derive IPs if needed
-                    nodeInfoList={allNodeData} 
+                    allNodeData={allNodeData}
                     handleToggle={handleToggleNodeScript}
-                    linkQualityMatrix={linkQualityMatrix}
                   />
                 )}
               />
@@ -374,7 +389,7 @@ export default function App() {
                 path="/node/:ip"
                 element={(
                   <NodeDashboard
-                    allNodeData={allNodeData} // Pass array of NodeInfo instances
+                    allNodeData={allNodeData}
                     handleToggle={handleToggleNodeScript}
                   />
                 )}

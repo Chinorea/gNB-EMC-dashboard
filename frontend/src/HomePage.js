@@ -42,13 +42,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
   );
 }
 
-export default function HomePage({
-  // nodes prop removed
-  nodeInfoList, // Array of NodeInfo objects - THIS IS THE PRIMARY DATA SOURCE
-  handleToggle,
-  // Removed props related to App.js setters for edit dialog:
-  // appSetNodes, appSetNodeNames, appSetSecondaryIps
-}) {
+export default function HomePage({ allNodeData, handleToggle }) {
   const navigate = useNavigate();
 
   // Edit dialog state and functions (openEditDialog, saveEditDialog) removed.
@@ -67,8 +61,8 @@ export default function HomePage({
       </Typography>
 
       <Grid container spacing={2} justifyContent="center" sx={{ mt: 5 }}>
-        {/* Iterate directly over nodeInfoList */}
-        {Array.isArray(nodeInfoList) && nodeInfoList.map(nodeInfo => {
+        {/* Iterate directly over allNodeData */}
+        {Array.isArray(allNodeData) && allNodeData.map(nodeInfo => {
           // nodeIp is now nodeInfo.ip
           const nodeIp = nodeInfo.ip;
 
@@ -153,7 +147,7 @@ export default function HomePage({
                     variant="body2"
                     sx={{ mt: 0, mb: 0, fontSize: '1.1rem' }}
                   >
-                    Manet IP: {nodeInfo.manetIp && nodeInfo.manetIp !== '' ? nodeInfo.manetIp : 'Not Configured'}
+                    Manet IP: {nodeInfo.manet.ip && nodeInfo.manet.ip !== '' ? nodeInfo.manet.ip : 'Not Configured'}
                   </Typography>
                   {(() => {
                     const underlyingNodeStatus = nodeInfo.status;
