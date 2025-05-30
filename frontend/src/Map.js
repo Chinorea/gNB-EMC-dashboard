@@ -14,8 +14,8 @@ L.Icon.Default.mergeOptions({
 
 
 export default function MapView({
-  initialCenter = [0,0],
-  initialZoom   = 2,
+  initialCenter = [1.3362, 103.7440],
+  initialZoom   = 17,
   markers       = [],
   linkQualityMatrix = []
 }) {

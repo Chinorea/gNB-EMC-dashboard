@@ -486,7 +486,9 @@ export default function App() {
               />
               <Route
                 path="/map"
-                element={<MapView markers={mapMarkers} lqm={linkQualityMatrix} />}
+                element={<MapView 
+                  markers={mapMarkers} 
+                  lqm={linkQualityMatrix} />}
               />
             </Routes>
           </Box>
