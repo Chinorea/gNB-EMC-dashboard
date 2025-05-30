@@ -151,20 +151,6 @@ class NodeInfo {
     this.attributes.ipData.ipAddressNgu = attrsData.ip_address_ngu;
   }
 
-  setNodeName(name) {
-    this.nodeName = name || '';
-  }
-
-  setManetIp(ip) {
-    // Assuming this.manet.ip was intended
-    this.manet.ip = ip;
-  }
-
-  setManetConnectionStatus(status) {
-    // Assuming this.manet.connectionStatus was intended
-    this.manet.connectionStatus = status;
-  }
-
   async refreshAttributesFromServer(timeout = 2000) {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -284,8 +270,8 @@ class NodeInfo {
   }
 
   async checkManetConnection(timeout = 2000) {
-    if (!this.manet.ip) { // Corrected to use this.manet.ip
-      this.setManetConnectionStatus('Not Configured');
+    if (!this.manet.ip) {
+      this.manet.connectionStatus = 'Not Configured';
       return;
     }
 
@@ -296,10 +282,10 @@ class NodeInfo {
     try {
       await fetch(`http://${this.manet.ip}`, { method: 'HEAD', mode: 'no-cors', signal }); // Corrected
       clearTimeout(fetchTimeoutId);
-      this.setManetConnectionStatus('Connected');
+      this.manet.connectionStatus = 'Connected';
     } catch (error) {
       clearTimeout(fetchTimeoutId);
-      this.setManetConnectionStatus('Disconnected');
+      this.manet.connectionStatus = 'Disconnected';
     }
   }
 }
