@@ -49,7 +49,9 @@ class NodeInfo {
     // MANET Configuration
     this.manet = {
       ip: null,
-      connectionStatus: null
+      connectionStatus: null,
+      nodeInfo : null,
+      selfManetInfo: null
     };
     this.rawAttributes = {};
   }

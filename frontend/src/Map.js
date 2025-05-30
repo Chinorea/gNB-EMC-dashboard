@@ -70,7 +70,7 @@ export default function MapView({
         .bindPopup(popupHtml)
         .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
        
-      console.log("Adding marker: ", marker.id, lat, lng, label);
+      //console.log("Adding marker: ", marker.id, lat, lng, label);
     });
 
     // draw SNR‐colored links
