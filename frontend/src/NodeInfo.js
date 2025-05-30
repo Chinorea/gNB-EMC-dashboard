@@ -220,7 +220,7 @@ class NodeInfo {
     }
   }
 
-  async toggleScript(action, timeout = 10000) {
+  async toggleScript(action, timeout = 5000) {
     this.isInitializing = true;
 
     const controller = new AbortController();
@@ -271,7 +271,7 @@ class NodeInfo {
     return result;
   }
 
-  async checkManetConnection(timeout = 2000) {
+  async checkManetConnection(timeout = 1000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
       return;
