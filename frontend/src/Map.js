@@ -61,6 +61,8 @@ export default function MapView({
         .entries(rest)
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
         .join('<br>');
+
+      console.log(popupHtml)
       const circle = L.circle([lat, lng], {
         radius:      10,
         color:       '#007bff',
@@ -69,6 +71,7 @@ export default function MapView({
       }).addTo(group)
         .bindPopup(popupHtml)
         .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
+      circle.on('click', function(e) { this.openPopup(); });
        
       //console.log("Adding marker: ", marker.id, lat, lng, label);
     });
