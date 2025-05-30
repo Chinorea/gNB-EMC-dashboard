@@ -47,7 +47,7 @@ function Sidebar({
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
       const newNodeInstance = new NodeInfo(ip);
-      newNodeInstance.nodeName = `Node ${ip}`;
+      newNodeInstance.nodeName = ''; // Initialize nodeName as empty
       newNodeInstance.manet.ip = '';
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
@@ -65,7 +65,7 @@ function Sidebar({
       setEditTarget(nodeInstance.ip); // Original IP
       setEditPrimary(nodeInstance.ip); // Current IP for editing field
       setEditSecondary(nodeInstance.manet.ip || '');
-      setEditName(nodeInstance.nodeName || `Node ${nodeInstance.ip}`);
+      setEditName(nodeInstance.nodeName || ''); // Directly use nodeName, or empty if it's null/undefined
       setEditOpen(true);
     }
   };
@@ -170,40 +170,37 @@ function Sidebar({
                   sx={{ flex: 1 }}
                 >
                   <ListItemText
-                    primary={nodeInstance.nodeName || `Node ${nodeInstance.ip}`}
+                    primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
                     primaryTypographyProps={{
                       fontWeight: 'bold',
                       variant: 'body1',
                       fontSize: '1.0rem'
                     }}
                     secondary={
-                      nodeInstance.nodeName && nodeInstance.nodeName !== `Node ${nodeInstance.ip}` // Show IP if name is not default
-                        ? (
-                          <>
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color="textSecondary"
-                              sx={{ fontSize: '0.9rem' }}
-                            >
-                              Node IP: {nodeInstance.ip}
-                            </Typography>
-                            <br />
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color="textSecondary"
-                              sx={{ fontSize: '0.9rem' }}
-                            >
-                              MANET: {nodeInstance.manet.ip || 'Not configured'}
-                            </Typography>
-                          </>
-                        )
-                        : `MANET: ${nodeInstance.manet.ip || 'Not configured'}`
+                      <>
+                        {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
+                          <Typography
+                            component="span"
+                            variant="body1"
+                            color="textSecondary"
+                            sx={{ fontSize: '0.9rem', display: 'block' }}
+                          >
+                            Node IP: {nodeInstance.ip}
+                          </Typography>
+                        )}
+                        <Typography
+                          component="span"
+                          variant="body1"
+                          color="textSecondary"
+                          sx={{ fontSize: '0.9rem', display: 'block' }}
+                        >
+                          MANET: {nodeInstance.manet.ip || 'Not configured'}
+                        </Typography>
+                      </>
                     }
                     secondaryTypographyProps={{
                       component: 'div',
-                      sx: { mt: (nodeInstance.nodeName && nodeInstance.nodeName !== `Node ${nodeInstance.ip}`) ? 0 : 0.5, fontSize: '0.9rem' }
+                      sx: { mt: 0.5, fontSize: '0.9rem' }
                     }}
                   />
                 </ListItemButton>
