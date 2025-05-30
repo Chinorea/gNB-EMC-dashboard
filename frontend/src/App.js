@@ -364,7 +364,10 @@ export default function App() {
       if (running || currentNodes.length === 0) return;
       running = true;
       try {
-        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
+        await Promise.all(currentNodes.map(async node => { // Added async here
+          await node.refreshAttributesFromServer();
+          await node.checkManetConnection(); // Moved here
+        }));
         setAllNodeData([...currentNodes]); // Create new array from ref's current value
       } catch (error) {
         console.error("Error polling attributes:", error);
@@ -385,7 +388,7 @@ export default function App() {
       try {
         await Promise.all(currentNodes.map(async node => {
           await node.refreshStatusFromServer();
-          await node.checkManetConnection();
+          // await node.checkManetConnection(); // Removed from here
         }));
         setAllNodeData([...currentNodes]); // Create new array from ref's current value
       } catch (error) {
@@ -444,6 +447,7 @@ export default function App() {
                   <HomePage
                     allNodeData={allNodeData}
                     handleToggle={handleToggleNodeScript}
+                    setAllNodeData={setAllNodeData} // Add this prop
                   />
                 )}
               />
