@@ -282,6 +282,7 @@ export default function App() {
               : 'unknown'
         }));
         const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+        const manetIp = selfNodeInfo.ip || '';
         setMapMarkers(enriched);
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
@@ -289,13 +290,30 @@ export default function App() {
         const fullLQM = buildStaticsLQM(infos, rawLQM, lqm, 100, null);
         setLQM(fullLQM);
 
+        setAllNodeData(prevAllNodeData => {
+          return prevAllNodeData.map(node => {
+            // Find enriched info by manet IP
+            const match = enriched.find(info => info.ip === node.manet.ip);
+            if (match) {
+              node.manet.nodeInfo = enriched;
+              node.manet.selfManetInfo = match;
+            }
+            return node;
+          });
+        });
       })
+
+
       .catch(console.error);
   }, [lqm, setAllNodeData]);
 
-  // Load map data on mount
+  // Load map data every 1 minute
   useEffect(() => {
-    loadMapData();
+    loadMapData(); // Initial load
+    const intervalId = setInterval(() => {
+      loadMapData();
+    }, 60000); // 60000 ms = 1 minute
+    return () => clearInterval(intervalId);
   }, [loadMapData]);
 
   // Effect 1: Initial load of allNodeData from localStorage
@@ -367,7 +385,6 @@ export default function App() {
     if (result.showRebootAlert) setRebootAlertNodeIp(ip);
   }, [allNodeData, setRebootAlertNodeIp]);
 
-  const ipListForLQM = allNodeData.map(node => node.ip);
   const { linkQualityMatrix } = [];
 
   console.log(allNodeData); // This will now log an array of NodeInfo instances
