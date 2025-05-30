@@ -442,6 +442,8 @@ export default function App() {
   const ipListForLQM = allNodeData.map(node => node.ip);
   const { linkQualityMatrix, mapMarkers } = buildStaticsLQM(ipListForLQM, allNodeData);
 
+  console.log(allNodeData);
+
   return (
     <>
       <CssBaseline />
