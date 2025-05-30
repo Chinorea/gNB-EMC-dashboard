@@ -259,8 +259,14 @@ function Sidebar({
 }
 
 export default function App() {
-  const [allNodeData, setAllNodeData] = useState([]); // Will hold NodeInfo instances
+  const [allNodeData, setAllNodeData] = useState([]);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
+  const allNodeDataRef = useRef(allNodeData);
+
+  // Effect to keep ref in sync with state
+  useEffect(() => {
+    allNodeDataRef.current = allNodeData;
+  }, [allNodeData]);
 
   // Effect 1: Initial load of allNodeData from localStorage
   useEffect(() => {
@@ -303,33 +309,42 @@ export default function App() {
   useEffect(() => {
     let running = false;
     const attrInterval = setInterval(async () => {
-      if (running || allNodeData.length === 0) return;
+      const currentNodes = allNodeDataRef.current; // Use ref
+      if (running || currentNodes.length === 0) return;
       running = true;
-      await Promise.all(allNodeData.map(node => node.refreshAttributesFromServer()));
-      setAllNodeData(prev => [...prev]);
-      running = false;
+      try {
+        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
+        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+      } catch (error) {
+        console.error("Error polling attributes:", error);
+      } finally {
+        running = false;
+      }
     }, 1000);
     return () => clearInterval(attrInterval);
-  }, [allNodeData]);
+  }, []); // Empty dependency array
 
   // Effect 4: Poll status and MANET every 5 seconds
   useEffect(() => {
     let running = false;
     const statusInterval = setInterval(async () => {
-      if (running || allNodeData.length === 0) return;
+      const currentNodes = allNodeDataRef.current; // Use ref
+      if (running || currentNodes.length === 0) return;
       running = true;
       try {
-        await Promise.all(allNodeData.map(async node => {
+        await Promise.all(currentNodes.map(async node => {
           await node.refreshStatusFromServer();
           await node.checkManetConnection();
         }));
-        setAllNodeData(prev => [...prev]);
+        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+      } catch (error) {
+        console.error("Error polling status/MANET:", error);
       } finally {
         running = false;
       }
-    }, 5000);
+    }, 3000);
     return () => clearInterval(statusInterval);
-  }, [allNodeData]);
+  }, []); // Empty dependency array
 
   const handleToggleNodeScript = useCallback(async (ip, action) => {
     const node = allNodeData.find(n => n.ip === ip);
