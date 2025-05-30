@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7506f6a3-bbfe-47d0-aa5a-55b430f098c8" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/HomePage.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/HomePage.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/NodeDashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/NodeDashboard.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,7 +38,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "Merging On__Board__Logic",
+    "git-widget-placeholder": "On__Board__Logic",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/Intern/Documents/GitHub/gNB-EMC-dashboard",
     "node.js.detected.package.eslint": "true",

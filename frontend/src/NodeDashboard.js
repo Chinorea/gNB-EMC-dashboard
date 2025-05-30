@@ -19,14 +19,19 @@ import TopBar from './nodedashboardassets/TopBar';
 
 // Updated props to accept nodeInfoMap
 export default function NodeDashboard({
-  nodeInfoMap,
+  allNodeData,
   // handleToggle is no longer needed directly from App.js, 
   // as NodeInfo instances will have their own toggle methods.
   // However, if App.js needs to initiate a toggle, it can find the NodeInfo instance
   // from nodeInfoMap and call its method. For the TopBar, we'll pass the specific method.
 }) {
+
+  console.log(allNodeData)
+
   const { ip } = useParams();
-  const nodeInfo = nodeInfoMap[ip];
+    console.log(ip)
+  const nodeInfo = allNodeData.find(node => node.ip === ip) || null;
+    console.log("NodeInfo: ", nodeInfo)
 
   // Fallback for when nodeInfo is not yet available
   if (!nodeInfo || !nodeInfo.attributes) { // Also check if attributes object exists
