@@ -293,6 +293,42 @@ async function toggleScriptAPI(ip, action) {
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
+  // Add state for map markers and LQM
+  const [mapMarkers, setMapMarkers] = useState([]);
+  const [lqm, setLQM] = useState([]);
+
+  // Function to load map data from API
+  const loadMapData = useCallback(() => {
+    const API_URL = 'http://192.168.2.141/status';
+    fetch(API_URL)
+      .then(r => r.json())
+      .then(data => {
+        const infos = Array.isArray(data.nodeInfos)
+          ? data.nodeInfos
+          : Object.values(data.nodeInfos || {});
+        const enriched = infos.map(info => ({
+          ...info,
+          batteryLevel:
+            data.selfId === info.id
+              ? (data.batteryLevel * 10).toFixed(2) + '%'
+              : 'unknown'
+        }));
+        const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
+        setMapMarkers(enriched);
+        const rawLQM = Array.isArray(data.linkQuality)
+          ? data.linkQuality
+          : [];
+        const fullLQM = buildStaticsLQM(infos, rawLQM, lqm, 100, null);
+        setLQM(fullLQM);
+
+      })
+      .catch(console.error);
+  }, [lqm, setAllNodeData]);
+
+  // Load map data on mount
+  useEffect(() => {
+    loadMapData();
+  }, [loadMapData]);
 
   // Effect 1: Initial load of allNodeData from localStorage
   useEffect(() => {
@@ -440,7 +476,7 @@ export default function App() {
   }, [setRebootAlertNodeIp]);
 
   const ipListForLQM = allNodeData.map(node => node.ip);
-  const { linkQualityMatrix, mapMarkers } = buildStaticsLQM(ipListForLQM, allNodeData);
+  const { linkQualityMatrix } = [];
 
   console.log(allNodeData);
 
@@ -466,29 +502,24 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={(
-                  <HomePage
-                    // Pass allNodeData as nodeInfoList, HomePage can derive IPs if needed
-                    nodeInfoList={allNodeData} 
-                    handleToggle={handleToggleNodeScript}
-                    linkQualityMatrix={linkQualityMatrix}
-                  />
-                )}
+                element={(<HomePage
+                  nodeInfoList={allNodeData} 
+                  handleToggle={handleToggleNodeScript}
+                  linkQualityMatrix={linkQualityMatrix}
+                />)}
               />
               <Route
                 path="/node/:ip"
-                element={(
-                  <NodeDashboard
-                    allNodeData={allNodeData}
-                    handleToggle={handleToggleNodeScript}
-                  />
-                )}
+                element={(<NodeDashboard
+                  allNodeData={allNodeData}
+                  handleToggle={handleToggleNodeScript}
+                />)}
               />
               <Route
                 path="/map"
                 element={<MapView 
                   markers={mapMarkers} 
-                  lqm={linkQualityMatrix} />}
+                  linkQualityMatrix={lqm} />}
               />
             </Routes>
           </Box>
