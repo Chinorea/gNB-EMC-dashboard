@@ -158,7 +158,7 @@ class NodeInfo {
     this.attributes.ipData.ipAddressNgu = attrsData.ip_address_ngu;
   }
 
-  async refreshAttributesFromServer(timeout = 800) {
+  async refreshAttributesFromServer(timeout = 900) {
     const controller = new AbortController();
     const signal = controller.signal;
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
@@ -289,7 +289,7 @@ class NodeInfo {
     // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
 
-  async checkManetConnection(timeout = 800) {
+  async checkManetConnection(timeout = 900) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
       return;
