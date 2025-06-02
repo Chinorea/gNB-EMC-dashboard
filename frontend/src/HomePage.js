@@ -1,4 +1,4 @@
-import React from 'react'; // Removed useState as edit dialog is removed
+import React, { useState } from 'react'; // Added useState
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -6,12 +6,16 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton, // Keep for other potential uses, though EditIcon is removed from cards
+  IconButton,
   Button,
-  // Dialog, DialogTitle, DialogContent, DialogActions removed as dialog is removed
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField, // Added TextField
   Box
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit'; // Re-added EditIcon import
+import EditIcon from '@mui/icons-material/Edit';
 
 // NodeIdBox seems to be a remnant or a specific component not directly using the main node loop data.
 // If it were to be used with NodeInfo, it would need similar adjustments.
@@ -42,11 +46,39 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
   );
 }
 
-export default function HomePage({ allNodeData, handleToggle }) {
+export default function HomePage({ allNodeData, setAllNodeData }) { // Removed handleToggle prop
   const navigate = useNavigate();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
+  const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
+  const [editSecondary, setEditSecondary] = useState('');
+  const [editName, setEditName] = useState('');
 
-  // Edit dialog state and functions (openEditDialog, saveEditDialog) removed.
-  // Editing is now handled by the Sidebar.
+  const openEditDialog = (nodeIp) => {
+    const nodeInstance = allNodeData.find(inst => inst.ip === nodeIp);
+    if (nodeInstance) {
+      setEditTarget(nodeInstance.ip); // Original IP
+      setEditPrimary(nodeInstance.ip); // Current IP for editing field
+      setEditSecondary(nodeInstance.manet.ip || '');
+      setEditName(nodeInstance.nodeName || '');
+      setEditOpen(true);
+    }
+  };
+
+  const saveEditDialog = () => {
+    setAllNodeData(prev => {
+      const inst = prev.find(node => node.ip === editTarget);
+      if (inst) {
+        inst.ip = editPrimary;
+        inst.nodeName = editName;
+        inst.manet.ip = editSecondary;
+        // Assuming 'Not Configured' is a suitable default if manet.ip is cleared
+        inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured'; 
+      }
+      return [...prev]; // Create a new array to trigger re-render
+    });
+    setEditOpen(false);
+  };
 
   const coreConnectionMap = {
     UP:        'Connected',
@@ -116,6 +148,21 @@ export default function HomePage({ allNodeData, handleToggle }) {
                   backgroundColor: bg,
                 }}
               >
+                <IconButton 
+                  onClick={(e) => { 
+                    e.stopPropagation(); // Prevent card click navigation
+                    openEditDialog(nodeIp); 
+                  }}
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: 20, // Adjust as needed
+                    right: 15, // Adjust as needed
+                    zIndex: 1 // Ensure it's above other card content
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
                 {/* EditIcon IconButton removed from here. Editing is via Sidebar. */}
                 <CardContent sx={{ pt: 0 }}>
                   <Typography
@@ -123,7 +170,7 @@ export default function HomePage({ allNodeData, handleToggle }) {
                     align="left"
                     sx={{ fontWeight: 'bold', fontSize: '1.4rem', mb: 0 }}
                   >
-                    {nodeInfo.nodeName || `Node ${nodeIp}`} {/* Ensure consistent default naming */}
+                    {nodeInfo.nodeName || `${nodeIp}`} {/* Ensure consistent default naming */}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -157,12 +204,16 @@ export default function HomePage({ allNodeData, handleToggle }) {
                         <Button
                           variant="contained"
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); handleToggle(nodeIp, underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start'); }} // Pass action to handleToggle
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            // Directly call the toggleScript method on the nodeInfo instance
+                            nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'setupv2'); 
+                          }}
                           disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                           sx={{
                             position: 'absolute',
                             top: 20,
-                            right: 15, // Adjusted right to account for removed edit icon
+                            right: 60, // Adjusted right to account for removed edit icon
                             backgroundColor:
                               // Color based on the underlying node status, persists during load
                               underlyingNodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
@@ -193,7 +244,42 @@ export default function HomePage({ allNodeData, handleToggle }) {
         })}
       </Grid>
 
-      {/* Edit Node Settings Dialog and its related Box component removed */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+        <Box
+          component="form"
+          onSubmit={e => { e.preventDefault(); saveEditDialog(); }}
+        >
+          <DialogTitle>Edit Node Settings</DialogTitle>
+          <DialogContent>
+            <TextField
+              margin="dense"
+              label="Node Name"
+              fullWidth
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="Node IP"
+              fullWidth
+              value={editPrimary} // This is the IP being edited
+              onChange={e => setEditPrimary(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="MANET IP"
+              fullWidth
+              value={editSecondary}
+              onChange={e => setEditSecondary(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="contained">Save</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Container>
   );
 }

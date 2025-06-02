@@ -1,5 +1,5 @@
 class NodeInfo {
-  constructor(ip) {
+  constructor(ip, globalSetState, setRebootAlertNodeIp) { // Added setRebootAlertNodeIp
     this.ip = ip; // Primary IP of the node
 
     // Status and Initialization
@@ -53,7 +53,12 @@ class NodeInfo {
       nodeInfo : null,
       selfManetInfo: null
     };
-    this.rawAttributes = {};
+    this.rawAttributes = {}; // Store raw attributes if needed
+    this.isInitializing = false; // Used to indicate script toggle or initial data load
+
+    // Store the callback
+    this._globalSetState = globalSetState;
+    this._setRebootAlertNodeIp = setRebootAlertNodeIp; // Store the new callback
   }
 
   get status() {
@@ -186,7 +191,7 @@ class NodeInfo {
     }
   }
 
-  async refreshStatusFromServer(timeout = 2000) {
+  async refreshStatusFromServer(timeout = 4000) {
     // Do not poll status if a toggle operation is in progress,
     // as toggleScript will manage the initializing state.
     if (this.isInitializing) {
@@ -220,55 +225,68 @@ class NodeInfo {
     }
   }
 
-  async toggleScript(action, timeout = 10000) {
+  // Method to toggle the script (start/stop)
+  async toggleScript(action) { // action is expected to be 'setupv2' or 'stop'
+    if (!this._globalSetState) {
+      console.warn(`[NodeInfo ${this.ip}] _globalSetState is not available. UI may not refresh.`);
+    }
+    if (!this._setRebootAlertNodeIp) {
+      console.warn(`[NodeInfo ${this.ip}] _setRebootAlertNodeIp is not available. Reboot alert will not function.`);
+    }
+
+    // Validate action
+    if (action !== 'setupv2' && action !== 'stop') {
+      console.error(`Invalid action: ${action} passed to toggleScript. Expected 'setupv2' or 'stop'.`);
+      return;
+    }
+
     this.isInitializing = true;
+    if (this._globalSetState) {
+      this._globalSetState(prev => [...prev]);
+    }
 
-    const controller = new AbortController();
-    const signal = controller.signal;
-    const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
+    const API_URL = `http://${this.ip}:5000/api/setup_script`;
 
-    let result = { success: false, showRebootAlert: false, error: null };
+    const finalizeToggle = () => {
+      this.isInitializing = false;
+      if (this._globalSetState) {
+        this._globalSetState(prev => [...prev]);
+      }
+    };
 
     try {
-      const response = await fetch(`http://${this.ip}:5000/api/setup_script`, {
+      const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-        signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: action }) // Use action directly
       });
-      clearTimeout(fetchTimeoutId);
 
-      // Check for 500 or 504 to indicate potential reboot
-      if (response.status === 500 || response.status === 504) {
-        result = { success: true, showRebootAlert: true, error: null };
-        // _currentStatus will be updated by subsequent polling.
-        // isInitializing remains true until explicitly set false.
-      } else if (response.ok) {
-        result = { success: true, showRebootAlert: false, error: null };
-        // If action is 'setupv2', node is starting. If 'stop', it's stopping.
-        // _currentStatus will be updated by subsequent polling.
-      } else {
-        const errorText = await response.text();
-        console.error(`[NodeInfo ${this.ip}] Toggle script '${action}' failed: ${response.status} - ${errorText}`);
-        this._currentStatus = 'DISCONNECTED'; // Or some other error state if preferred
-        result = { success: false, showRebootAlert: false, error: `HTTP ${response.status}: ${errorText}` };
+      if (!response.ok) { // Handle non-2xx responses by logging and potentially setting reboot alert
+        let errorText = `Error toggling script. HTTP Status: ${response.status}`;
+        try {
+          const rtext = await response.text();
+          errorText = `Error toggling script. HTTP Status: ${response.status}. Response Text: ${rtext}`;
+        } catch (textError) {
+          // Ignore if response text cannot be read
+        }
+        console.error(`[NodeInfo ${this.ip}] ${errorText}`);
+
+        if ((response.status === 500 || response.status === 504) && this._setRebootAlertNodeIp) {
+          this._setRebootAlertNodeIp(this.ip);
+        }
       }
-    } catch (error) {
-      clearTimeout(fetchTimeoutId);
-      let errorMsg = '';
-      if (error.name === 'AbortError') {
-        errorMsg = `Request timed out after ${timeout}ms.`;
-        console.warn(`[NodeInfo ${this.ip}] Toggle script '${action}' ${errorMsg}`);
-      } else {
-        errorMsg = error.message;
-        console.error(`[NodeInfo ${this.ip}] Error toggling script '${action}':`, error);
-      }
-      this._currentStatus = 'DISCONNECTED'; // Or some other error state
-      result = { success: false, showRebootAlert: false, error: errorMsg };
-    } finally {
-      this.isInitializing = false;
+      // For all cases (response.ok or not), introduce the delay before finalizing.
+      setTimeout(finalizeToggle, 3000);
+
+    } catch (error) { // Network error or other error during fetch
+      console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
+      // Also delay in case of a catch block error.
+      setTimeout(finalizeToggle, 3000);
     }
-    return result;
+    // The lines that were previously here to set isInitializing = false and update _globalSetState
+    // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
 
   async checkManetConnection(timeout = 2000) {

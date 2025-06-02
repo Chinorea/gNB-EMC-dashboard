@@ -28,14 +28,15 @@ import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
 
 const drawerWidth = 350;
 
 function Sidebar({
   allNodeData, // This will be an array of NodeInfo instances
   setAllNodeData,
+  setRebootAlertNodeIp, // Added prop
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -46,8 +47,9 @@ function Sidebar({
 
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
-      const newNodeInstance = new NodeInfo(ip);
-      newNodeInstance.nodeName = `Node ${ip}`;
+      // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
+      const newNodeInstance = new NodeInfo(ip, setAllNodeData, setRebootAlertNodeIp);
+      newNodeInstance.nodeName = ''; // Initialize nodeName as empty
       newNodeInstance.manet.ip = '';
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
@@ -65,7 +67,7 @@ function Sidebar({
       setEditTarget(nodeInstance.ip); // Original IP
       setEditPrimary(nodeInstance.ip); // Current IP for editing field
       setEditSecondary(nodeInstance.manet.ip || '');
-      setEditName(nodeInstance.nodeName || `Node ${nodeInstance.ip}`);
+      setEditName(nodeInstance.nodeName || ''); // Directly use nodeName, or empty if it's null/undefined
       setEditOpen(true);
     }
   };
@@ -170,40 +172,37 @@ function Sidebar({
                   sx={{ flex: 1 }}
                 >
                   <ListItemText
-                    primary={nodeInstance.nodeName || `Node ${nodeInstance.ip}`}
+                    primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
                     primaryTypographyProps={{
                       fontWeight: 'bold',
                       variant: 'body1',
                       fontSize: '1.0rem'
                     }}
                     secondary={
-                      nodeInstance.nodeName && nodeInstance.nodeName !== `Node ${nodeInstance.ip}` // Show IP if name is not default
-                        ? (
-                          <>
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color="textSecondary"
-                              sx={{ fontSize: '0.9rem' }}
-                            >
-                              Node IP: {nodeInstance.ip}
-                            </Typography>
-                            <br />
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color="textSecondary"
-                              sx={{ fontSize: '0.9rem' }}
-                            >
-                              MANET: {nodeInstance.manet.ip || 'Not configured'}
-                            </Typography>
-                          </>
-                        )
-                        : `MANET: ${nodeInstance.manet.ip || 'Not configured'}`
+                      <>
+                        {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
+                          <Typography
+                            component="span"
+                            variant="body1"
+                            color="textSecondary"
+                            sx={{ fontSize: '0.9rem', display: 'block' }}
+                          >
+                            Node IP: {nodeInstance.ip}
+                          </Typography>
+                        )}
+                        <Typography
+                          component="span"
+                          variant="body1"
+                          color="textSecondary"
+                          sx={{ fontSize: '0.9rem', display: 'block' }}
+                        >
+                          MANET: {nodeInstance.manet.ip || 'Not configured'}
+                        </Typography>
+                      </>
                     }
                     secondaryTypographyProps={{
                       component: 'div',
-                      sx: { mt: (nodeInstance.nodeName && nodeInstance.nodeName !== `Node ${nodeInstance.ip}`) ? 0 : 0.5, fontSize: '0.9rem' }
+                      sx: { mt: 0.5, fontSize: '0.9rem' }
                     }}
                   />
                 </ListItemButton>
@@ -260,8 +259,8 @@ function Sidebar({
 
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
-  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
   const allNodeDataRef = useRef(allNodeData);
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // Added state for reboot alert
 
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -351,7 +350,8 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          const instance = new NodeInfo(data.ip);
+          // Pass setAllNodeData and setRebootAlertNodeIp when rehydrating
+          const instance = new NodeInfo(data.ip, setAllNodeData, setRebootAlertNodeIp);
           instance.nodeName = data.nodeName;
           instance.manet.ip = data.manetIp;
           instance.manet.connectionStatus = data.manetConnectionStatus;
@@ -389,7 +389,10 @@ export default function App() {
       if (running || currentNodes.length === 0) return;
       running = true;
       try {
-        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
+        await Promise.all(currentNodes.map(async node => { // Added async here
+          await node.refreshAttributesFromServer();
+          await node.checkManetConnection(); // Moved here
+        }));
         setAllNodeData([...currentNodes]); // Create new array from ref's current value
       } catch (error) {
         console.error("Error polling attributes:", error);
@@ -410,7 +413,7 @@ export default function App() {
       try {
         await Promise.all(currentNodes.map(async node => {
           await node.refreshStatusFromServer();
-          await node.checkManetConnection();
+          // await node.checkManetConnection(); // Removed from here
         }));
         setAllNodeData([...currentNodes]); // Create new array from ref's current value
       } catch (error) {
@@ -422,40 +425,27 @@ export default function App() {
     return () => clearInterval(statusInterval);
   }, []); // Empty dependency array
 
-  const handleToggleNodeScript = useCallback(async (ip, action) => {
-    const node = allNodeData.find(n => n.ip === ip);
-    if (!node) return;
-    node.isInitializing = true;
-    setAllNodeData(prev => [...prev]);
-
-    const result = await node.toggleScript(action);
-
-    await node.refreshStatusFromServer();
-    if (node.status === 'RUNNING') await node.refreshAttributesFromServer();
-    await node.checkManetConnection();
-    node.isInitializing = false;
-    setAllNodeData(prev => [...prev]);
-
-    if (result.showRebootAlert) setRebootAlertNodeIp(ip);
-  }, [allNodeData, setRebootAlertNodeIp]);
-
   //console.log(allNodeData); // This will now log an array of NodeInfo instances
 
   return (
     <>
       <CssBaseline />
-      <RebootAlertDialog open={!!rebootAlertNodeIp} onClose={() => setRebootAlertNodeIp(null)} />
+      <RebootAlertDialog // Added RebootAlertDialog
+        open={!!rebootAlertNodeIp}
+        nodeIp={rebootAlertNodeIp}
+        onClose={() => setRebootAlertNodeIp(null)}
+      />
       <BrowserRouter>
         <Box sx={{ display: 'flex', height: '100vh' }}>
           <Sidebar
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
+            setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
           />
           <Box
             component="main"
             sx={{
               flexGrow: 1,
-              p: 3,
               width: { sm: `calc(100% - ${drawerWidth}px)` },
               overflowY: 'auto'
             }}
@@ -463,10 +453,11 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={(
+                element={( 
                   <HomePage
                     allNodeData={allNodeData}
-                    handleToggle={handleToggleNodeScript}
+                    // handleToggle={handleToggleNodeScript} // Remove this prop
+                    setAllNodeData={setAllNodeData}
                   />
                 )}
               />
@@ -475,7 +466,7 @@ export default function App() {
                 element={(
                   <NodeDashboard
                     allNodeData={allNodeData}
-                    handleToggle={handleToggleNodeScript}
+                    // handleToggle={handleToggleNodeScript} // Remove this prop
                   />
                 )}
               />

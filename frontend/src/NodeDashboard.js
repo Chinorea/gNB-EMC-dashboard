@@ -18,7 +18,7 @@ import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import TopBar from './nodedashboardassets/TopBar';
 
 // Updated props to accept nodeInfoMap
-export default function NodeDashboard({
+export default function NodeDashboard({ 
   allNodeData,
   // handleToggle is no longer needed directly from App.js, 
   // as NodeInfo instances will have their own toggle methods.
@@ -43,12 +43,12 @@ export default function NodeDashboard({
               {ip}
             </Typography>
             <Typography variant="subtitle1" sx={{ mr: 2, fontSize: '1.3rem' }}>
-              Status: Loading Node Data...
+              Warning: Save the node before attempting to view its dashboard.
             </Typography>
           </Toolbar>
         </AppBar>
         <Container sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography variant="h5">Loading node information...</Typography>
+          <Typography variant="h5">Save Not Found</Typography>
         </Container>
       </Box>
     );
@@ -81,28 +81,22 @@ export default function NodeDashboard({
     : nodeStatus === 'OFF'         ? '#612a1f'
                                    : '#2d2e2e'; // Default for UNREACHABLE, INITIALIZING etc.
   
-  // if unreachable, show only AppBar (or a more informative "unreachable" page)
-  // This condition might be refined based on how `nodeInfo.status` represents unreachability
-  if (nodeStatus === 'UNREACHABLE' && !isInitializing) {
+  // if disconnected, show only TopBar and no cards
+  if (nodeStatus === 'DISCONNECTED' && !isInitializing) {
     return (
       <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
         <CssBaseline />
-        <AppBar position="static" elevation={2}
-          sx={{ backgroundColor: appBarColor }}
-        >
-          <Toolbar sx={{ justifyContent: 'space-between' }}>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              {nodeName || ip} 
-            </Typography>
-            <Typography variant="subtitle1" sx={{ mr: 2, fontSize: '1.3rem' }}>
-              Status: Unreachable
-            </Typography>
-          </Toolbar>
-        </AppBar>
-         <Container sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography variant="h5">Cannot connect to node {nodeName || ip}.</Typography>
-          <Typography variant="body1">Please check the node's power and network connection.</Typography>
-        </Container>
+        <TopBar
+          ip={ip}
+          loading={isInitializing} // Will be false in this context
+          nodeStatus={nodeStatus}   // Will be 'DISCONNECTED'
+          appBarColor={appBarColor}
+          // The toggle button within TopBar is typically hidden for 'DISCONNECTED' status,
+          // but a valid handler should still be provided.
+          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
+          nodeName={nodeName || ip}
+        />
+        {/* Container with detailed unreachable message removed to only show TopBar */}
       </Box>
     );
   }
@@ -164,7 +158,7 @@ export default function NodeDashboard({
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
           // Pass the toggleScript method from the specific NodeInfo instance
-          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'start')}
+          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
           nodeName={nodeName || ip} // Use nodeName from NodeInfo, fallback to IP
         />
 
