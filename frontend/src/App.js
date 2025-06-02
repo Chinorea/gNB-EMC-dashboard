@@ -262,17 +262,23 @@ export default function App() {
   const allNodeDataRef = useRef(allNodeData);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // Added state for reboot alert
 
-  // Effect to keep ref in sync with state
-  useEffect(() => {
-    allNodeDataRef.current = allNodeData;
-  }, [allNodeData]);
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
   const [lqm, setLQM] = useState([]);
 
+  // NEW: State to trigger map data refresh
+  const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
+
   // Function to load map data from API
   const loadMapData = useCallback(() => {
-    const API_URL = 'http://192.168.2.141/status';
+    // Find the first node with a valid manet.ip
+    const targetNode = allNodeData.find(node => node.manet && node.manet.ip);
+    if (!targetNode) {
+      console.warn("No node with a valid manet.ip found.");
+      return;
+    }
+    const API_URL = `http://${targetNode.manet.ip}/status`;
+
     fetch(API_URL)
       .then(r => r.json())
       .then(data => {
@@ -286,9 +292,9 @@ export default function App() {
               ? (data.batteryLevel * 10).toFixed(2) + '%'
               : 'unknown'
         }));
-        const selfNodeInfo = enriched.find(info => info.id === data.selfId) || null;
-        const manetIp = selfNodeInfo.ip || '';
-        setMapMarkers(enriched);
+        // if (JSON.stringify(enriched) !== JSON.stringify(mapMarkers)) {
+        //   setMapMarkers(enriched);
+        // }
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
           : [];
@@ -306,20 +312,36 @@ export default function App() {
             return node;
           });
         });
+
+        // Use selfManetInfo for map markers
+        const selfManetMarkers = allNodeData
+          .map(node => node.manet.selfManetInfo)
+          .filter(info => info && info.latitude && info.longitude);
+        setMapMarkers(selfManetMarkers);
+
+
       })
-
-
       .catch(console.error);
-  }, [lqm, setAllNodeData]);
+  }, [allNodeData, lqm, setAllNodeData, mapMarkers]);
 
-  // Load map data every 1 minute
+  // NEW: Hard refresh rate for map data (e.g., every 30 seconds)
   useEffect(() => {
     loadMapData(); // Initial load
     const intervalId = setInterval(() => {
-      loadMapData();
-    }, 60000); // 60000 ms = 1 minute
+      setMapDataRefreshTrigger(t => t + 1);
+    }, 30000); // 30000 ms = 30 seconds
     return () => clearInterval(intervalId);
   }, [loadMapData]);
+
+  // Only update map data when mapDataRefreshTrigger changes
+  useEffect(() => {
+    loadMapData();
+  }, [mapDataRefreshTrigger, loadMapData]);
+
+  // Effect to keep ref in sync with state
+  useEffect(() => {
+    allNodeDataRef.current = allNodeData;
+  }, [allNodeData]);
 
   // Effect 1: Initial load of allNodeData from localStorage
   useEffect(() => {
@@ -403,9 +425,7 @@ export default function App() {
     return () => clearInterval(statusInterval);
   }, []); // Empty dependency array
 
-  const { linkQualityMatrix } = [];
-
-  console.log(allNodeData); // This will now log an array of NodeInfo instances
+  //console.log(allNodeData); // This will now log an array of NodeInfo instances
 
   return (
     <>
