@@ -439,9 +439,7 @@ export default function App() {
     if (result.showRebootAlert) setRebootAlertNodeIp(ip);
   }, [allNodeData, setRebootAlertNodeIp]);
 
-  const { linkQualityMatrix } = [];
-
-  console.log(allNodeData); // This will now log an array of NodeInfo instances
+  //console.log(allNodeData); // This will now log an array of NodeInfo instances
 
   return (
     <>
