@@ -14,8 +14,8 @@ class LogManager:
         if not os.path.exists('logs'):
             os.makedirs('logs')
 
-        # Use fixed log filename
-        log_file = 'logs/setup_log'
+        # Use fixed log filename with .txt extension
+        log_file = 'logs/setup_log.txt'
 
         # Setup rotating file handler (10MB per file, keep 5 backup files)
         file_handler = logging.handlers.RotatingFileHandler(
@@ -26,7 +26,7 @@ class LogManager:
         )
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            '[%(asctime)s] - [%(levelname)s] - %(message)s'
         )
         file_handler.setFormatter(file_formatter)
 
