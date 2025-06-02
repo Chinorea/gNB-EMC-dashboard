@@ -191,7 +191,7 @@ class NodeInfo {
     }
   }
 
-  async refreshStatusFromServer(timeout = 3500) {
+  async refreshStatusFromServer(timeout = 4900) {
     // Do not poll status if a toggle operation is in progress,
     // as toggleScript will manage the initializing state.
     if (this.isInitializing) {
@@ -278,12 +278,12 @@ class NodeInfo {
         }
       }
       // For all cases (response.ok or not), introduce the delay before finalizing.
-      setTimeout(finalizeToggle, 4000);
+      setTimeout(finalizeToggle, 5000);
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
       // Also delay in case of a catch block error.
-      setTimeout(finalizeToggle, 4000);
+      setTimeout(finalizeToggle, 5000);
     }
     // The lines that were previously here to set isInitializing = false and update _globalSetState
     // are now handled by the finalizeToggle function, called with a delay in all paths.
