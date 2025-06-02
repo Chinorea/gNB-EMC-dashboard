@@ -376,16 +376,27 @@ export default function App() {
     if (!hasLoaded) { // Guard: Only run if initial load is complete
       return;
     }
-    const plainObjects = allNodeData.map(instance => ({
-      ip: instance.ip,
-      nodeName: instance.nodeName,
-      manetIp: instance.manet.ip,
-      status: instance.status, // Relies on NodeInfo's getter
-      attributes: instance.attributes, // Consider if all attributes need to be persisted
-      isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
-      manetConnectionStatus: instance.manet.connectionStatus,
-    }));
-    localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
+
+    // Debounce localStorage saving
+    const debounceTimeout = 500; // 500ms debounce period
+    const handler = setTimeout(() => {
+      const plainObjects = allNodeData.map(instance => ({
+        ip: instance.ip,
+        nodeName: instance.nodeName,
+        manetIp: instance.manet.ip,
+        status: instance.status, // Relies on NodeInfo's getter
+        attributes: instance.attributes, // Consider if all attributes need to be persisted
+        isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
+        manetConnectionStatus: instance.manet.connectionStatus,
+      }));
+      localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
+      // console.log('Saved to localStorage (debounced)', plainObjects); // Optional: for debugging
+    }, debounceTimeout);
+
+    // Cleanup function to clear the timeout if allNodeData changes again before timeout elapses
+    return () => {
+      clearTimeout(handler);
+    };
   }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
 
   // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
