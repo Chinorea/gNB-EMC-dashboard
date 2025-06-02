@@ -1,5 +1,5 @@
 class NodeInfo {
-  constructor(ip, globalSetState) {
+  constructor(ip, globalSetState, setRebootAlertNodeIp) { // Added setRebootAlertNodeIp
     this.ip = ip; // Primary IP of the node
 
     // Status and Initialization
@@ -58,6 +58,7 @@ class NodeInfo {
 
     // Store the callback
     this._globalSetState = globalSetState;
+    this._setRebootAlertNodeIp = setRebootAlertNodeIp; // Store the new callback
   }
 
   get status() {
@@ -225,37 +226,28 @@ class NodeInfo {
   }
 
   // Method to toggle the script (start/stop)
-  async toggleScript(action) { // action is expected to be 'start' or 'stop' from the frontend
-    console.log(`[NodeInfo ${this.ip}] toggleScript called with action: ${action}`);
-
+  async toggleScript(action) { // action is expected to be 'setupv2' or 'stop'
     if (!this._globalSetState) {
       console.warn(`[NodeInfo ${this.ip}] _globalSetState is not available. UI may not refresh.`);
+    }
+    if (!this._setRebootAlertNodeIp) {
+      console.warn(`[NodeInfo ${this.ip}] _setRebootAlertNodeIp is not available. Reboot alert will not function.`);
+    }
+
+    // Validate action
+    if (action !== 'setupv2' && action !== 'stop') {
+      console.error(`Invalid action: ${action} passed to toggleScript. Expected 'setupv2' or 'stop'.`);
+      // Optionally, set isInitializing to false and update global state if needed,
+      // though typically this kind of validation might happen before calling.
+      return;
     }
 
     this.isInitializing = true;
     if (this._globalSetState) {
-      console.log(`[NodeInfo ${this.ip}] Setting isInitializing to true and updating global state.`);
       this._globalSetState(prev => [...prev]);
-    } else {
-      console.warn(`[NodeInfo ${this.ip}] Cannot update global state for isInitializing=true as _globalSetState is missing.`);
-    }
-
-    let backendAction;
-    if (action === 'start') {
-      backendAction = 'setupv2';
-    } else if (action === 'stop') {
-      backendAction = 'stop';
-    } else {
-      console.error(`[NodeInfo ${this.ip}] Invalid action: ${action} passed to toggleScript.`);
-      this.isInitializing = false;
-      if (this._globalSetState) {
-        this._globalSetState(prev => [...prev]);
-      }
-      return;
     }
 
     const API_URL = `http://${this.ip}:5000/api/setup_script`;
-    console.log(`[NodeInfo ${this.ip}] Attempting API call. Method: POST, URL: ${API_URL}, Backend Action: ${backendAction}`);
 
     try {
       const response = await fetch(API_URL, {
@@ -263,59 +255,32 @@ class NodeInfo {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: backendAction })
+        body: JSON.stringify({ action: action }) // Use action directly
       });
 
-      console.log(`[NodeInfo ${this.ip}] API call completed. Response status: ${response.status}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`[NodeInfo ${this.ip}] Toggle script successful. Response data:`, data);
-      } else {
-        let errorText = 'Could not retrieve error text from response.';
+      if (!response.ok) {
+        // Try to get more specific error text, but don't let it crash
+        let errorText = `Error toggling script. HTTP Status: ${response.status}`;
         try {
-          errorText = await response.text();
+          const rtext = await response.text();
+          errorText = `Error toggling script. HTTP Status: ${response.status}. Response Text: ${rtext}`;
         } catch (textError) {
-          console.error(`[NodeInfo ${this.ip}] Failed to get text from error response:`, textError);
+          // Ignore if response text cannot be read
         }
-        console.error(`[NodeInfo ${this.ip}] Error toggling script. HTTP Status: ${response.status}. Response Text: ${errorText}`);
+        console.error(`[NodeInfo ${this.ip}] ${errorText}`);
+
+        if ((response.status === 500 || response.status === 504) && this._setRebootAlertNodeIp) {
+          this._setRebootAlertNodeIp(this.ip);
+        }
       }
     } catch (error) {
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
-      if (error && error.message) {
-        console.error(`[NodeInfo ${this.ip}] Error message: ${error.message}`);
-      }
-      // Avoid logging full stack in production for security, but useful for dev
-      // if (error && error.stack) {
-      //   console.error(`[NodeInfo ${this.ip}] Error stack: ${error.stack}`);
-      // }
     }
 
-    console.log(`[NodeInfo ${this.ip}] Proceeding to refresh data after toggle attempt.`);
-    try {
-      await this.refreshStatusFromServer();
-      // Note: this.status getter itself checks this.isInitializing.
-      // If toggleScript failed and node is still 'OFF' or 'DISCONNECTED', attributes might not be fetched.
-      if (this.status === 'RUNNING') { 
-        console.log(`[NodeInfo ${this.ip}] Node status is RUNNING, refreshing attributes.`);
-        await this.refreshAttributesFromServer();
-      } else {
-        console.log(`[NodeInfo ${this.ip}] Node status is ${this.status}, skipping attribute refresh.`);
-      }
-      await this.checkManetConnection();
-      console.log(`[NodeInfo ${this.ip}] Data refresh completed.`);
-    } catch (refreshError) {
-        console.error(`[NodeInfo ${this.ip}] Error during post-toggle data refresh:`, refreshError);
-    }
-    
     this.isInitializing = false;
     if (this._globalSetState) {
-      console.log(`[NodeInfo ${this.ip}] Setting isInitializing to false and updating global state.`);
       this._globalSetState(prev => [...prev]);
-    } else {
-       console.warn(`[NodeInfo ${this.ip}] Cannot update global state for isInitializing=false as _globalSetState is missing.`);
     }
-    console.log(`[NodeInfo ${this.ip}] toggleScript finished.`);
   }
 
   async checkManetConnection(timeout = 1000) {

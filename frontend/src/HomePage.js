@@ -207,7 +207,7 @@ export default function HomePage({ allNodeData, setAllNodeData }) { // Removed h
                           onClick={(e) => { 
                             e.stopPropagation(); 
                             // Directly call the toggleScript method on the nodeInfo instance
-                            nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start'); 
+                            nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'setupv2'); 
                           }}
                           disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                           sx={{

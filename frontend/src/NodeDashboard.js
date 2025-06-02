@@ -93,7 +93,7 @@ export default function NodeDashboard({
           appBarColor={appBarColor}
           // The toggle button within TopBar is typically hidden for 'DISCONNECTED' status,
           // but a valid handler should still be provided.
-          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'start')}
+          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
           nodeName={nodeName || ip}
         />
         {/* Container with detailed unreachable message removed to only show TopBar */}
@@ -158,7 +158,7 @@ export default function NodeDashboard({
           nodeStatus={nodeStatus}
           appBarColor={appBarColor}
           // Pass the toggleScript method from the specific NodeInfo instance
-          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'start')}
+          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
           nodeName={nodeName || ip} // Use nodeName from NodeInfo, fallback to IP
         />
 
