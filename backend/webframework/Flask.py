@@ -214,7 +214,10 @@ def download_file(file_key):
 XML_MAPPING = {
     "gnbIP": {
         "file": Path("/cu/config/me_config.xml"),
-        "xpath": "GNBCUFunction/EP_NgC/localIpAddress"
+        "paths": {
+            "ngc": "GNBCUFunction/EP_NgC/localIpAddress",
+            "ngu": "GNBCUFunction/EP_NgU/localIpAddress"
+        }
     },
     "PCI": {
         "file": Path("/cu/config/me_config.xml"),
@@ -251,17 +254,24 @@ XML_MAPPING = {
 def set_config():
     """
     Expects JSON { "field":"gnbIP", "value":"1.2.3.4" }
+    For gnbIP, updates both NgC and NgU local IP addresses
     """
     data = request.get_json(force=True)
     field = data.get("field")
-    val   = data.get("value")
+    val = data.get("value")
 
     if field not in XML_MAPPING:
         return jsonify({"error": f"Unknown field '{field}'"}), 400
 
     spec = XML_MAPPING[field]
     try:
-        update_xml_by_path(spec["file"], { spec["xpath"]: val })
+        if field == "gnbIP":
+            # For gnbIP, update both paths with the same value
+            updates = {path: val for path in spec["paths"].values()}
+            update_xml_by_path(spec["file"], updates)
+        else:
+            # For other fields, update single xpath
+            update_xml_by_path(spec["file"], {spec["xpath"]: val})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -271,14 +281,19 @@ def set_config():
 def get_config():
     """
     Returns a JSON mapping each writable field in XML_MAPPING to its current value.
+    For gnbIP, returns the NgC local IP address value.
     """
     snapshot = {}
     for field, spec in XML_MAPPING.items():
         try:
-            # read_xml_by_path returns { xpath: [list of matches] }
-            values = read_xml_by_path(spec["file"], [spec["xpath"]])[spec["xpath"]]
-            # if multiple nodes match, we take the first; else None
-            snapshot[field] = values[0] if values else None
+            if field == "gnbIP":
+                # For gnbIP, read NgC path (both NgC and NgU should have same value)
+                ngc_path = spec["paths"]["ngc"]
+                values = read_xml_by_path(spec["file"], [ngc_path])[ngc_path]
+                snapshot[field] = values[0] if values else None
+            else:
+                values = read_xml_by_path(spec["file"], [spec["xpath"]])[spec["xpath"]]
+                snapshot[field] = values[0] if values else None
         except Exception as e:
             # on error (file missing, parse error, etc.) report null
             snapshot[field] = None
