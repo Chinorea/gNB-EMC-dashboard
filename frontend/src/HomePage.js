@@ -46,7 +46,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
   );
 }
 
-export default function HomePage({ allNodeData, handleToggle, setAllNodeData }) { // Added setAllNodeData prop
+export default function HomePage({ allNodeData, setAllNodeData }) { // Removed handleToggle prop
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
@@ -204,7 +204,11 @@ export default function HomePage({ allNodeData, handleToggle, setAllNodeData }) 
                         <Button
                           variant="contained"
                           size="small"
-                          onClick={(e) => { e.stopPropagation(); handleToggle(nodeIp, underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start'); }} // Pass action to handleToggle
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            // Directly call the toggleScript method on the nodeInfo instance
+                            nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start'); 
+                          }}
                           disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                           sx={{
                             position: 'absolute',
