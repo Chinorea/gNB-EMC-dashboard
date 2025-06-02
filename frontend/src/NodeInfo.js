@@ -191,7 +191,7 @@ class NodeInfo {
     }
   }
 
-  async refreshStatusFromServer(timeout = 2000) {
+  async refreshStatusFromServer(timeout = 4000) {
     // Do not poll status if a toggle operation is in progress,
     // as toggleScript will manage the initializing state.
     if (this.isInitializing) {
@@ -237,8 +237,6 @@ class NodeInfo {
     // Validate action
     if (action !== 'setupv2' && action !== 'stop') {
       console.error(`Invalid action: ${action} passed to toggleScript. Expected 'setupv2' or 'stop'.`);
-      // Optionally, set isInitializing to false and update global state if needed,
-      // though typically this kind of validation might happen before calling.
       return;
     }
 
@@ -249,6 +247,13 @@ class NodeInfo {
 
     const API_URL = `http://${this.ip}:5000/api/setup_script`;
 
+    const finalizeToggle = () => {
+      this.isInitializing = false;
+      if (this._globalSetState) {
+        this._globalSetState(prev => [...prev]);
+      }
+    };
+
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -258,8 +263,7 @@ class NodeInfo {
         body: JSON.stringify({ action: action }) // Use action directly
       });
 
-      if (!response.ok) {
-        // Try to get more specific error text, but don't let it crash
+      if (!response.ok) { // Handle non-2xx responses by logging and potentially setting reboot alert
         let errorText = `Error toggling script. HTTP Status: ${response.status}`;
         try {
           const rtext = await response.text();
@@ -273,17 +277,19 @@ class NodeInfo {
           this._setRebootAlertNodeIp(this.ip);
         }
       }
-    } catch (error) {
-      console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
-    }
+      // For all cases (response.ok or not), introduce the delay before finalizing.
+      setTimeout(finalizeToggle, 3000);
 
-    this.isInitializing = false;
-    if (this._globalSetState) {
-      this._globalSetState(prev => [...prev]);
+    } catch (error) { // Network error or other error during fetch
+      console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
+      // Also delay in case of a catch block error.
+      setTimeout(finalizeToggle, 3000);
     }
+    // The lines that were previously here to set isInitializing = false and update _globalSetState
+    // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
 
-  async checkManetConnection(timeout = 1000) {
+  async checkManetConnection(timeout = 2000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
       return;
