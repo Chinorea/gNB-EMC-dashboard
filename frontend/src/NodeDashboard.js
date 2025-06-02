@@ -18,7 +18,7 @@ import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import TopBar from './nodedashboardassets/TopBar';
 
 // Updated props to accept nodeInfoMap
-export default function NodeDashboard({
+export default function NodeDashboard({ 
   allNodeData,
   // handleToggle is no longer needed directly from App.js, 
   // as NodeInfo instances will have their own toggle methods.

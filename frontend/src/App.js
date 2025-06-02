@@ -28,7 +28,6 @@ import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
 
 const drawerWidth = 350;
@@ -46,7 +45,8 @@ function Sidebar({
 
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
-      const newNodeInstance = new NodeInfo(ip);
+      // Pass setAllNodeData to the NodeInfo constructor, setRebootAlertNodeIp removed
+      const newNodeInstance = new NodeInfo(ip, setAllNodeData);
       newNodeInstance.nodeName = ''; // Initialize nodeName as empty
       newNodeInstance.manet.ip = '';
       newNodeInstance.manet.connectionStatus = 'Not Configured';
@@ -257,7 +257,6 @@ function Sidebar({
 
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
-  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
   const allNodeDataRef = useRef(allNodeData);
 
   // Effect to keep ref in sync with state
@@ -326,7 +325,8 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          const instance = new NodeInfo(data.ip);
+          // Pass setAllNodeData when rehydrating, setRebootAlertNodeIp removed
+          const instance = new NodeInfo(data.ip, setAllNodeData);
           instance.nodeName = data.nodeName;
           instance.manet.ip = data.manetIp;
           instance.manet.connectionStatus = data.manetConnectionStatus;
@@ -400,23 +400,6 @@ export default function App() {
     return () => clearInterval(statusInterval);
   }, []); // Empty dependency array
 
-  const handleToggleNodeScript = useCallback(async (ip, action) => {
-    const node = allNodeData.find(n => n.ip === ip);
-    if (!node) return;
-    node.isInitializing = true;
-    setAllNodeData(prev => [...prev]);
-
-    const result = await node.toggleScript(action);
-
-    await node.refreshStatusFromServer();
-    if (node.status === 'RUNNING') await node.refreshAttributesFromServer();
-    await node.checkManetConnection();
-    node.isInitializing = false;
-    setAllNodeData(prev => [...prev]);
-
-    if (result.showRebootAlert) setRebootAlertNodeIp(ip);
-  }, [allNodeData, setRebootAlertNodeIp]);
-
   const { linkQualityMatrix } = [];
 
   console.log(allNodeData); // This will now log an array of NodeInfo instances
@@ -424,7 +407,6 @@ export default function App() {
   return (
     <>
       <CssBaseline />
-      <RebootAlertDialog open={!!rebootAlertNodeIp} onClose={() => setRebootAlertNodeIp(null)} />
       <BrowserRouter>
         <Box sx={{ display: 'flex', height: '100vh' }}>
           <Sidebar
@@ -443,11 +425,11 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={(
+                element={( 
                   <HomePage
                     allNodeData={allNodeData}
-                    handleToggle={handleToggleNodeScript}
-                    setAllNodeData={setAllNodeData} // Add this prop
+                    // handleToggle={handleToggleNodeScript} // Remove this prop
+                    setAllNodeData={setAllNodeData}
                   />
                 )}
               />
@@ -456,7 +438,7 @@ export default function App() {
                 element={(
                   <NodeDashboard
                     allNodeData={allNodeData}
-                    handleToggle={handleToggleNodeScript}
+                    // handleToggle={handleToggleNodeScript} // Remove this prop
                   />
                 )}
               />
