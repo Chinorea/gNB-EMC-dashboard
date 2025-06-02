@@ -29,12 +29,14 @@ import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
 
 const drawerWidth = 350;
 
 function Sidebar({
   allNodeData, // This will be an array of NodeInfo instances
   setAllNodeData,
+  setRebootAlertNodeIp, // Added prop
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -45,8 +47,8 @@ function Sidebar({
 
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
-      // Pass setAllNodeData to the NodeInfo constructor, setRebootAlertNodeIp removed
-      const newNodeInstance = new NodeInfo(ip, setAllNodeData);
+      // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
+      const newNodeInstance = new NodeInfo(ip, setAllNodeData, setRebootAlertNodeIp);
       newNodeInstance.nodeName = ''; // Initialize nodeName as empty
       newNodeInstance.manet.ip = '';
       newNodeInstance.manet.connectionStatus = 'Not Configured';
@@ -258,6 +260,7 @@ function Sidebar({
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
   const allNodeDataRef = useRef(allNodeData);
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // Added state for reboot alert
 
   // Effect to keep ref in sync with state
   useEffect(() => {
@@ -325,8 +328,8 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          // Pass setAllNodeData when rehydrating, setRebootAlertNodeIp removed
-          const instance = new NodeInfo(data.ip, setAllNodeData);
+          // Pass setAllNodeData and setRebootAlertNodeIp when rehydrating
+          const instance = new NodeInfo(data.ip, setAllNodeData, setRebootAlertNodeIp);
           instance.nodeName = data.nodeName;
           instance.manet.ip = data.manetIp;
           instance.manet.connectionStatus = data.manetConnectionStatus;
@@ -407,11 +410,17 @@ export default function App() {
   return (
     <>
       <CssBaseline />
+      <RebootAlertDialog // Added RebootAlertDialog
+        open={!!rebootAlertNodeIp}
+        nodeIp={rebootAlertNodeIp}
+        onClose={() => setRebootAlertNodeIp(null)}
+      />
       <BrowserRouter>
         <Box sx={{ display: 'flex', height: '100vh' }}>
           <Sidebar
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
+            setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
           />
           <Box
             component="main"
