@@ -1,17 +1,16 @@
 import React, { useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// pull in all three images from the Leaflet package
+// extract images from Leaflet's default icon set path
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl     from 'leaflet/dist/images/marker-shadow.png';
-// tell Leaflet to use these instead of its hard-coded paths
+// tell Leaflet to use these metioned image paths for map objects
 L.Icon.Default.mergeOptions({
   iconRetinaUrl,
   iconUrl,
   shadowUrl,
 });
-
 
 function MapView({
   initialCenter = [1.3362, 103.7440],
@@ -23,7 +22,6 @@ function MapView({
   const map   = useRef(null);
   const layer = useRef(null);
 
-  //console.log("markers: ", markers)
   // initialize map once
   useEffect(() => {
     map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
@@ -104,7 +102,7 @@ function MapView({
     };
   }, [markers, linkQualityMatrix]);
 
-  console.log("MapView rendered, markers:", markers);
+  //console.log("MapView rendered, markers:", markers);
 
   return (
     <div
