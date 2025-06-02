@@ -286,6 +286,7 @@ export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
   const allNodeDataRef = useRef(allNodeData);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
+  const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false); // New state for loading status
 
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -396,34 +397,32 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          // Use the new NodeInfo constructor, pass only ip and setRebootAlertNodeIp
           const instance = new NodeInfo(data.ip, setRebootAlertNodeIp);
           instance.nodeName = data.nodeName;
-          // instance.manet.ip = data.manetIp; // NodeInfo's toPlainObject persists this
-          if (data.manetIp) { // Restore MANET IP if it exists
+          if (data.manetIp) {
             instance.setManetIp(data.manetIp);
           }
-          // instance.manet.connectionStatus = data.manetConnectionStatus; // Let NodeInfo's polling determine this
-          // instance._currentStatus = data.status; // Let NodeInfo's polling determine this
-          // instance.attributes = data.attributes; // Let NodeInfo's polling determine this
-          // instance.isInitializing = data.isInitializing || false; // Removed
           return instance;
         });
         setAllNodeData(instances);
       } catch (e) {
         console.error("Failed to parse or rehydrate from localStorage:", e);
-        setAllNodeData([]);
+        setAllNodeData([]); // Initialize to empty array on error
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, []); // setRebootAlertNodeIp is stable, no need to add as dependency
+    setIsLoadedFromStorage(true); // Signal that loading is complete
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // setRebootAlertNodeIp is stable
 
   // Effect 2: Persist essential NodeInfo data to localStorage
   useEffect(() => {
+    if (!isLoadedFromStorage) {
+      return; // Don't save until initial load is done
+    }
     // Use the toPlainObject method from NodeInfo instances for cleaner persistence
     const plainObjects = allNodeData.map(instance => instance.toPlainObject ? instance.toPlainObject() : { ip: instance.ip, nodeName: instance.nodeName, manetIp: instance.manet ? instance.manet.ip : null });
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
-  }, [allNodeData]);
+  }, [allNodeData, isLoadedFromStorage]); // Add isLoadedFromStorage to dependency array
 
   // Effect 3: UI Update Tick (replaces old polling effects)
   useEffect(() => {

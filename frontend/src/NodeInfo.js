@@ -76,7 +76,7 @@ class NodeInfo {
 
     // Setup intervals
     this.pollingIntervals.attributes = setInterval(() => this.refreshAttributesFromServer(), 1000);
-    this.pollingIntervals.status = setInterval(() => this.refreshStatusFromServer(), 3000);
+    this.pollingIntervals.status = setInterval(() => this.refreshStatusFromServer(), 5000);
     this.pollingIntervals.manet = setInterval(() => this.checkManetConnection(), 5000);
   }
 
