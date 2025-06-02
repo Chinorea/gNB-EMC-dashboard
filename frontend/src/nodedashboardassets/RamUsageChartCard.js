@@ -98,7 +98,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
               <YAxis domain={[0, 100]} unit="%" />
               <Tooltip
                 formatter={(value) => [`${value}%`, 'Usage']}
-                labelFormatter={(val) => `${100 - val}s ago`}
+                labelFormatter={(val) => `${2*(100 - val)}s ago`}
               />
               <Area
                 type="basis"

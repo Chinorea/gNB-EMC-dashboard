@@ -424,7 +424,7 @@ export default function App() {
       } finally {
         running = false;
       }
-    }, 8000);
+    }, 5000);
     return () => clearInterval(statusInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
 
