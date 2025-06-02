@@ -399,7 +399,7 @@ export default function App() {
       } finally {
         running = false;
       }
-    }, 1000);
+    }, 2000);
     return () => clearInterval(attrInterval);
   }, []); // Empty dependency array
 
@@ -421,7 +421,7 @@ export default function App() {
       } finally {
         running = false;
       }
-    }, 4000);
+    }, 8000);
     return () => clearInterval(statusInterval);
   }, []); // Empty dependency array
 
