@@ -3,8 +3,8 @@ from .NetworkType import NetworkType
 import subprocess, sys
 
 class Network(Attribute):
-    attempts = 4
-    timeout = 1
+    attempts = 1 # Changed from 4 to 1
+    timeout = 0.3 # Changed from 1 to 0.5
 
     def __init__(self, host_ip: str):
         super().__init__()
@@ -18,14 +18,13 @@ class Network(Attribute):
         """
         Ping `host` up to `attempts` times (one packet each time, with `timeout` seconds).
         Returns:
-          - "Up"       : all attempts succeeded
-          - "Unstable" : at least one succeeded, but not all
-          - "Down"     : no attempt succeeded
+          - "Up"       : attempt succeeded
+          - "Down"     : attempt failed
         """
         successes = 0
-        attempts = self.attempts
+        attempts = self.attempts # This will now be 1
         timeout = self.timeout
-        for _ in range(attempts):
+        for _ in range(attempts): # Loop will run once
             if sys.platform.startswith("win"):
                 # -n 1 = send 1 echo request
                 # -w <ms> = timeout in milliseconds
@@ -45,11 +44,11 @@ class Network(Attribute):
                 # ignore failures/exceptions and count as a miss
                 continue
 
-        if successes == attempts:
+        if successes == attempts: # True if the single ping succeeded
             return NetworkType.UP
-        elif successes > 0:
-            return NetworkType.UNSTABLE
-        else:
+        # elif successes > 0: # This condition is now redundant with attempts = 1
+        #     return NetworkType.UNSTABLE
+        else: # True if the single ping failed
             return NetworkType.DOWN
 
 
@@ -57,21 +56,20 @@ class Network(Attribute):
         """
         Ping `host` up to `attempts` times, showing each ping's output.
         Returns:
-          - "Up"       : all attempts succeeded
-          - "Unstable" : at least one succeeded, but not all
-          - "Down"     : no attempt succeeded
+          - "Up"       : attempt succeeded
+          - "Down"     : attempt failed
         """
-        attempts = self.attempts
+        attempts = self.attempts # This will now be 1
         timeout = self.timeout
         successes = 0
 
-        for i in range(1, attempts + 1):
+        for i in range(1, attempts + 1): # Loop will run once
             if sys.platform.startswith("win"):
                 cmd = ["ping", "-n", "1", "-w", str(timeout * 1000), host]
             else:
                 cmd = ["ping", "-c", "1", "-W", str(timeout), host]
 
-            print(f"\n--- Ping attempt {i}/{attempts} ---")
+            print(f"\\n--- Ping attempt {i}/{attempts} ---")
             try:
                 # capture both stdout and stderr so we can print the full ping output
                 result = subprocess.run(
@@ -87,11 +85,11 @@ class Network(Attribute):
             except Exception as e:
                 print(f"Error executing ping: {e}")
 
-        if successes == attempts:
+        if successes == attempts: # True if the single ping succeeded
             return NetworkType.UP
-        elif successes > 0:
-            return NetworkType.UNSTABLE
-        else:
+        # elif successes > 0: # This condition is now redundant with attempts = 1
+        #     return NetworkType.UNSTABLE
+        else: # True if the single ping failed
             return NetworkType.DOWN
 
     def print_network_status(self):
