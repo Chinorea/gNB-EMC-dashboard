@@ -278,12 +278,12 @@ class NodeInfo {
         }
       }
       // For all cases (response.ok or not), introduce the delay before finalizing.
-      setTimeout(finalizeToggle, 3000);
+      setTimeout(finalizeToggle, 4000);
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
       // Also delay in case of a catch block error.
-      setTimeout(finalizeToggle, 3000);
+      setTimeout(finalizeToggle, 4000);
     }
     // The lines that were previously here to set isInitializing = false and update _globalSetState
     // are now handled by the finalizeToggle function, called with a delay in all paths.
