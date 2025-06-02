@@ -259,8 +259,9 @@ function Sidebar({
 
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
+  const [hasLoaded, setHasLoaded] = useState(false); // Ensure this is declared
   const allNodeDataRef = useRef(allNodeData);
-  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null); // Added state for reboot alert
+  const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
 
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -322,21 +323,23 @@ export default function App() {
 
       })
       .catch(console.error);
-  }, [allNodeData, lqm, setAllNodeData, mapMarkers]);
+  }, [allNodeData, lqm, mapMarkers]); // Removed setAllNodeData from here as it's implicitly covered by allNodeData
 
-  // NEW: Hard refresh rate for map data (e.g., every 30 seconds)
+  // NEW: Hard refresh rate for map data
   useEffect(() => {
-    loadMapData(); // Initial load
+    if (!hasLoaded) return; // Wait for initial load
+    loadMapData(); // Initial load for map
     const intervalId = setInterval(() => {
       setMapDataRefreshTrigger(t => t + 1);
-    }, 30000); // 30000 ms = 30 seconds
+    }, 30000);
     return () => clearInterval(intervalId);
-  }, [loadMapData]);
+  }, [loadMapData, hasLoaded]); // Add hasLoaded
 
   // Only update map data when mapDataRefreshTrigger changes
   useEffect(() => {
+    if (!hasLoaded) return; // Wait for initial load
     loadMapData();
-  }, [mapDataRefreshTrigger, loadMapData]);
+  }, [mapDataRefreshTrigger, loadMapData, hasLoaded]); // Add hasLoaded
 
   // Effect to keep ref in sync with state
   useEffect(() => {
@@ -350,7 +353,6 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          // Pass setAllNodeData and setRebootAlertNodeIp when rehydrating
           const instance = new NodeInfo(data.ip, setAllNodeData, setRebootAlertNodeIp);
           instance.nodeName = data.nodeName;
           instance.manet.ip = data.manetIp;
@@ -361,39 +363,42 @@ export default function App() {
           return instance;
         });
         setAllNodeData(instances);
-      } catch {
+      } catch (e) { // Catch specific error
+        console.error("Failed to parse localStorage data:", e);
         setAllNodeData([]);
       }
     }
-  }, []);
+    setHasLoaded(true); // Set hasLoaded to true AFTER attempting to load and set state
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Effect 2: Persist allNodeData to localStorage
   useEffect(() => {
+    if (!hasLoaded) { // Guard: Only run if initial load is complete
+      return;
+    }
     const plainObjects = allNodeData.map(instance => ({
       ip: instance.ip,
       nodeName: instance.nodeName,
       manetIp: instance.manet.ip,
-      status: instance.status,
-      attributes: instance.attributes,
-      isInitializing: instance.isInitializing,
+      status: instance.status, // Relies on NodeInfo's getter
+      attributes: instance.attributes, // Consider if all attributes need to be persisted
+      isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
       manetConnectionStatus: instance.manet.connectionStatus,
     }));
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
-  }, [allNodeData]);
+  }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
 
-  // Effect 3: Poll attributes every second with re-entrancy guard
+  // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
   useEffect(() => {
+    if (!hasLoaded) return; // Guard: Only run if initial load is complete
     let running = false;
     const attrInterval = setInterval(async () => {
-      const currentNodes = allNodeDataRef.current; // Use ref
+      const currentNodes = allNodeDataRef.current;
       if (running || currentNodes.length === 0) return;
       running = true;
       try {
-        await Promise.all(currentNodes.map(async node => { // Added async here
-          await node.refreshAttributesFromServer();
-          await node.checkManetConnection(); // Moved here
-        }));
-        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
+        setAllNodeData(prevNodes => [...prevNodes]); // Use functional update or ensure currentNodes is fresh
       } catch (error) {
         console.error("Error polling attributes:", error);
       } finally {
@@ -401,29 +406,47 @@ export default function App() {
       }
     }, 2000);
     return () => clearInterval(attrInterval);
-  }, []); // Empty dependency array
+  }, [hasLoaded]); // Add hasLoaded to dependency array
 
-  // Effect 4: Poll status and MANET every 5 seconds
+  // Effect 4: Poll status every 8 seconds
   useEffect(() => {
+    if (!hasLoaded) return; // Guard: Only run if initial load is complete
     let running = false;
     const statusInterval = setInterval(async () => {
-      const currentNodes = allNodeDataRef.current; // Use ref
+      const currentNodes = allNodeDataRef.current;
       if (running || currentNodes.length === 0) return;
       running = true;
       try {
-        await Promise.all(currentNodes.map(async node => {
-          await node.refreshStatusFromServer();
-          // await node.checkManetConnection(); // Removed from here
-        }));
-        setAllNodeData([...currentNodes]); // Create new array from ref's current value
+        await Promise.all(currentNodes.map(node => node.refreshStatusFromServer()));
+        setAllNodeData(prevNodes => [...prevNodes]);
       } catch (error) {
-        console.error("Error polling status/MANET:", error);
+        console.error("Error polling status:", error);
       } finally {
         running = false;
       }
     }, 8000);
     return () => clearInterval(statusInterval);
-  }, []); // Empty dependency array
+  }, [hasLoaded]); // Add hasLoaded to dependency array
+
+  // Effect 5: Poll MANET connection every 2 seconds (as per user's current code)
+  useEffect(() => {
+    if (!hasLoaded) return; // Guard: Only run if initial load is complete
+    let running = false;
+    const manetInterval = setInterval(async () => {
+      const currentNodes = allNodeDataRef.current;
+      if (running || currentNodes.length === 0) return;
+      running = true;
+      try {
+        await Promise.all(currentNodes.map(node => node.checkManetConnection()));
+        setAllNodeData(prevNodes => [...prevNodes]);
+      } catch (error) {
+        console.error("Error polling MANET connection:", error);
+      } finally {
+        running = false;
+      }
+    }, 2000); // Interval was 2000 in user's code
+    return () => clearInterval(manetInterval);
+  }, [hasLoaded]); // Add hasLoaded to dependency array
 
   //console.log(allNodeData); // This will now log an array of NodeInfo instances
 
