@@ -399,7 +399,7 @@ export default function App() {
       } finally {
         running = false;
       }
-    }, 3000);
+    }, 4000);
     return () => clearInterval(statusInterval);
   }, []); // Empty dependency array
 
