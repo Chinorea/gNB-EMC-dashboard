@@ -87,8 +87,8 @@ export default function PciCard({ pci, isLoading, nodeStatus }) {
             flexDirection: 'column',
             flex: 1,
             cursor: 'pointer',
-            transition: 'transform 0.1s ease-in-out',            '&:hover': { transform: 'scale(1.01)', boxShadow: 6, backgroundColor: colors.background.paper },
-            backgroundColor: colors.background.hover
+            transition: 'transform 0.1s ease-in-out',            '&:hover': { transform: 'scale(1.01)', boxShadow: 6, backgroundColor: colors.background.hover },
+            backgroundColor: colors.background.paper
           }}
         >
           <CardContent sx={{

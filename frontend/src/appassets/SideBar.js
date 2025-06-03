@@ -97,11 +97,14 @@ function Sidebar({
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <img
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>            <img
               src="/ST_Engineering_logo_Singapore_Technologies_Engineering-700x118.png"
               alt="ST Engineering Logo"
-              style={{ width: '70%', height: 'auto' }}
+              style={{ 
+                width: '70%', 
+                height: 'auto',
+                filter: theme.palette.mode === 'dark' ? 'invert(1) hue-rotate(180deg) saturate(3.0)' : 'none'
+              }}
             />
             <DarkModeToggle />
           </Box>
@@ -117,14 +120,24 @@ function Sidebar({
                 addNode();
               }
             }}
-          />
-          <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
+          />          <Button 
+            fullWidth 
+            variant="contained" 
+            sx={{ 
+              mt: 1,
+              backgroundColor: colors.button.add,
+              '&:hover': {
+                backgroundColor: colors.button.addHover,
+              }
+            }} 
+            onClick={addNode}
+          >
             Add
           </Button>
 
           <Divider sx={{ my: 2 }} />
 
-          <List subheader={<ListSubheader>Navigation</ListSubheader>}>
+          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Navigation</ListSubheader>}>
             <ListItemButton component={RouterLink} to="/">
               <ListItemText
                 primary="Home"
@@ -137,7 +150,7 @@ function Sidebar({
                 primaryTypographyProps={{ fontWeight: 'bold' }}
               />
             </ListItemButton>
-          </List>          <List subheader={<ListSubheader>Nodes</ListSubheader>}>
+          </List>          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Nodes</ListSubheader>}>
             {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
               const currentStatus = nodeInstance.status || 'DISCONNECTED';
               let bg;
