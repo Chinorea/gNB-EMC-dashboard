@@ -86,175 +86,147 @@ def get_raptor_status():
 # Map of allowed "actions" to the real commands
 ACTIONS = {
     "setupv2": ["gnb_ctl", "start"],
-    "start": ["gnb_ctl", "start"], 
+    "start": ["gnb_ctl", "start"],
     "stop": ["gnb_ctl", "stop"],
-    "status": ["gnb_ctl", "status"] 
+    "status": ["gnb_ctl", "status"]
 }
+
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
-    MAX_WAIT = 120  # seconds
+    MAX_WAIT = 120
     data = request.get_json(force=True, silent=True) or {}
     action = data.get("action")
 
     if action not in ACTIONS:
-        return jsonify({"error": f"Unknown action '{action}'."}), 400
+        return jsonify({"error": f"Unknown action '{action}'"}), 400
 
     cmd = ACTIONS[action]
-    app.logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,  # Line buffered
-        universal_newlines=True # Ensures text mode works consistently
-    )
+    app.logger.info(f"Executing action '{action}': {' '.join(cmd)}")
 
-    # STOP: wait for clean exit (original logic)
-    if action == "stop":
-        try:
-            out, err = proc.communicate(timeout=MAX_WAIT) # Added timeout to communicate
-            app.logger.info(f"Action '{action}' completed. Output: {out.strip()}, Error: {err.strip()}")
-            return jsonify({
-                "action": action,
-                "status": "stopped",
-                "output": out.strip(),
-                "stderr": err.strip()
-            }), 200
-        except subprocess.TimeoutExpired:
-            app.logger.warning(f"Action '{action}' timed out. Killing process.")
-            proc.kill()
-            out, err = proc.communicate() # Get any final output
-            return jsonify({
-                "action": action,
-                "error": "timeout",
-                "details": f"Stop action did not complete in {MAX_WAIT}s.",
-                "output": out.strip(),
-                "stderr": err.strip()
-            }), 504
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
 
+        def collect_output(proc):
+            """Collect any remaining output from the process"""
+            try:
+                out, err = proc.communicate(timeout=5)
+                return out.strip(), err.strip()
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                return proc.communicate()
 
-    # SETUP/START: stream stdout until CELL_IS_UP or timeout
-    # This part is modified for non-blocking reads
-    
-    # Set stdout to non-blocking
-    fd = proc.stdout.fileno()
-    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-    start_time = time.time()
-    collected_stdout = []
-    
-    app.logger.info(f"Monitoring stdout for 'CELL_IS_UP' or timeout ({MAX_WAIT}s)...")
-
-    while True:
-        line = None
-        try:
-            line = proc.stdout.readline()
-        except BlockingIOError:
-            # No data available to read right now, this is expected in non-blocking mode
-            pass
-        except IOError as e:
-            # Other IO errors might occur if the pipe is closed, etc.
-            app.logger.error(f"IOError reading stdout: {e}")
-            pass # Continue to check process status and timeout
-
-        if line:  # If a line was successfully read
-            app.logger.debug(f"STDOUT: {line.strip()}")
-            collected_stdout.append(line)
-            if "CELL_IS_UP" in line:
-                app.logger.info("CELL_IS_UP detected.")
-                proc.send_signal(signal.SIGINT) # Politely ask to terminate
-                final_stdout = ""
-                final_stderr = ""
-                try:
-                    proc.wait(timeout=5) # Wait for graceful termination
-                except subprocess.TimeoutExpired:
-                    app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT, sending SIGKILL.")
-                    proc.kill() # Force terminate
-                    try:
-                        proc.wait(timeout=5) # Wait for SIGKILL
-                    except subprocess.TimeoutExpired:
-                        app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL.")
-                
-                # Try to read any remaining output after termination
-                try:
-                    final_stdout_remaining = proc.stdout.read()
-                    if final_stdout_remaining:
-                        collected_stdout.append(final_stdout_remaining)
-                    final_stderr = proc.stderr.read()
-                except Exception as e_read:
-                    app.logger.error(f"Error reading final output: {e_read}")
-
+        # Handle stop action separately with blocking read
+        if action == "stop":
+            try:
+                out, err = proc.communicate(timeout=MAX_WAIT)
                 return jsonify({
                     "action": action,
-                    "status": "ok",
-                    "output": "".join(collected_stdout).strip(),
-                    "stderr": final_stderr.strip() if final_stderr else ""
+                    "status": "stopped",
+                    "output": out.strip(),
+                    "stderr": err.strip()
                 }), 200
-
-        # Check if process has terminated
-        if proc.poll() is not None:
-            app.logger.warning(f"Process terminated prematurely with code {proc.returncode}.")
-            # Read any remaining output
-            try:
-                remaining_stdout = proc.stdout.read()
-                if remaining_stdout:
-                    collected_stdout.append(remaining_stdout)
-                remaining_stderr = proc.stderr.read()
-            except Exception as e_read:
-                app.logger.error(f"Error reading output after premature termination: {e_read}")
-
-            return jsonify({
-                "action": action,
-                "error": "process_terminated_unexpectedly",
-                "details": f"Process terminated (code {proc.returncode}) before CELL_IS_UP was detected.",
-                "output": "".join(collected_stdout).strip(),
-                "stderr": remaining_stderr.strip() if remaining_stderr else ""
-            }), 500
-
-        # Check for timeout
-        if time.time() - start_time > MAX_WAIT:
-            app.logger.warning(f"Timeout: No CELL_IS_UP in {MAX_WAIT}s.")
-            proc.send_signal(signal.SIGINT)
-            final_stdout = ""
-            final_stderr = ""
-            try:
-                proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT on timeout, sending SIGKILL.")
                 proc.kill()
-                try:
-                    proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL on timeout.")
-            
+                out, err = proc.communicate()
+                return jsonify({
+                    "action": action,
+                    "error": "timeout",
+                    "output": out.strip(),
+                    "stderr": err.strip()
+                }), 504
+
+        # For start/setup actions: non-blocking reads with proper buffering
+        accumulated_output = []
+        start_time = time.time()
+
+        # Set non-blocking mode for stdout
+        fd = proc.stdout.fileno()
+        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+        while True:
+            # Check if process has terminated
+            if proc.poll() is not None:
+                final_out, final_err = collect_output(proc)
+                if final_out:
+                    accumulated_output.append(final_out)
+                
+                full_output = "".join(accumulated_output)
+                # Check if CELL_IS_UP was found in the final output
+                if "CELL_IS_UP" in full_output:
+                    return jsonify({
+                        "action": action,
+                        "status": "ok",
+                        "output": full_output,
+                        "stderr": final_err
+                    }), 200
+                else:
+                    return jsonify({
+                        "action": action,
+                        "error": "process_terminated",
+                        "output": full_output,
+                        "stderr": final_err
+                    }), 500
+
+            # Try to read available output
             try:
-                remaining_stdout_timeout = proc.stdout.read()
-                if remaining_stdout_timeout:
-                    collected_stdout.append(remaining_stdout_timeout)
-                final_stderr = proc.stderr.read()
-            except Exception as e_read:
-                app.logger.error(f"Error reading final output on timeout: {e_read}")
+                while True:  # Read all available output
+                    line = proc.stdout.readline()
+                    if not line:
+                        break
+                    accumulated_output.append(line)
+                    if "CELL_IS_UP" in line:
+                        # Success case - terminate process gracefully
+                        proc.terminate()
+                        try:
+                            final_out, final_err = collect_output(proc)
+                            if final_out:
+                                accumulated_output.append(final_out)
+                        except Exception:
+                            pass
+                        return jsonify({
+                            "action": action,
+                            "status": "ok",
+                            "output": "".join(accumulated_output),
+                            "stderr": final_err if final_err else ""
+                        }), 200
+            except (BlockingIOError, IOError):
+                pass  # No data available right now
 
-            return jsonify({
-                "action": action,
-                "error": "timeout",
-                "details": f"No CELL_IS_UP in {MAX_WAIT}s",
-                "output": "".join(collected_stdout).strip(),
-                "stderr": final_stderr.strip() if final_stderr else ""
-            }), 504
+            # Check for timeout
+            if time.time() - start_time > MAX_WAIT:
+                proc.terminate()
+                try:
+                    final_out, final_err = collect_output(proc)
+                    if final_out:
+                        accumulated_output.append(final_out)
+                except Exception:
+                    pass
+                
+                return jsonify({
+                    "action": action,
+                    "error": "timeout",
+                    "output": "".join(accumulated_output),
+                    "stderr": final_err if final_err else ""
+                }), 504
 
-        # If no line was read, and process is still running and not timed out,
-        # sleep briefly to prevent a CPU-spinning busy loop.
-        if not line:
-            time.sleep(0.1)  # Sleep for 100ms
+            # Prevent CPU spinning while waiting for more output
+            time.sleep(0.1)
 
-    # This part of the code should ideally not be reached due to the while True loop's returns
-    # but as a fallback:
-    app.logger.error("Exited setup_script loop unexpectedly.")
-    return jsonify({"error": "internal_server_error", "details": "Exited loop unexpectedly"}), 500
-
+    except Exception as e:
+        app.logger.error(f"Error in setup_script: {str(e)}")
+        return jsonify({
+            "action": action,
+            "error": "execution_error",
+            "details": str(e)
+        }), 500
 
 # map a URL‐friendly key to the real filesystem path
 FILE_PATHS = {
