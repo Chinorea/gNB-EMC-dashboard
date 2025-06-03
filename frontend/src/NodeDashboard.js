@@ -30,6 +30,25 @@ export default function NodeDashboard({
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
+  
+  // Custom scrollbar styles based on theme
+  const scrollbarStyles = {
+    '&::-webkit-scrollbar': {
+      width: '10px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: colors.background.light,
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: colors.border.main,
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      background: colors.border.dark,
+    },
+    scrollbarWidth: 'thin',
+    scrollbarColor: `${colors.border.main} ${colors.background.light}`,
+  };
 
   console.log(allNodeData)
 
@@ -38,7 +57,11 @@ export default function NodeDashboard({
   const nodeInfo = allNodeData.find(node => node.ip === ip) || null;   // Fallback for when nodeInfo is not yet available
    if (!nodeInfo || !nodeInfo.attributes) {
     return (
-      <Box sx={{ backgroundColor: colors.background.main, minHeight: '100vh' }}>
+      <Box sx={{ 
+        backgroundColor: colors.background.main, 
+        minHeight: '100vh',
+        ...scrollbarStyles
+      }}>
         <CssBaseline />
         <AppBar position="static" elevation={2} sx={{ backgroundColor: colors.dashboard.appBarDisconnected }}>
           <Toolbar sx={{ justifyContent: 'space-between' }}>
@@ -84,7 +107,11 @@ export default function NodeDashboard({
   // if disconnected, show only TopBar and no cards
   if (nodeStatus === 'DISCONNECTED' && !isInitializing) {
     return (
-      <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
+      <Box sx={{ 
+        backgroundColor: bgColor, 
+        minHeight: '100vh',
+        ...scrollbarStyles // Apply scrollbar styles to the main container
+      }}>
         <CssBaseline />
         <TopBar
           ip={ip}
@@ -147,85 +174,85 @@ export default function NodeDashboard({
 
 
   return (
-    <>
-      <Box sx={{ backgroundColor: bgColor, minHeight: '100vh' }}>
-        <CssBaseline />
+    <Box sx={{ 
+      backgroundColor: bgColor, 
+      minHeight: '100vh',
+      ...scrollbarStyles // Apply scrollbar styles to the main container for connected nodes
+    }}>
+      <CssBaseline />
+      <TopBar
+        ip={ip}
+        loading={isInitializing} // Loading state from NodeInfo
+        nodeStatus={nodeStatus}
+        appBarColor={appBarColor}
+        // Pass the toggleScript method from the specific NodeInfo instance
+        handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
+        nodeName={nodeName || ip} // Use nodeName from NodeInfo, fallback to IP
+      />
 
-        {/* Top bar with status */}
-        <TopBar
-          ip={ip}
-          loading={isInitializing} // Loading state from NodeInfo
-          nodeStatus={nodeStatus}
-          appBarColor={appBarColor}
-          // Pass the toggleScript method from the specific NodeInfo instance
-          handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
-          nodeName={nodeName || ip} // Use nodeName from NodeInfo, fallback to IP
-        />
-
-        {/* span full viewport width */}
-        <Container
-          maxWidth={false}     // disable default max‐width
-          disableGutters       // remove left/right padding
-          sx={{ mt: 4, px: 2 }} // keep a bit of horizontal padding
+      {/* span full viewport width */}
+      <Container
+        maxWidth={false}     // disable default max‐width
+        disableGutters       // remove left/right padding
+        sx={{ mt: 4, px: 2 }} // keep a bit of horizontal padding
+      >
+        {/* Layer 1 */}
+        <Grid
+          container
+          spacing={3}
+          justifyContent="center"
+          alignItems="center"
         >
-          {/* Layer 1 */}
-          <Grid
-            container
-            spacing={3}
-            justifyContent="center"
-            alignItems="center"
-          >
-            <NodeIdCard
-              nodeId={coreData?.gnbId} // Directly from coreData
-              isLoading={loading}
-              nodeStatus={nodeStatus}
-            />
-            <PciCard pci={coreData?.pci} isLoading={loading} nodeStatus={nodeStatus} />
-            <TimeCard boardTime={coreData?.boardTime} isLoading={loading} />
-            <DateCard boardDate={coreData?.boardDate} isLoading={loading} />
-            <CoreConnectionCard coreConnectionStatus={coreConnectionMap[coreData?.coreConnection] || 'N/A'} isLoading={loading} />
-            <ManetConnectionCard manetStatus={manetConnectionStatus} isLoading={loading} />
-          </Grid>
+          <NodeIdCard
+            nodeId={coreData?.gnbId} // Directly from coreData
+            isLoading={loading}
+            nodeStatus={nodeStatus}
+          />
+          <PciCard pci={coreData?.pci} isLoading={loading} nodeStatus={nodeStatus} />
+          <TimeCard boardTime={coreData?.boardTime} isLoading={loading} />
+          <DateCard boardDate={coreData?.boardDate} isLoading={loading} />
+          <CoreConnectionCard coreConnectionStatus={coreConnectionMap[coreData?.coreConnection] || 'N/A'} isLoading={loading} />
+          <ManetConnectionCard manetStatus={manetConnectionStatus} isLoading={loading} />
+        </Grid>
 
-          {/* Layer 2 – Usage Charts */}
-          <Grid
-            container
-            spacing={3}
-            sx={{ mt: 4 }}
-            alignItems="stretch"
-            justifyContent="center"
-          >
-            <LogCard ip={ip} isLoading={loading} />
-            <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-            <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-          </Grid>
+        {/* Layer 2 – Usage Charts */}
+        <Grid
+          container
+          spacing={3}
+          sx={{ mt: 4 }}
+          alignItems="stretch"
+          justifyContent="center"
+        >
+          <LogCard ip={ip} isLoading={loading} />
+          <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+          <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+        </Grid>
 
-          {/* Layer 3 – Frequencies & IP side-by-side */}
-          <Grid
-            container
-            spacing={3}
-            sx={{ mt: 4 }}
-            justifyContent="center"
-            alignItems="stretch"
-          >
-            <FrequencyOverviewCard
-              data={cardDataForAttrs} // Continues to use cardDataForAttrs
-              isLoading={loading}
-              nodeStatus={nodeStatus}
-            />
-            <IpAddressesCard
-              data={cardDataForAttrs} // Continues to use cardDataForAttrs
-              isLoading={isInitializing} 
-              nodeStatus={nodeStatus}
-              secondaryIp={manetIp} // from nested manet.ip
-            />
-            <DiskOverviewCard 
-              data={cardDataForAttrs} // Continues to use cardDataForAttrs
-              isLoading={loading} 
-            />
-          </Grid>
-        </Container>
-      </Box>
-    </>
+        {/* Layer 3 – Frequencies & IP side-by-side */}
+        <Grid
+          container
+          spacing={3}
+          sx={{ mt: 4 }}
+          justifyContent="center"
+          alignItems="stretch"
+        >
+          <FrequencyOverviewCard
+            data={cardDataForAttrs} // Continues to use cardDataForAttrs
+            isLoading={loading}
+            nodeStatus={nodeStatus}
+          />
+          <IpAddressesCard
+            data={cardDataForAttrs} // Continues to use cardDataForAttrs
+            isLoading={isInitializing} 
+            nodeStatus={nodeStatus}
+            secondaryIp={manetIp} // from nested manet.ip
+          />
+          <DiskOverviewCard 
+            data={cardDataForAttrs} // Continues to use cardDataForAttrs
+            isLoading={loading} 
+          />
+        </Grid>
+      </Container>
+    </Box>
   );
 }
