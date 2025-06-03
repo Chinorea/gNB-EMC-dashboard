@@ -43,6 +43,30 @@ function Sidebar({
   const [editSecondary, setEditSecondary] = useState('');
   const [editName, setEditName] = useState('');
 
+  // Custom scrollbar styling
+  const scrollbarStyle = {
+    '&::-webkit-scrollbar': {
+      width: '8px',
+      backgroundColor: 'transparent',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+    },
+    '&::-webkit-scrollbar-track': {
+      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      borderRadius: '4px',
+    },
+    // Firefox scrollbar
+    scrollbarWidth: 'thin',
+    scrollbarColor: theme.palette.mode === 'dark' 
+      ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)' 
+      : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',
+  };
+
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
       // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
@@ -92,12 +116,21 @@ function Sidebar({
         flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: drawerWidth,
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          overflow: 'hidden', // Prevent main drawer scrolling
         },
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>            <img
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%',
+        overflow: 'hidden', // Prevent scrolling on the main container
+      }}>
+        {/* Fixed Header Section */}
+        <Box sx={{ p: 2, overflow: 'visible' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <img
               src="/ST_Engineering_logo_Singapore_Technologies_Engineering-700x118.png"
               alt="ST Engineering Logo"
               style={{ 
@@ -120,7 +153,8 @@ function Sidebar({
                 addNode();
               }
             }}
-          />          <Button 
+          />
+          <Button 
             fullWidth 
             variant="contained" 
             sx={{ 
@@ -150,7 +184,33 @@ function Sidebar({
                 primaryTypographyProps={{ fontWeight: 'bold' }}
               />
             </ListItemButton>
-          </List>          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Nodes</ListSubheader>}>
+          </List>
+        </Box>
+
+        {/* Dynamically sized Nodes section with isolated scrolling */}
+        <Box 
+          sx={{ 
+            flex: 1, // Take remaining vertical space
+            overflow: 'auto', // Only this section scrolls
+            ...scrollbarStyle // Apply custom scrollbar only to this section
+          }}
+        >
+          <List 
+            subheader={
+              <ListSubheader 
+                sx={{ 
+                  backgroundColor: theme.palette.mode === 'dark' 
+                    ? theme.palette.background.paper 
+                    : theme.palette.background.default,
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 1 
+                }}
+              >
+                Nodes
+              </ListSubheader>
+            }
+          >
             {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
               const currentStatus = nodeInstance.status || 'DISCONNECTED';
               let bg;              switch (currentStatus) {
@@ -236,50 +296,52 @@ function Sidebar({
               );
             })}
           </List>
-
-          <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-            <Box
-              component="form"
-              onSubmit={e => { e.preventDefault(); saveEdit(); }}
-            >
-              <DialogTitle>Edit Node Settings</DialogTitle>
-              <DialogContent>
-                <TextField
-                  margin="dense"
-                  label="Node Name"
-                  fullWidth
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                />
-                <TextField
-                  margin="dense"
-                  label="Node IP"
-                  fullWidth
-                  value={editPrimary} // This is the IP being edited
-                  onChange={e => setEditPrimary(e.target.value)}
-                />
-                <TextField
-                  margin="dense"
-                  label="MANET IP"
-                  fullWidth
-                  value={editSecondary}
-                  onChange={e => setEditSecondary(e.target.value)}
-                  sx={{ mt: 2 }}
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button type="submit" variant="contained">Save</Button>
-              </DialogActions>
-            </Box>
-          </Dialog>
         </Box>
+
+        {/* Fixed Footer Section */}
         <Box sx={{ textAlign: 'center', p: 1 }}>
           <Typography variant="caption" color="textSecondary">
             © {new Date().getFullYear()} ST Engineering
           </Typography>
         </Box>
       </Box>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+        <Box
+          component="form"
+          onSubmit={e => { e.preventDefault(); saveEdit(); }}
+        >
+          <DialogTitle>Edit Node Settings</DialogTitle>
+          <DialogContent>
+            <TextField
+              margin="dense"
+              label="Node Name"
+              fullWidth
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="Node IP"
+              fullWidth
+              value={editPrimary} // This is the IP being edited
+              onChange={e => setEditPrimary(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="MANET IP"
+              fullWidth
+              value={editSecondary}
+              onChange={e => setEditSecondary(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="contained">Save</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Drawer>
   );
 }
