@@ -19,9 +19,9 @@ export default function TimeCard({ boardTime, isLoading }) {
           transition: 'transform 0.1s ease-in-out',          '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
-            backgroundColor: colors.background.paper
+            backgroundColor: colors.background.hover
           },
-          backgroundColor: colors.background.hover
+          backgroundColor: colors.background.paper
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
