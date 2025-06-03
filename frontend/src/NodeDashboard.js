@@ -63,7 +63,7 @@ export default function NodeDashboard({
         ...scrollbarStyles
       }}>
         <CssBaseline />
-        <AppBar position="static" elevation={2} sx={{ backgroundColor: colors.dashboard.appBarDisconnected }}>
+        <AppBar position="static" elevation={2} sx={{ backgroundColor: colors.dashboard.appBarUnreachable }}>
           <Toolbar sx={{ justifyContent: 'space-between' }}>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               {ip}
@@ -92,17 +92,19 @@ export default function NodeDashboard({
   const loading = isInitializing;
   // Extract individual attribute groups
   const { coreData, ramData, diskData, transmitData, ipData } = attributes;
-  const { ip: manetIp, connectionStatus: manetConnectionStatus } = nodeInfo.manet;  // override colors to yellow when loading/toggling
+  const { ip: manetIp, connectionStatus: manetConnectionStatus } = nodeInfo.manet;
+  // override colors to yellow when loading/toggling
   const bgColor = isInitializing
     ? colors.dashboard.initializing
     : nodeStatus === 'RUNNING'     ? colors.dashboard.running
     : nodeStatus === 'OFF'         ? colors.dashboard.off
-                                   : colors.dashboard.disconnected;
+                                   : colors.dashboard.unreachable;
   const appBarColor = isInitializing
     ? colors.dashboard.appBarInitializing
     : nodeStatus === 'RUNNING'     ? colors.dashboard.appBarRunning
     : nodeStatus === 'OFF'         ? colors.dashboard.appBarOff
-                                   : colors.dashboard.appBarDisconnected;
+    : nodeStatus === 'DISCONNECTED' ? colors.dashboard.appBarUnreachable
+                                   : colors.dashboard.appBarUnreachable;
   
   // if disconnected, show only TopBar and no cards
   if (nodeStatus === 'DISCONNECTED' && !isInitializing) {
@@ -123,7 +125,7 @@ export default function NodeDashboard({
           handleToggle={() => nodeInfo.toggleScript(nodeStatus === 'RUNNING' ? 'stop' : 'setupv2')}
           nodeName={nodeName || ip}
         />
-        {/* Container with detailed disconnected message removed to only show TopBar */}
+        {/* Container with detailed unreachable message removed to only show TopBar */}
       </Box>
     );
   }
