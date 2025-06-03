@@ -1,28 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   CssBaseline,
-  Drawer,
-  Box,
-  TextField,
-  Button,
-  Divider,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  ListSubheader,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Typography,
-  ListItemSecondaryAction
+  Box
 } from '@mui/material';
-import EditIcon  from '@mui/icons-material/Edit';
-import ClearIcon from '@mui/icons-material/Clear';
-import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
@@ -30,257 +11,9 @@ import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
 import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
+import Sidebar from './SideBar';
 
 const drawerWidth = 350;
-
-function Sidebar({
-  allNodeData, // This will be an array of NodeInfo instances
-  setAllNodeData,
-  setRebootAlertNodeIp, // Added prop
-  rebootAlertNodeIp, // Added prop to know which node is currently "initializing"
-}) {
-  const [ip, setIp] = useState('');
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
-  const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
-  const [editSecondary, setEditSecondary] = useState('');
-  const [editName, setEditName] = useState('');
-
-  const addNode = () => {
-    if (ip && !allNodeData.some(node => node.ip === ip)) {
-      // Use the new NodeInfo constructor
-      const newNodeInstance = new NodeInfo(ip, setRebootAlertNodeIp);
-      newNodeInstance.nodeName = ''; // Initialize nodeName as empty
-      newNodeInstance.manet.ip = '';
-      // newNodeInstance.manet.connectionStatus = 'Not Configured'; // NodeInfo constructor handles initial state
-      setAllNodeData(prev => [...prev, newNodeInstance]);
-      setIp('');
-    }
-  };
-
-  const removeNode = (ipToRemove) => {
-    const nodeInstance = allNodeData.find(instance => instance.ip === ipToRemove);
-    if (nodeInstance) {
-      nodeInstance.stopInternalPolling(); // Stop polling before removing
-    }
-    setAllNodeData(prevInstances => prevInstances.filter(instance => instance.ip !== ipToRemove));
-  };
-
-  const openEdit = (nodeIp) => {
-    const nodeInstance = allNodeData.find(inst => inst.ip === nodeIp);
-    if (nodeInstance) {
-      setEditTarget(nodeInstance.ip); // Original IP
-      setEditPrimary(nodeInstance.ip); // Current IP for editing field
-      setEditSecondary(nodeInstance.manet.ip || '');
-      setEditName(nodeInstance.nodeName || ''); // Directly use nodeName, or empty if it's null/undefined
-      setEditOpen(true);
-    }
-  };
-
-  const saveEdit = () => {
-    setAllNodeData(prev => {
-      const inst = prev.find(node => node.ip === editTarget);
-      if (inst) {
-        // If primary IP changes, we might need to remove the old and add a new one
-        // to ensure polling is correctly managed for the new IP.
-        // For simplicity here, we assume IP change means we update properties.
-        // A more robust solution for IP change would involve removeNode(editTarget) and addNode(newPrimaryIP)
-        // while preserving other settings.
-        if (inst.ip !== editPrimary) {
-            // If IP changes, stop polling for the old IP.
-            // The new IP instance will start its own polling if this were a full re-add.
-            // However, NodeInfo's internal polling is tied to its 'this.ip'.
-            // Changing 'inst.ip' directly without re-instantiating NodeInfo
-            // means internal fetch calls will use the new IP, which is intended.
-            inst.ip = editPrimary;
-        }
-        inst.nodeName = editName;
-        
-        // Use the setManetIp method if available, otherwise set directly
-        if (typeof inst.setManetIp === 'function') {
-            inst.setManetIp(editSecondary || null);
-        } else {
-            inst.manet.ip = editSecondary || null;
-            inst.manet.connectionStatus = editSecondary ? null : 'Not Configured'; // Let internal polling determine status
-        }
-      }
-      return [...prev]; // Trigger re-render
-    });
-    setEditOpen(false);
-  };
-
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box'
-        },
-      }}
-    >
-      <Box sx={{ p: 2, overflow: 'auto' }}>
-        <TextField
-          fullWidth
-          label="Add Node IP"
-          value={ip}
-          size="small"
-          onChange={e => setIp(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              addNode();
-            }
-          }}
-        />
-        <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
-          Add
-        </Button>
-
-        <Divider sx={{ my: 2 }} />
-
-        <List subheader={<ListSubheader>Navigation</ListSubheader>}>
-          <ListItemButton component={RouterLink} to="/">
-            <ListItemText
-              primary="Home"
-              primaryTypographyProps={{ fontWeight: 'bold' }}
-            />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/map">
-            <ListItemText
-              primary="Map"
-              primaryTypographyProps={{ fontWeight: 'bold' }}
-            />
-          </ListItemButton>
-        </List>
-
-        <List subheader={<ListSubheader>Nodes</ListSubheader>}>
-          {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
-            // Determine status: if nodeInstance.ip matches rebootAlertNodeIp, it's "INITIALIZING"
-            // Otherwise, use nodeInstance.status.
-            const displayStatus = rebootAlertNodeIp === nodeInstance.ip ? 'INITIALIZING' : nodeInstance.status;
-            let bg;
-            switch (displayStatus) {
-              case 'RUNNING':
-                bg = '#d4edda'; // green
-                break;
-              case 'INITIALIZING': // This status is now mainly for script toggling
-                bg = '#fff3cd'; // yellow
-                break;
-              case 'OFF':
-                bg = '#f8d7da'; // red
-                break;
-              case 'DISCONNECTED':
-              default:
-                bg = 'lightgrey';
-            }
-
-            return (
-              <ListItem
-                key={nodeInstance.ip} // Use instance.ip as key
-                disablePadding
-                sx={{
-                  width: '100%',
-                  backgroundColor: bg,
-                }}
-              >
-                <ListItemIcon sx={{ pl: 1 }}>
-                  <IconButton onClick={() => openEdit(nodeInstance.ip)} size="small">
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </ListItemIcon>
-                <ListItemButton
-                  component={RouterLink}
-                  to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
-                  sx={{ flex: 1 }}
-                >
-                  <ListItemText
-                    primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
-                    primaryTypographyProps={{
-                      fontWeight: 'bold',
-                      variant: 'body1',
-                      fontSize: '1.0rem'
-                    }}
-                    secondary={
-                      <>
-                        {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
-                          <Typography
-                            component="span"
-                            variant="body1"
-                            color="textSecondary"
-                            sx={{ fontSize: '0.9rem', display: 'block' }}
-                          >
-                            Node IP: {nodeInstance.ip}
-                          </Typography>
-                        )}
-                        <Typography
-                          component="span"
-                          variant="body1"
-                          color="textSecondary"
-                          sx={{ fontSize: '0.9rem', display: 'block' }}
-                        >
-                          MANET: {nodeInstance.manet.ip || 'Not configured'}
-                        </Typography>
-                      </>
-                    }
-                    secondaryTypographyProps={{
-                      component: 'div',
-                      sx: { mt: 0.5, fontSize: '0.9rem' }
-                    }}
-                  />
-                </ListItemButton>
-                <ListItemSecondaryAction>
-                  <IconButton onClick={() => removeNode(nodeInstance.ip)} size="small">
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            );
-          })}
-        </List>
-
-        <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-          <Box
-            component="form"
-            onSubmit={e => { e.preventDefault(); saveEdit(); }}
-          >
-            <DialogTitle>Edit Node Settings</DialogTitle>
-            <DialogContent>
-              <TextField
-                margin="dense"
-                label="Node Name"
-                fullWidth
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-              />
-              <TextField
-                margin="dense"
-                label="Node IP"
-                fullWidth
-                value={editPrimary} // This is the IP being edited
-                onChange={e => setEditPrimary(e.target.value)}
-              />
-              <TextField
-                margin="dense"
-                label="MANET IP"
-                fullWidth
-                value={editSecondary}
-                onChange={e => setEditSecondary(e.target.value)}
-                sx={{ mt: 2 }}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="contained">Save</Button>
-            </DialogActions>
-          </Box>
-        </Dialog>
-      </Box>
-    </Drawer>
-  );
-}
 
 export default function App() {
   const [allNodeData, setAllNodeData] = useState([]);
@@ -419,15 +152,22 @@ export default function App() {
 
   // Effect 2: Persist essential NodeInfo data to localStorage
   useEffect(() => {
-    if (!isLoadedFromStorage) {
-      return; // Don't save until initial load is done
+    if (!hasLoaded) { // Guard: Only run if initial load is complete
+      return;
     }
-    // Use the toPlainObject method from NodeInfo instances for cleaner persistence
-    const plainObjects = allNodeData.map(instance => instance.toPlainObject ? instance.toPlainObject() : { ip: instance.ip, nodeName: instance.nodeName, manetIp: instance.manet ? instance.manet.ip : null });
+    const plainObjects = allNodeData.map(instance => ({
+      ip: instance.ip,
+      nodeName: instance.nodeName,
+      manetIp: instance.manet.ip,
+      status: instance.status, // Relies on NodeInfo's getter
+      attributes: instance.attributes, // Consider if all attributes need to be persisted
+      isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
+      manetConnectionStatus: instance.manet.connectionStatus,
+    }));
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
-  }, [allNodeData, isLoadedFromStorage]); // Add isLoadedFromStorage to dependency array
+  }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
 
-  // Effect 3: UI Update Tick (replaces old polling effects)
+  // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
   useEffect(() => {
     const tickInterval = setInterval(() => {
       setAllNodeData(prevData => [...prevData]); // Trigger re-render by creating a new array reference
