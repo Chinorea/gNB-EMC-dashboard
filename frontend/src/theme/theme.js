@@ -19,12 +19,13 @@ const lightColors = {
     off: '#f8d7da',        // red
     unreachable: '#e9ecef', // light grey
     disconnected: '#f8f9fa',
-  },
-  button: {
+  },  button: {
     turnOff: '#612a1f',
     turnOffHover: '#4d1914',
     turnOn: '#40613d',
     turnOnHover: '#335e2e',
+    add: '#1976d2',        // Blue for add button
+    addHover: '#1565c0',   // Darker blue for hover
   },
   background: {
     main: '#f5f5f5',
@@ -97,26 +98,27 @@ const darkColors = {
   },
   // Custom dark mode colors
   nodeStatus: {
-    running: '#2e7d32',    // darker green
-    initializing: '#f57c00', // darker orange
-    off: '#d32f2f',        // darker red
-    unreachable: '#424242', // dark grey
-    disconnected: '#616161',
-  },
-  button: {
+    running: '#2e4d35',    // darker green
+    initializing: '#4d4326', // darker orange
+    off: '#4d2629',        // darker red
+    unreachable: '#262626', // dark grey
+    disconnected: '#262626',
+  },  button: {
     turnOff: '#ef5350',
     turnOffHover: '#d32f2f',
     turnOn: '#66bb6a',
     turnOnHover: '#4caf50',
+    add: '#85bae6',        // Light blue for add button in dark mode
+    addHover: '#4d8cbf',   // Darker light blue for hover
   },
   background: {
-    main: '#121212',
-    paper: '#1e1e1e',
-    sidebar: '#1e1e1e',
-    hover: '#2d2d2d',
+    main: '#141414',
+    paper: '#141414',
+    sidebar: '#0d0d0d',
+    hover: '#212121',
   },
   text: {
-    primary: '#ffffff',
+    primary: '#e6e6e6',
     secondary: '#b0b0b0',
   },
   border: {
@@ -124,25 +126,25 @@ const darkColors = {
     dark: '#555555',
   },
   dashboard: {
-    running: '#1b5e20',
-    initializing: '#e65100',
-    off: '#b71c1c',
+    running: '#141a15',
+    initializing: '#1a1705',
+    off: '#1a0803',
     unreachable: '#2d2d2d',
-    appBarRunning: '#2e7d32',
-    appBarInitializing: '#f57c00',
-    appBarOff: '#d32f2f',
-    appBarUnreachable: '#424242',
+    appBarRunning: '#234020',
+    appBarInitializing: '#594012',
+    appBarOff: '#40150d',
+    appBarUnreachable: '#2d2e2e',
   },
   coreConnection: {
-    connected: '#1b5e20',
-    connectedHover: '#2e7d32',
-    connectedText: '#81c784',
-    disconnected: '#b71c1c',
-    disconnectedHover: '#d32f2f',
-    disconnectedText: '#f48fb1',
-    unstable: '#e65100',
-    unstableHover: '#f57c00',
-    unstableText: '#ffb74d',
+    connected: '#234020',
+    connectedHover: '#3a5936',
+    connectedText: '#dbe6da',
+    disconnected: '#40150d',
+    disconnectedHover: '#592c24',
+    disconnectedText: '#e6d2cf',
+    unstable: '#594012',
+    unstableHover: '#735b2e',
+    unstableText: '#e6ddcf',
   },
   charts: {
     cpu: '#90caf9',
@@ -155,15 +157,15 @@ const darkColors = {
     fillColor: '#64b5f6',
   },
   manetConnection: {
-    connected: '#1b5e20',
-    connectedHover: '#2e7d32',
-    connectedText: '#81c784',
-    disconnected: '#b71c1c',
-    disconnectedHover: '#d32f2f',
-    disconnectedText: '#f48fb1',
-    pinging: '#e65100',
-    pingingHover: '#f57c00',
-    pingingText: '#ffb74d',
+    connected: '#234020',
+    connectedHover: '#3a5936',
+    connectedText: '#dbe6da',
+    disconnected: '#40150d',
+    disconnectedHover: '#592c24',
+    disconnectedText: '#e6d2cf',
+    pinging: '#594012',
+    pingingHover: '#735b2e',
+    pingingText: '#e6ddcf',
   }
 };
 
