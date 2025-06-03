@@ -98,160 +98,174 @@ function Sidebar({
         },
       }}
     >
-      <Box sx={{ p: 2, overflow: 'auto' }}>
-        <TextField
-          fullWidth
-          label="Add Node IP"
-          value={ip}
-          size="small"
-          onChange={e => setIp(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              addNode();
-            }
-          }}
-        />
-        <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
-          Add
-        </Button>
-
-        <Divider sx={{ my: 2 }} />
-
-        <List subheader={<ListSubheader>Navigation</ListSubheader>}>
-          <ListItemButton component={RouterLink} to="/">
-            <ListItemText
-              primary="Home"
-              primaryTypographyProps={{ fontWeight: 'bold' }}
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <img
+              src="/ST_Engineering_logo_Singapore_Technologies_Engineering-700x118.png"
+              alt="ST Engineering Logo"
+              style={{ width: '100%', height: 'auto' }}
             />
-          </ListItemButton>
-          <ListItemButton component={RouterLink} to="/map">
-            <ListItemText
-              primary="Map"
-              primaryTypographyProps={{ fontWeight: 'bold' }}
-            />
-          </ListItemButton>
-        </List>
+          </Box>
+          <TextField
+            fullWidth
+            label="Add Node IP"
+            value={ip}
+            size="small"
+            onChange={e => setIp(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addNode();
+              }
+            }}
+          />
+          <Button fullWidth variant="contained" sx={{ mt: 1 }} onClick={addNode}>
+            Add
+          </Button>
 
-        <List subheader={<ListSubheader>Nodes</ListSubheader>}>
-          {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
-            const currentStatus = nodeInstance.status || 'DISCONNECTED';
-            let bg;
-            switch (currentStatus) {
-              case 'RUNNING':
-                bg = '#d4edda'; // green
-                break;
-              case 'INITIALIZING': // This status is now mainly for script toggling
-                bg = '#fff3cd'; // yellow
-                break;
-              case 'OFF':
-                bg = '#f8d7da'; // red
-                break;
-              case 'DISCONNECTED':
-              default:
-                bg = 'lightgrey';
-            }
+          <Divider sx={{ my: 2 }} />
 
-            return (
-              <ListItem
-                key={nodeInstance.ip} // Use instance.ip as key
-                disablePadding
-                sx={{
-                  width: '100%',
-                  backgroundColor: bg,
-                }}
-              >
-                <ListItemIcon sx={{ pl: 1 }}>
-                  <IconButton onClick={() => openEdit(nodeInstance.ip)} size="small">
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </ListItemIcon>
-                <ListItemButton
-                  component={RouterLink}
-                  to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
-                  sx={{ flex: 1 }}
+          <List subheader={<ListSubheader>Navigation</ListSubheader>}>
+            <ListItemButton component={RouterLink} to="/">
+              <ListItemText
+                primary="Home"
+                primaryTypographyProps={{ fontWeight: 'bold' }}
+              />
+            </ListItemButton>
+            <ListItemButton component={RouterLink} to="/map">
+              <ListItemText
+                primary="Map"
+                primaryTypographyProps={{ fontWeight: 'bold' }}
+              />
+            </ListItemButton>
+          </List>
+
+          <List subheader={<ListSubheader>Nodes</ListSubheader>}>
+            {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
+              const currentStatus = nodeInstance.status || 'DISCONNECTED';
+              let bg;
+              switch (currentStatus) {
+                case 'RUNNING':
+                  bg = '#d4edda'; // green
+                  break;
+                case 'INITIALIZING': // This status is now mainly for script toggling
+                  bg = '#fff3cd'; // yellow
+                  break;
+                case 'OFF':
+                  bg = '#f8d7da'; // red
+                  break;
+                case 'DISCONNECTED':
+                default:
+                  bg = 'lightgrey';
+              }
+
+              return (
+                <ListItem
+                  key={nodeInstance.ip} // Use instance.ip as key
+                  disablePadding
+                  sx={{
+                    width: '100%',
+                    backgroundColor: bg,
+                  }}
                 >
-                  <ListItemText
-                    primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
-                    primaryTypographyProps={{
-                      fontWeight: 'bold',
-                      variant: 'body1',
-                      fontSize: '1.0rem'
-                    }}
-                    secondary={
-                      <>
-                        {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
+                  <ListItemIcon sx={{ pl: 1 }}>
+                    <IconButton onClick={() => openEdit(nodeInstance.ip)} size="small">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </ListItemIcon>
+                  <ListItemButton
+                    component={RouterLink}
+                    to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
+                    sx={{ flex: 1 }}
+                  >
+                    <ListItemText
+                      primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
+                      primaryTypographyProps={{
+                        fontWeight: 'bold',
+                        variant: 'body1',
+                        fontSize: '1.0rem'
+                      }}
+                      secondary={
+                        <>
+                          {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
+                            <Typography
+                              component="span"
+                              variant="body1"
+                              color="textSecondary"
+                              sx={{ fontSize: '0.9rem', display: 'block' }}
+                            >
+                              Node IP: {nodeInstance.ip}
+                            </Typography>
+                          )}
                           <Typography
                             component="span"
                             variant="body1"
                             color="textSecondary"
                             sx={{ fontSize: '0.9rem', display: 'block' }}
                           >
-                            Node IP: {nodeInstance.ip}
+                            MANET: {nodeInstance.manet.ip || 'Not configured'}
                           </Typography>
-                        )}
-                        <Typography
-                          component="span"
-                          variant="body1"
-                          color="textSecondary"
-                          sx={{ fontSize: '0.9rem', display: 'block' }}
-                        >
-                          MANET: {nodeInstance.manet.ip || 'Not configured'}
-                        </Typography>
-                      </>
-                    }
-                    secondaryTypographyProps={{
-                      component: 'div',
-                      sx: { mt: 0.5, fontSize: '0.9rem' }
-                    }}
-                  />
-                </ListItemButton>
-                <ListItemSecondaryAction>
-                  <IconButton onClick={() => removeNode(nodeInstance.ip)} size="small">
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            );
-          })}
-        </List>
+                        </>
+                      }
+                      secondaryTypographyProps={{
+                        component: 'div',
+                        sx: { mt: 0.5, fontSize: '0.9rem' }
+                      }}
+                    />
+                  </ListItemButton>
+                  <ListItemSecondaryAction>
+                    <IconButton onClick={() => removeNode(nodeInstance.ip)} size="small">
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              );
+            })}
+          </List>
 
-        <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-          <Box
-            component="form"
-            onSubmit={e => { e.preventDefault(); saveEdit(); }}
-          >
-            <DialogTitle>Edit Node Settings</DialogTitle>
-            <DialogContent>
-              <TextField
-                margin="dense"
-                label="Node Name"
-                fullWidth
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-              />
-              <TextField
-                margin="dense"
-                label="Node IP"
-                fullWidth
-                value={editPrimary} // This is the IP being edited
-                onChange={e => setEditPrimary(e.target.value)}
-              />
-              <TextField
-                margin="dense"
-                label="MANET IP"
-                fullWidth
-                value={editSecondary}
-                onChange={e => setEditSecondary(e.target.value)}
-                sx={{ mt: 2 }}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="contained">Save</Button>
-            </DialogActions>
-          </Box>
-        </Dialog>
+          <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+            <Box
+              component="form"
+              onSubmit={e => { e.preventDefault(); saveEdit(); }}
+            >
+              <DialogTitle>Edit Node Settings</DialogTitle>
+              <DialogContent>
+                <TextField
+                  margin="dense"
+                  label="Node Name"
+                  fullWidth
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                />
+                <TextField
+                  margin="dense"
+                  label="Node IP"
+                  fullWidth
+                  value={editPrimary} // This is the IP being edited
+                  onChange={e => setEditPrimary(e.target.value)}
+                />
+                <TextField
+                  margin="dense"
+                  label="MANET IP"
+                  fullWidth
+                  value={editSecondary}
+                  onChange={e => setEditSecondary(e.target.value)}
+                  sx={{ mt: 2 }}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button type="submit" variant="contained">Save</Button>
+              </DialogActions>
+            </Box>
+          </Dialog>
+        </Box>
+        <Box sx={{ textAlign: 'center', p: 1 }}>
+          <Typography variant="caption" color="textSecondary">
+            © {new Date().getFullYear()} ST Engineering
+          </Typography>
+        </Box>
       </Box>
     </Drawer>
   );
@@ -376,27 +390,16 @@ export default function App() {
     if (!hasLoaded) { // Guard: Only run if initial load is complete
       return;
     }
-
-    // Debounce localStorage saving
-    const debounceTimeout = 500; // 500ms debounce period
-    const handler = setTimeout(() => {
-      const plainObjects = allNodeData.map(instance => ({
-        ip: instance.ip,
-        nodeName: instance.nodeName,
-        manetIp: instance.manet.ip,
-        status: instance.status, // Relies on NodeInfo's getter
-        attributes: instance.attributes, // Consider if all attributes need to be persisted
-        isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
-        manetConnectionStatus: instance.manet.connectionStatus,
-      }));
-      localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
-      // console.log('Saved to localStorage (debounced)', plainObjects); // Optional: for debugging
-    }, debounceTimeout);
-
-    // Cleanup function to clear the timeout if allNodeData changes again before timeout elapses
-    return () => {
-      clearTimeout(handler);
-    };
+    const plainObjects = allNodeData.map(instance => ({
+      ip: instance.ip,
+      nodeName: instance.nodeName,
+      manetIp: instance.manet.ip,
+      status: instance.status, // Relies on NodeInfo's getter
+      attributes: instance.attributes, // Consider if all attributes need to be persisted
+      isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
+      manetConnectionStatus: instance.manet.connectionStatus,
+    }));
+    localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
   }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
 
   // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
