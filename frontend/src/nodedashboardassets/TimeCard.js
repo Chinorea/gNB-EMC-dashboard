@@ -1,8 +1,11 @@
 // frontend/src/nodedashboardassets/TimeCard.js
 import React from 'react';
-import { Card, CardContent, Typography, Grid } from '@mui/material';
+import { Card, CardContent, Typography, Grid, useTheme } from '@mui/material';
+import { getThemeColors } from '../theme';
 
 export default function TimeCard({ boardTime, isLoading }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const label = "Time";
 
   return (
@@ -13,13 +16,12 @@ export default function TimeCard({ boardTime, isLoading }) {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          transition: 'transform 0.1s ease-in-out',
-          '&:hover': {
+          transition: 'transform 0.1s ease-in-out',          '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
-            backgroundColor: '#fff'
+            backgroundColor: colors.background.paper
           },
-          backgroundColor: '#fafafa'
+          backgroundColor: colors.background.hover
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

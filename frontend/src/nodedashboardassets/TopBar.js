@@ -1,8 +1,11 @@
 // frontend/src/nodedashboardassets/TopBar.js
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, useTheme } from '@mui/material';
+import { getThemeColors } from '../theme';
 
 export default function TopBar({ ip, loading, nodeStatus, appBarColor, handleToggle, nodeName }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   return (
     <AppBar
       position="static"
@@ -35,16 +38,15 @@ export default function TopBar({ ip, loading, nodeStatus, appBarColor, handleTog
               <Button
                 variant="contained"
                 onClick={handleToggle}
-                disabled={loading}
-                sx={{
+                disabled={loading}                sx={{
                   backgroundColor:
-                    nodeStatus === 'RUNNING' ? '#612a1f' : '#40613d',
+                    nodeStatus === 'RUNNING' ? colors.button.turnOff : colors.button.turnOn,
                   color: 'white',
                   '&:hover': {
                     backgroundColor:
                       nodeStatus === 'RUNNING'
-                        ? '#4d1914'
-                        : '#335e2e',
+                        ? colors.button.turnOffHover
+                        : colors.button.turnOnHover,
                   },
                 }}
               >

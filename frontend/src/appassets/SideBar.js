@@ -22,7 +22,10 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
 import { Link as RouterLink } from 'react-router-dom';
-import NodeInfo from './NodeInfo';
+import { useTheme } from '@mui/material/styles';
+import NodeInfo from '../NodeInfo';
+import DarkModeToggle from '../theme/DarkModeToggle';
+import { getThemeColors } from '../theme/theme';
 
 const drawerWidth = 350;
 
@@ -31,6 +34,8 @@ function Sidebar({
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
 }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
@@ -91,9 +96,9 @@ function Sidebar({
         },
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
-          <Box sx={{ textAlign: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
+          <Box sx={{ textAlign: 'center', mb: 2, position: 'relative' }}>
+            <DarkModeToggle />
             <img
               src="/ST_Engineering_logo_Singapore_Technologies_Engineering-700x118.png"
               alt="ST Engineering Logo"
@@ -132,25 +137,23 @@ function Sidebar({
                 primaryTypographyProps={{ fontWeight: 'bold' }}
               />
             </ListItemButton>
-          </List>
-
-          <List subheader={<ListSubheader>Nodes</ListSubheader>}>
+          </List>          <List subheader={<ListSubheader>Nodes</ListSubheader>}>
             {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
               const currentStatus = nodeInstance.status || 'DISCONNECTED';
               let bg;
               switch (currentStatus) {
                 case 'RUNNING':
-                  bg = '#d4edda'; // green
+                  bg = colors.nodeStatus.running;
                   break;
                 case 'INITIALIZING': // This status is now mainly for script toggling
-                  bg = '#fff3cd'; // yellow
+                  bg = colors.nodeStatus.initializing;
                   break;
                 case 'OFF':
-                  bg = '#f8d7da'; // red
+                  bg = colors.nodeStatus.off;
                   break;
                 case 'DISCONNECTED':
                 default:
-                  bg = 'lightgrey';
+                  bg = colors.nodeStatus.disconnected;
               }
 
               return (

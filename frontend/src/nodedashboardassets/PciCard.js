@@ -15,30 +15,34 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '90%',
-  maxWidth: 800,
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 2,
-};
+import { getThemeColors } from '../theme';
 
 export default function PciCard({ pci, isLoading, nodeStatus }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const label = "PCI (Configuration)";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editDialog, setEditDialog] = useState({ open: false, field: '', label: '' });
   const [editValue, setEditValue] = useState('');
+
+  const modalStyle = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '90%',
+    maxWidth: 800,
+    bgcolor: 'background.paper',
+    border: `2px solid ${colors.border.dark}`,
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+  };
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -83,9 +87,8 @@ export default function PciCard({ pci, isLoading, nodeStatus }) {
             flexDirection: 'column',
             flex: 1,
             cursor: 'pointer',
-            transition: 'transform 0.1s ease-in-out',
-            '&:hover': { transform: 'scale(1.01)', boxShadow: 6, backgroundColor: '#fff' },
-            backgroundColor: '#fafafa'
+            transition: 'transform 0.1s ease-in-out',            '&:hover': { transform: 'scale(1.01)', boxShadow: 6, backgroundColor: colors.background.paper },
+            backgroundColor: colors.background.hover
           }}
         >
           <CardContent sx={{

@@ -1,8 +1,12 @@
 // frontend/src/nodedashboardassets/DateCard.js
 import React from 'react';
 import { Card, CardContent, Typography, Grid } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from '../theme';
 
 export default function DateCard({ boardDate, isLoading }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const label = "Date";
 
   return (
@@ -12,14 +16,13 @@ export default function DateCard({ boardDate, isLoading }) {
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          flex: 1,
-          transition: 'transform 0.1s ease-in-out',
+          flex: 1,          transition: 'transform 0.1s ease-in-out',
+          backgroundColor: colors.background.paper,
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
-            backgroundColor: '#fff'
+            backgroundColor: colors.background.hover
           },
-          backgroundColor: '#fafafa'
         }}
       >
         <CardContent sx={{ textAlign: 'center', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
