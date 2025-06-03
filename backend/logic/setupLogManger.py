@@ -7,8 +7,9 @@ class LogManager:
     _instance = None
     _lock = threading.Lock()
     _initialized = False
-    _LOG_DIR = "/logdump"
+    _LOG_DIR = "/webdashboard/logdump"  # Fixed path
     _LOG_FILE = "setup_log.txt"
+    _file_handler = None
 
     @classmethod
     def get_logger(cls, name='setup_script'):
@@ -22,6 +23,8 @@ class LogManager:
             
             # Get a logger specific to this request
             logger = logging.getLogger(name)
+            logger.setLevel(logging.DEBUG)  # Set logger level
+            
             if not logger.handlers:  # Only add handlers if they don't exist
                 # Add handlers specific to this logger instance
                 console_handler = logging.StreamHandler()
@@ -31,12 +34,11 @@ class LogManager:
                 logger.addHandler(console_handler)
                 
                 # Add the shared file handler
-                logger.addHandler(cls._file_handler)
+                if cls._file_handler:
+                    logger.addHandler(cls._file_handler)
             
-            # Force immediate output without buffering
-            logger.propagate = False
-            for handler in logger.handlers:
-                handler.flush()
+            # Enable propagation for better visibility
+            logger.propagate = True
                 
             return logger
 
@@ -45,6 +47,9 @@ class LogManager:
         """Initialize shared logging configuration"""
         if cls._initialized:
             return
+
+        # Set root logger level
+        logging.getLogger().setLevel(logging.DEBUG)
 
         # Ensure log directory exists
         if not os.path.exists(cls._LOG_DIR):
@@ -58,7 +63,7 @@ class LogManager:
 
         # Setup shared file handler with immediate flushing
         log_file = os.path.join(cls._LOG_DIR, cls._LOG_FILE)
-        cls._file_handler = RealTimeRotatingFileHandler(  # Custom handler for real-time writes
+        cls._file_handler = RealTimeRotatingFileHandler(
             log_file,
             maxBytes=10*1024*1024,  # 10MB
             backupCount=5,
@@ -88,8 +93,11 @@ class RealTimeRotatingFileHandler(logging.handlers.RotatingFileHandler):
         
     def emit(self, record):
         """Override emit to force flush after each write"""
-        super().emit(record)
-        self.flush()
-        if self.stream:
-            self.stream.flush()
-            os.fsync(self.stream.fileno())
+        try:
+            super().emit(record)
+            self.flush()
+            if self.stream:
+                self.stream.flush()
+                os.fsync(self.stream.fileno())
+        except Exception:
+            self.handleError(record)
