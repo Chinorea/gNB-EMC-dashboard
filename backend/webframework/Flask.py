@@ -222,7 +222,7 @@ def setup_script():
                     
                     # Check if "CELL_IS_UP" is in the output
                     if "CELL_IS_UP" in output:
-                        logger.info("CELL_IS_UP detected in log.")
+                        logger.info("Setup is successful, gNB is now active")
                         return jsonify({
                             "action": action,
                             "status": "ok",
@@ -252,7 +252,7 @@ def setup_script():
                         recent_content = f.read()
                         
                         if "CELL_IS_UP" in recent_content:
-                            logger.info("CELL_IS_UP detected in log.")
+                            logger.info("Setup is successful, gNB is now active")
                             proc.terminate()
                             try:
                                 proc.wait(timeout=5)
