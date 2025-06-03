@@ -104,9 +104,9 @@ const darkColors = {
     unreachable: '#262626', // dark grey
     disconnected: '#262626',
   },  button: {
-    turnOff: '#ef5350',
+    turnOff: '#bf4f4d',
     turnOffHover: '#d32f2f',
-    turnOn: '#66bb6a',
+    turnOn: '#63a667',
     turnOnHover: '#4caf50',
     add: '#85bae6',        // Light blue for add button in dark mode
     addHover: '#4d8cbf',   // Darker light blue for hover
