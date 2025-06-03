@@ -25,7 +25,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
   // --- End of moved smoothing logic ---
 
   return (
-    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '40%' }}>
+    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '25%' }}>
       <Card
         elevation={3}
         sx={{

@@ -15,6 +15,7 @@ import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
 import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
+import LogCard from './nodedashboardassets/LogCard';
 import TopBar from './nodedashboardassets/TopBar';
 
 // Updated props to accept nodeInfoMap
@@ -193,16 +194,11 @@ export default function NodeDashboard({
             spacing={3}
             sx={{ mt: 4 }}
             alignItems="stretch"
-            justifyContent={'center'}  // center items horizontally
+            justifyContent="center"
           >
-            <CpuUsageChartCard 
-              data={cardDataForAttrs} // Continues to use cardDataForAttrs for now
-              isLoading={loading} 
-            />
-            <RamUsageChartCard 
-              data={cardDataForAttrs} // Continues to use cardDataForAttrs for now
-              isLoading={loading} 
-            />
+            <LogCard ip={ip} isLoading={loading} />
+            <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+            <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
           </Grid>
 
           {/* Layer 3 – Frequencies & IP side-by-side */}
