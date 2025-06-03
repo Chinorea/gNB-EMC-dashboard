@@ -90,70 +90,6 @@ ACTIONS = {
     "stop": ["gnb_ctl", "stop"],
     "status": ["gnb_ctl", "status"] 
 }
-
-def make_success_response(action, output):
-    """Helper to create success response"""
-    return jsonify({
-        "action": action,
-        "status": "ok",
-        "output": output.strip()
-    }), 200
-
-def make_error_response(action, error_type, msg, output="", status_code=500):
-    """Helper to create error response"""
-    return jsonify({
-        "action": action,
-        "error": error_type,
-        "details": msg,
-        "output": output.strip()
-    }), status_code
-
-def handle_start_command(logger, timeout):
-    """Handle the 'start' command using pexpect"""
-    output = []
-    try:
-        child = pexpect.spawn("/bin/bash", ["-i"], encoding="utf-8", timeout=timeout)
-        child.logfile_read = None
-        child.sendline("gnb_ctl start")
-        
-        while True:
-            index = child.expect(["CELL_IS_UP", pexpect.TIMEOUT, pexpect.EOF])
-            if child.before:
-                output.append(child.before)
-                logger.info(child.before.strip())
-            
-            if index == 0:
-                logger.info("Success: CELL_IS_UP detected")
-                child.close()
-                return True, "".join(output)
-            elif index in [1, 2]:
-                msg = f"No CELL_IS_UP in {timeout}s" if index == 1 else "Process ended unexpectedly"
-                logger.error(f"Error: {msg}")
-                child.close(force=True)
-                return False, ("timeout" if index == 1 else "process_terminated_unexpectedly", 
-                             msg, "".join(output), 504 if index == 1 else 500)
-    except Exception as e:
-        logger.error(f"Error in start command: {str(e)}")
-        return False, ("execution_error", str(e), "".join(output))
-
-def handle_simple_command(logger, cmd, timeout):
-    """Handle stop and status commands"""
-    try:
-        output = subprocess.check_output(
-            cmd, stderr=subprocess.STDOUT,
-            universal_newlines=True, timeout=timeout
-        )
-        logger.info(output.strip())
-        return True, output
-    except subprocess.TimeoutExpired as e:
-        msg = f"Command timed out after {timeout}s"
-        logger.error(msg)
-        return False, ("timeout", msg, e.output.strip() if e.output else "", 504)
-    except subprocess.CalledProcessError as e:
-        msg = f"Command failed with code {e.returncode}"
-        logger.error(msg)
-        return False, ("command_failed", msg, e.output.strip())
-
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
     MAX_WAIT = 120  # seconds
@@ -161,25 +97,164 @@ def setup_script():
     action = data.get("action")
 
     if action not in ACTIONS:
-        return make_error_response(action, "invalid_action", 
-                                 f"Unknown action '{action}'", status_code=400)
+        return jsonify({"error": f"Unknown action '{action}'."}), 400
 
-    logger = LogManager.get_logger(f'api.{action}.{threading.get_ident()}')
-    logger.info(f"API: Executing action '{action}'")
+    cmd = ACTIONS[action]
+    app.logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Line buffered
+        universal_newlines=True # Ensures text mode works consistently
+    )
 
-    try:
-        if action == "start":
-            success, result = handle_start_command(logger, MAX_WAIT)
-        else:  # stop or status
-            success, result = handle_simple_command(logger, ACTIONS[action], MAX_WAIT)
+    # STOP: wait for clean exit (original logic)
+    if action == "stop":
+        try:
+            out, err = proc.communicate(timeout=MAX_WAIT) # Added timeout to communicate
+            app.logger.info(f"Action '{action}' completed. Output: {out.strip()}, Error: {err.strip()}")
+            return jsonify({
+                "action": action,
+                "status": "stopped",
+                "output": out.strip(),
+                "stderr": err.strip()
+            }), 200
+        except subprocess.TimeoutExpired:
+            app.logger.warning(f"Action '{action}' timed out. Killing process.")
+            proc.kill()
+            out, err = proc.communicate() # Get any final output
+            return jsonify({
+                "action": action,
+                "error": "timeout",
+                "details": f"Stop action did not complete in {MAX_WAIT}s.",
+                "output": out.strip(),
+                "stderr": err.strip()
+            }), 504
 
-        if success:
-            return make_success_response(action, result)
-        return make_error_response(action, *result)
 
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        return make_error_response(action, "execution_error", str(e))
+    # SETUP/START: stream stdout until CELL_IS_UP or timeout
+    # This part is modified for non-blocking reads
+    
+    # Set stdout to non-blocking
+    fd = proc.stdout.fileno()
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    start_time = time.time()
+    collected_stdout = []
+    
+    app.logger.info(f"Monitoring stdout for 'CELL_IS_UP' or timeout ({MAX_WAIT}s)...")
+
+    while True:
+        line = None
+        try:
+            line = proc.stdout.readline()
+        except BlockingIOError:
+            # No data available to read right now, this is expected in non-blocking mode
+            pass
+        except IOError as e:
+            # Other IO errors might occur if the pipe is closed, etc.
+            app.logger.error(f"IOError reading stdout: {e}")
+            pass # Continue to check process status and timeout
+
+        if line:  # If a line was successfully read
+            app.logger.debug(f"STDOUT: {line.strip()}")
+            collected_stdout.append(line)
+            if "CELL_IS_UP" in line:
+                app.logger.info("CELL_IS_UP detected.")
+                proc.send_signal(signal.SIGINT) # Politely ask to terminate
+                final_stdout = ""
+                final_stderr = ""
+                try:
+                    proc.wait(timeout=5) # Wait for graceful termination
+                except subprocess.TimeoutExpired:
+                    app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT, sending SIGKILL.")
+                    proc.kill() # Force terminate
+                    try:
+                        proc.wait(timeout=5) # Wait for SIGKILL
+                    except subprocess.TimeoutExpired:
+                        app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL.")
+                
+                # Try to read any remaining output after termination
+                try:
+                    final_stdout_remaining = proc.stdout.read()
+                    if final_stdout_remaining:
+                        collected_stdout.append(final_stdout_remaining)
+                    final_stderr = proc.stderr.read()
+                except Exception as e_read:
+                    app.logger.error(f"Error reading final output: {e_read}")
+
+                return jsonify({
+                    "action": action,
+                    "status": "ok",
+                    "output": "".join(collected_stdout).strip(),
+                    "stderr": final_stderr.strip() if final_stderr else ""
+                }), 200
+
+        # Check if process has terminated
+        if proc.poll() is not None:
+            app.logger.warning(f"Process terminated prematurely with code {proc.returncode}.")
+            # Read any remaining output
+            try:
+                remaining_stdout = proc.stdout.read()
+                if remaining_stdout:
+                    collected_stdout.append(remaining_stdout)
+                remaining_stderr = proc.stderr.read()
+            except Exception as e_read:
+                app.logger.error(f"Error reading output after premature termination: {e_read}")
+
+            return jsonify({
+                "action": action,
+                "error": "process_terminated_unexpectedly",
+                "details": f"Process terminated (code {proc.returncode}) before CELL_IS_UP was detected.",
+                "output": "".join(collected_stdout).strip(),
+                "stderr": remaining_stderr.strip() if remaining_stderr else ""
+            }), 500
+
+        # Check for timeout
+        if time.time() - start_time > MAX_WAIT:
+            app.logger.warning(f"Timeout: No CELL_IS_UP in {MAX_WAIT}s.")
+            proc.send_signal(signal.SIGINT)
+            final_stdout = ""
+            final_stderr = ""
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT on timeout, sending SIGKILL.")
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL on timeout.")
+            
+            try:
+                remaining_stdout_timeout = proc.stdout.read()
+                if remaining_stdout_timeout:
+                    collected_stdout.append(remaining_stdout_timeout)
+                final_stderr = proc.stderr.read()
+            except Exception as e_read:
+                app.logger.error(f"Error reading final output on timeout: {e_read}")
+
+            return jsonify({
+                "action": action,
+                "error": "timeout",
+                "details": f"No CELL_IS_UP in {MAX_WAIT}s",
+                "output": "".join(collected_stdout).strip(),
+                "stderr": final_stderr.strip() if final_stderr else ""
+            }), 504
+
+        # If no line was read, and process is still running and not timed out,
+        # sleep briefly to prevent a CPU-spinning busy loop.
+        if not line:
+            time.sleep(0.1)  # Sleep for 100ms
+
+    # This part of the code should ideally not be reached due to the while True loop's returns
+    # but as a fallback:
+    app.logger.error("Exited setup_script loop unexpectedly.")
+    return jsonify({"error": "internal_server_error", "details": "Exited loop unexpectedly"}), 500
+
 
 # map a URL‐friendly key to the real filesystem path
 FILE_PATHS = {

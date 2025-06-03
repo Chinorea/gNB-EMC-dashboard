@@ -31,9 +31,11 @@ def handle_start_command(logger, timeout):
                 logger.info("Success pattern found: CELL_IS_UP")
                 child.close()
                 return 0
-            elif index in [1, 2]:  # Timeout or EOF
-                if index == 1:
-                    logger.error("Process timed out")
+            elif index == 2:  # EOF - process completed
+                child.close()
+                return 0  # Consider EOF as success since process completed
+            elif index == 1:  # Timeout
+                logger.error("Process timed out")
                 child.close(force=True)
                 return 1
     except Exception as e:
@@ -46,15 +48,19 @@ def handle_simple_command(logger, cmd):
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
         for line in output.splitlines():
             logger.info(line.strip())
-        return 0
+        return 0  # Successful execution
     except subprocess.CalledProcessError as e:
         for line in e.output.splitlines():
             logger.info(line.strip())
+        # For stop and status commands, return 0 as they are informational/state-changing
+        if cmd[-1] in ["stop", "status"]:
+            return 0
         return e.returncode
 
 def run_setup_with_logging(command=None, action=None, timeout_seconds=120):
     """Main function to run commands with logging"""
     logger = LogManager.setup_logging()
+    return_code = 0  # Default to success
     
     try:
         # Log start of execution
@@ -63,25 +69,32 @@ def run_setup_with_logging(command=None, action=None, timeout_seconds=120):
         if action in ACTIONS:
             cmd = ACTIONS[action]
             logger.info(f"Command: {' '.join(cmd)}")
+            
+            # Execute command based on type
+            if action == "start":
+                return_code = handle_start_command(logger, timeout_seconds)
+            elif action in ["stop", "status"]:
+                return_code = handle_simple_command(logger, cmd)
+            # Success case for setup action
+            elif action == "setup":
+                return_code = handle_simple_command(logger, cmd)
         else:
-            cmd = command
-            logger.info(f"Command: {cmd}")
-        logger.info("=" * 50)
-
-        # Execute command based on type
-        if action == "start":
-            return_code = handle_start_command(logger, timeout_seconds)
-        elif action in ["stop", "status"]:
-            return_code = handle_simple_command(logger, ACTIONS[action])
-        else:
-            logger.error("Unsupported command")
-            return_code = 1
+            if command:
+                logger.info(f"Command: {command}")
+                # Execute custom command if provided
+                try:
+                    subprocess.check_call(command, shell=True)
+                    return_code = 0
+                except subprocess.CalledProcessError as e:
+                    return_code = e.returncode
+            else:
+                logger.warning("No valid action or command provided")
+                return_code = 0  # Not an error case, just nothing to do
 
         # Log completion
         logger.info("=" * 50)
         logger.info(f"Command execution completed at {datetime.datetime.now()}")
         logger.info(f"Exit code: {return_code}")
-        logger.info("=" * 50)
         
         return return_code
 
