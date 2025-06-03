@@ -25,3 +25,90 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Custom scrollbar styling to match theme */
+:root {
+  /* Light mode scrollbar */
+  --scrollbar-thumb-light: #9e9e9e; /* Grey color for light mode */
+  --scrollbar-thumb-hover-light: #757575; /* Darker grey on hover */
+  --scrollbar-track-light: rgba(0, 0, 0, 0.05);
+  --scrollbar-button-light: #9e9e9e; /* Grey color for buttons */
+  
+  /* Dark mode scrollbar */
+  --scrollbar-thumb-dark: #616161; /* Grey color for dark mode */
+  --scrollbar-thumb-hover-dark: #9e9e9e; /* Lighter grey on hover in dark mode */
+  --scrollbar-track-dark: rgba(255, 255, 255, 0.05);
+  --scrollbar-button-dark: #616161; /* Grey color for buttons in dark mode */
+}
+
+/* Custom scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-light);
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-light);
+  border-radius: 4px;
+}
+
+/* Styling the arrow buttons */
+::-webkit-scrollbar-button {
+  background-color: var(--scrollbar-button-light);
+  border-radius: 2px;
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-button:hover {
+  background-color: var(--scrollbar-thumb-hover-light);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-light) var(--scrollbar-track-light);
+}
+
+/* Apply dark mode scrollbar when dark mode is active */
+.MuiPopover-root .MuiPaper-root[data-mode="dark"],
+[data-theme="dark"] {
+  --scrollbar-thumb: var(--scrollbar-thumb-dark);
+  --scrollbar-thumb-hover: var(--scrollbar-thumb-hover-dark);
+  --scrollbar-track: var(--scrollbar-track-dark);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-dark);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-dark);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-dark);
+}
+
+/* Dark mode button styling */
+[data-theme="dark"] *::-webkit-scrollbar-button {
+  background-color: var(--scrollbar-button-dark);
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-button:hover {
+  background-color: var(--scrollbar-thumb-hover-dark);
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
+}
