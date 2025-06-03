@@ -1,10 +1,10 @@
 class NodeInfo {
-  constructor(ip, globalSetState, setRebootAlertNodeIp) { // Added setRebootAlertNodeIp
+  constructor(ip, setRebootAlertNodeIp) { // globalSetState removed
     this.ip = ip; // Primary IP of the node
 
     // Status and Initialization
     this._currentStatus = 'DISCONNECTED'; // Internal status: 'DISCONNECTED', 'RUNNING', 'OFF'
-    this.isInitializing = false; // True during toggle operations or explicit initialization phases
+    // this.isInitializing = false; // Removed, App.js will handle UI based on rebootAlertNodeIp
 
     // Naming and Identification
     this.nodeName = ''; // User-defined node name
@@ -54,17 +54,42 @@ class NodeInfo {
       selfManetInfo: null
     };
     this.rawAttributes = {}; // Store raw attributes if needed
-    this.isInitializing = false; // Used to indicate script toggle or initial data load
+    // this.isInitializing = false; // Removed
 
     // Store the callback
-    this._globalSetState = globalSetState;
+    // this._globalSetState = globalSetState; // Removed
     this._setRebootAlertNodeIp = setRebootAlertNodeIp; // Store the new callback
+
+    this.pollingIntervals = {
+      attributes: null,
+      status: null,
+      manet: null
+    };
+    this.startInternalPolling();
+  }
+
+  startInternalPolling() {
+    // Initial fetches
+    this.refreshAttributesFromServer();
+    this.refreshStatusFromServer();
+    this.checkManetConnection();
+
+    // Setup intervals
+    this.pollingIntervals.attributes = setInterval(() => this.refreshAttributesFromServer(), 1000);
+    this.pollingIntervals.status = setInterval(() => this.refreshStatusFromServer(), 5000);
+    this.pollingIntervals.manet = setInterval(() => this.checkManetConnection(), 5000);
+  }
+
+  stopInternalPolling() {
+    if (this.pollingIntervals.attributes) clearInterval(this.pollingIntervals.attributes);
+    if (this.pollingIntervals.status) clearInterval(this.pollingIntervals.status);
+    if (this.pollingIntervals.manet) clearInterval(this.pollingIntervals.manet);
   }
 
   get status() {
-    if (this.isInitializing) {
-      return 'INITIALIZING';
-    }
+    // if (this.isInitializing) { // Removed
+    // return 'INITIALIZING';
+    // }
     return this._currentStatus;
   }
 
@@ -189,15 +214,16 @@ class NodeInfo {
       this._parseAndAssignAttributes(null);
       this._currentStatus = 'DISCONNECTED';
     }
+    // No _globalSetState call
   }
 
   async refreshStatusFromServer(timeout = 4900) {
     // Do not poll status if a toggle operation is in progress,
     // as toggleScript will manage the initializing state.
-    if (this.isInitializing) {
+    // if (this.isInitializing) { // Removed
         // console.log(`[NodeInfo ${this.ip}] Skipping status refresh because isInitializing is true.`);
-        return;
-    }
+        // return;
+    // }
 
     const controller = new AbortController();
     const signal = controller.signal;
@@ -223,13 +249,14 @@ class NodeInfo {
       }
       this._currentStatus = 'DISCONNECTED';
     }
+    // No _globalSetState call
   }
 
   // Method to toggle the script (start/stop)
   async toggleScript(action) { // action is expected to be 'setupv2' or 'stop'
-    if (!this._globalSetState) {
-      console.warn(`[NodeInfo ${this.ip}] _globalSetState is not available. UI may not refresh.`);
-    }
+    // if (!this._globalSetState) { // Removed
+    // console.warn(`[NodeInfo ${this.ip}] _globalSetState is not available. UI may not refresh.`);
+    // }
     if (!this._setRebootAlertNodeIp) {
       console.warn(`[NodeInfo ${this.ip}] _setRebootAlertNodeIp is not available. Reboot alert will not function.`);
     }
@@ -240,18 +267,24 @@ class NodeInfo {
       return;
     }
 
-    this.isInitializing = true;
-    if (this._globalSetState) {
-      this._globalSetState(prev => [...prev]);
-    }
+    // this.isInitializing = true; // Removed
+    // if (this._globalSetState) { // Removed
+    // this._globalSetState(prev => [...prev]); // Removed
+    // }
 
     const API_URL = `http://${this.ip}:5000/api/setup_script`;
 
     const finalizeToggle = () => {
-      this.isInitializing = false;
-      if (this._globalSetState) {
-        this._globalSetState(prev => [...prev]);
-      }
+      // this.isInitializing = false; // Removed
+      // if (this._globalSetState) { // Removed
+      // this._globalSetState(prev => [...prev]); // Removed
+      // }
+      // The primary responsibility of finalizeToggle was to reset isInitializing and refresh UI.
+      // Since isInitializing is removed and UI refresh is handled by App.js tick,
+      // this function's role changes. It's now mainly a delay.
+      // If _setRebootAlertNodeIp was called, App.js will handle the "initializing" state.
+      // If not, the node's status will naturally update via its internal polling.
+      console.log(`[NodeInfo ${this.ip}] Toggle action '${action}' processed (finalizeToggle).`);
     };
 
     try {
@@ -274,7 +307,20 @@ class NodeInfo {
         console.error(`[NodeInfo ${this.ip}] ${errorText}`);
 
         if ((response.status === 500 || response.status === 504) && this._setRebootAlertNodeIp) {
-          this._setRebootAlertNodeIp(this.ip);
+          this._setRebootAlertNodeIp(this.ip); // App.js will see this and can show "Initializing"
+        }
+      } else {
+        // If the command is 'setupv2' (turn on) or 'stop' (turn off) and is successful,
+        // we can anticipate the status change and set it optimistically.
+        // The regular status polling will eventually confirm this.
+        // For 'setupv2', we might expect 'RUNNING' (or 'INITIALIZING' if backend takes time).
+        // For 'stop', we expect 'OFF'.
+        // However, to keep things simple and reliant on the backend's reported status,
+        // we'll let the normal polling update the status.
+        // If a quick UI update is desired here, we could set _setRebootAlertNodeIp(this.ip)
+        // to signal App.js to show an "Initializing" or "Updating" state briefly.
+        if (this._setRebootAlertNodeIp) {
+            this._setRebootAlertNodeIp(this.ip); // Signal App.js to show "Initializing"
         }
       }
       // For all cases (response.ok or not), introduce the delay before finalizing.
@@ -282,6 +328,9 @@ class NodeInfo {
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
+      if (this._setRebootAlertNodeIp) {
+        this._setRebootAlertNodeIp(this.ip); // Also signal initializing on network error during toggle
+      }
       // Also delay in case of a catch block error.
       setTimeout(finalizeToggle, 5000);
     }
@@ -292,6 +341,7 @@ class NodeInfo {
   async checkManetConnection(timeout = 800) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
+      // No _globalSetState call
       return;
     }
 
@@ -300,13 +350,55 @@ class NodeInfo {
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      await fetch(`http://${this.manet.ip}`, { method: 'HEAD', mode: 'no-cors', signal }); // Corrected
+      // Assuming the MANET IP might also have a similar API or a simple ping-like endpoint
+      // For now, let's simulate a fetch. Replace with actual MANET API endpoint if available.
+      // This is a placeholder. You'll need to adjust how MANET status is actually checked.
+      const response = await fetch(`http://${this.manet.ip}:5000/api/manet_status`, { signal }); // Example endpoint
       clearTimeout(fetchTimeoutId);
-      this.manet.connectionStatus = 'Connected';
+
+      if (response.ok) {
+        const data = await response.json(); // Assuming it returns { status: 'CONNECTED'/'DISCONNECTED', nodeInfo: {...}, selfManetInfo: {...} }
+        this.manet.connectionStatus = data.status;
+        this.manet.nodeInfo = data.nodeInfo;
+        this.manet.selfManetInfo = data.selfManetInfo;
+      } else {
+        this.manet.connectionStatus = 'Error';
+        this.manet.nodeInfo = null;
+        this.manet.selfManetInfo = null;
+      }
     } catch (error) {
       clearTimeout(fetchTimeoutId);
-      this.manet.connectionStatus = 'Disconnected';
+      if (error.name === 'AbortError') {
+        // console.warn(`[NodeInfo ${this.ip}] MANET connection check to ${this.manet.ip} timed out.`);
+        this.manet.connectionStatus = 'Timeout';
+      } else {
+        // console.error(`[NodeInfo ${this.ip}] Error checking MANET connection to ${this.manet.ip}:`, error);
+        this.manet.connectionStatus = 'Unreachable';
+      }
+      this.manet.nodeInfo = null;
+      this.manet.selfManetInfo = null;
     }
+    // No _globalSetState call
+  }
+
+  // Helper to update MANET IP, e.g., from user input
+  setManetIp(manetIp) {
+    this.manet.ip = manetIp;
+    this.manet.connectionStatus = null; // Reset status when IP changes
+    this.manet.nodeInfo = null;
+    this.manet.selfManetInfo = null;
+    this.checkManetConnection(); // Optionally, trigger an immediate check
+    // No _globalSetState call
+  }
+
+  // Utility to get a simplified representation for localStorage
+  toPlainObject() {
+    return {
+      ip: this.ip,
+      nodeName: this.nodeName,
+      manetIp: this.manet.ip // Only persist the MANET IP
+      // Other attributes are fetched live
+    };
   }
 }
 

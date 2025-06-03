@@ -37,6 +37,7 @@ function Sidebar({
   allNodeData, // This will be an array of NodeInfo instances
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
+  rebootAlertNodeIp, // Added prop to know which node is currently "initializing"
 }) {
   const [ip, setIp] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -47,17 +48,21 @@ function Sidebar({
 
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
-      // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
-      const newNodeInstance = new NodeInfo(ip, setAllNodeData, setRebootAlertNodeIp);
+      // Use the new NodeInfo constructor
+      const newNodeInstance = new NodeInfo(ip, setRebootAlertNodeIp);
       newNodeInstance.nodeName = ''; // Initialize nodeName as empty
       newNodeInstance.manet.ip = '';
-      newNodeInstance.manet.connectionStatus = 'Not Configured';
+      // newNodeInstance.manet.connectionStatus = 'Not Configured'; // NodeInfo constructor handles initial state
       setAllNodeData(prev => [...prev, newNodeInstance]);
       setIp('');
     }
   };
 
   const removeNode = (ipToRemove) => {
+    const nodeInstance = allNodeData.find(instance => instance.ip === ipToRemove);
+    if (nodeInstance) {
+      nodeInstance.stopInternalPolling(); // Stop polling before removing
+    }
     setAllNodeData(prevInstances => prevInstances.filter(instance => instance.ip !== ipToRemove));
   };
 
@@ -76,12 +81,30 @@ function Sidebar({
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
       if (inst) {
-        inst.ip = editPrimary;
+        // If primary IP changes, we might need to remove the old and add a new one
+        // to ensure polling is correctly managed for the new IP.
+        // For simplicity here, we assume IP change means we update properties.
+        // A more robust solution for IP change would involve removeNode(editTarget) and addNode(newPrimaryIP)
+        // while preserving other settings.
+        if (inst.ip !== editPrimary) {
+            // If IP changes, stop polling for the old IP.
+            // The new IP instance will start its own polling if this were a full re-add.
+            // However, NodeInfo's internal polling is tied to its 'this.ip'.
+            // Changing 'inst.ip' directly without re-instantiating NodeInfo
+            // means internal fetch calls will use the new IP, which is intended.
+            inst.ip = editPrimary;
+        }
         inst.nodeName = editName;
-        inst.manet.ip = editSecondary;
-        inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured';
+        
+        // Use the setManetIp method if available, otherwise set directly
+        if (typeof inst.setManetIp === 'function') {
+            inst.setManetIp(editSecondary || null);
+        } else {
+            inst.manet.ip = editSecondary || null;
+            inst.manet.connectionStatus = editSecondary ? null : 'Not Configured'; // Let internal polling determine status
+        }
       }
-      return [...prev];
+      return [...prev]; // Trigger re-render
     });
     setEditOpen(false);
   };
@@ -135,9 +158,11 @@ function Sidebar({
 
         <List subheader={<ListSubheader>Nodes</ListSubheader>}>
           {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
-            const currentStatus = nodeInstance.status || 'DISCONNECTED';
+            // Determine status: if nodeInstance.ip matches rebootAlertNodeIp, it's "INITIALIZING"
+            // Otherwise, use nodeInstance.status.
+            const displayStatus = rebootAlertNodeIp === nodeInstance.ip ? 'INITIALIZING' : nodeInstance.status;
             let bg;
-            switch (currentStatus) {
+            switch (displayStatus) {
               case 'RUNNING':
                 bg = '#d4edda'; // green
                 break;
@@ -262,6 +287,7 @@ export default function App() {
   const [hasLoaded, setHasLoaded] = useState(false); // Ensure this is declared
   const allNodeDataRef = useRef(allNodeData);
   const [rebootAlertNodeIp, setRebootAlertNodeIp] = useState(null);
+  const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false); // New state for loading status
 
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
@@ -273,12 +299,15 @@ export default function App() {
   // Function to load map data from API
   const loadMapData = useCallback(() => {
     // Find the first node with a valid manet.ip
-    const targetNode = allNodeData.find(node => node.manet && node.manet.ip);
+    const currentNodes = allNodeDataRef.current; // Use ref for reading
+    const targetNode = currentNodes.find(node => node.manet && node.manet.ip && node.manet.connectionStatus === 'Connected'); // Ensure connected
     if (!targetNode) {
-      console.warn("No node with a valid manet.ip found.");
+      // console.warn("No node with a connected manet.ip found for map data.");
+      // setMapMarkers([]); // Clear markers if no suitable node
+      // setLQM([]); // Clear LQM
       return;
     }
-    const API_URL = `http://${targetNode.manet.ip}/status`;
+    const API_URL = `http://${targetNode.manet.ip}/status`; // Assuming /status provides map-related data
 
     fetch(API_URL)
       .then(r => r.json())
@@ -286,44 +315,62 @@ export default function App() {
         const infos = Array.isArray(data.nodeInfos)
           ? data.nodeInfos
           : Object.values(data.nodeInfos || {});
+        
         const enriched = infos.map(info => ({
           ...info,
           batteryLevel:
-            data.selfId === info.id
-              ? (data.batteryLevel * 10).toFixed(2) + '%'
+            data.selfId === info.id && data.batteryLevel !== undefined
+              ? (data.batteryLevel * 10).toFixed(2) + '%' // Assuming batteryLevel is a fraction, convert to percentage
               : 'unknown'
         }));
-        // if (JSON.stringify(enriched) !== JSON.stringify(mapMarkers)) {
-        //   setMapMarkers(enriched);
-        // }
+        
+        // Update map markers based on all nodes that have selfManetInfo
+        // NodeInfo instances now update their own manet.nodeInfo and manet.selfManetInfo
+        // So, we can derive markers directly from allNodeData
+        const currentMapMarkers = currentNodes
+            .map(node => node.manet.selfManetInfo)
+            .filter(info => info && info.latitude && info.longitude);
+
+        // Only update if there's a change to avoid unnecessary re-renders of the map
+        if (JSON.stringify(currentMapMarkers) !== JSON.stringify(mapMarkers)) {
+            setMapMarkers(currentMapMarkers);
+        }
+
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
           : [];
-        const fullLQM = buildStaticsLQM(infos, rawLQM, lqm, 100, null);
-        setLQM(fullLQM);
-
-        setAllNodeData(prevAllNodeData => {
-          return prevAllNodeData.map(node => {
-            // Find enriched info by manet IP
-            const match = enriched.find(info => info.ip === node.manet.ip);
-            if (match) {
-              node.manet.nodeInfo = enriched;
-              node.manet.selfManetInfo = match;
+        
+        // We need all manetInfos from all nodes for buildStaticsLQM
+        const allManetNodeInfos = currentNodes.reduce((acc, node) => {
+            if (node.manet && node.manet.nodeInfo) { // node.manet.nodeInfo should be an array
+                node.manet.nodeInfo.forEach(info => {
+                    // Add to acc if not already present (based on id)
+                    if (!acc.find(existingInfo => existingInfo.id === info.id)) {
+                        acc.push(info);
+                    }
+                });
             }
-            return node;
-          });
-        });
+            return acc;
+        }, []);
 
-        // Use selfManetInfo for map markers
-        const selfManetMarkers = allNodeData
-          .map(node => node.manet.selfManetInfo)
-          .filter(info => info && info.latitude && info.longitude);
-        setMapMarkers(selfManetMarkers);
-
-
+        if (allManetNodeInfos.length > 0) {
+            const fullLQM = buildStaticsLQM(allManetNodeInfos, rawLQM, lqm, 100, null);
+            // Only update if there's a change
+            if (JSON.stringify(fullLQM) !== JSON.stringify(lqm)) {
+                setLQM(fullLQM);
+            }
+        } else {
+            // setLQM([]); // Clear LQM if no nodeInfos
+        }
+        // No direct setAllNodeData here for map data to avoid conflicts with NodeInfo's internal state.
+        // NodeInfo instances are responsible for their own manet data.
       })
-      .catch(console.error);
-  }, [allNodeData, lqm, mapMarkers]); // Removed setAllNodeData from here as it's implicitly covered by allNodeData
+      .catch(error => {
+        // console.error(`Error loading map data from ${API_URL}:`, error);
+        // setMapMarkers([]); // Clear markers on error
+        // setLQM([]); // Clear LQM on error
+      });
+  }, [lqm, mapMarkers]); // Removed allNodeData, setAllNodeData as direct deps
 
   // NEW: Hard refresh rate for map data
   useEffect(() => {
@@ -353,118 +400,70 @@ export default function App() {
       try {
         const parsed = JSON.parse(savedData);
         const instances = parsed.map(data => {
-          const instance = new NodeInfo(data.ip, setAllNodeData, setRebootAlertNodeIp);
+          const instance = new NodeInfo(data.ip, setRebootAlertNodeIp);
           instance.nodeName = data.nodeName;
-          instance.manet.ip = data.manetIp;
-          instance.manet.connectionStatus = data.manetConnectionStatus;
-          instance._currentStatus = data.status;
-          instance.attributes = data.attributes;
-          instance.isInitializing = data.isInitializing || false;
+          if (data.manetIp) {
+            instance.setManetIp(data.manetIp);
+          }
           return instance;
         });
         setAllNodeData(instances);
-      } catch (e) { // Catch specific error
-        console.error("Failed to parse localStorage data:", e);
-        setAllNodeData([]);
+      } catch (e) {
+        console.error("Failed to parse or rehydrate from localStorage:", e);
+        setAllNodeData([]); // Initialize to empty array on error
       }
     }
-    setHasLoaded(true); // Set hasLoaded to true AFTER attempting to load and set state
-  }, []); // Empty dependency array ensures this runs only once on mount
+    setIsLoadedFromStorage(true); // Signal that loading is complete
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // setRebootAlertNodeIp is stable
 
-  // Effect 2: Persist allNodeData to localStorage
+  // Effect 2: Persist essential NodeInfo data to localStorage
   useEffect(() => {
-    if (!hasLoaded) { // Guard: Only run if initial load is complete
-      return;
+    if (!isLoadedFromStorage) {
+      return; // Don't save until initial load is done
     }
+    // Use the toPlainObject method from NodeInfo instances for cleaner persistence
+    const plainObjects = allNodeData.map(instance => instance.toPlainObject ? instance.toPlainObject() : { ip: instance.ip, nodeName: instance.nodeName, manetIp: instance.manet ? instance.manet.ip : null });
+    localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
+  }, [allNodeData, isLoadedFromStorage]); // Add isLoadedFromStorage to dependency array
 
-    // Debounce localStorage saving
-    const debounceTimeout = 500; // 500ms debounce period
-    const handler = setTimeout(() => {
-      const plainObjects = allNodeData.map(instance => ({
-        ip: instance.ip,
-        nodeName: instance.nodeName,
-        manetIp: instance.manet.ip,
-        status: instance.status, // Relies on NodeInfo's getter
-        attributes: instance.attributes, // Consider if all attributes need to be persisted
-        isInitializing: instance.isToggleInProgress, // Persist based on isToggleInProgress
-        manetConnectionStatus: instance.manet.connectionStatus,
-      }));
-      localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
-      // console.log('Saved to localStorage (debounced)', plainObjects); // Optional: for debugging
-    }, debounceTimeout);
+  // Effect 3: UI Update Tick (replaces old polling effects)
+  useEffect(() => {
+    const tickInterval = setInterval(() => {
+      setAllNodeData(prevData => [...prevData]); // Trigger re-render by creating a new array reference
+    }, 1000); // Update UI every 1 second
 
-    // Cleanup function to clear the timeout if allNodeData changes again before timeout elapses
+    return () => clearInterval(tickInterval);
+  }, []); // Runs once on mount
+
+  // Effect 4: Cleanup polling on unmount
+  useEffect(() => {
     return () => {
-      clearTimeout(handler);
+      allNodeDataRef.current.forEach(node => {
+        if (node && typeof node.stopInternalPolling === 'function') {
+          node.stopInternalPolling();
+        }
+      });
     };
-  }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
-
-  // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
+  }, []); // Runs once on mount and cleans up on unmount
+  
+  // Effect 5: Clear rebootAlertNodeIp after a delay if it's set
   useEffect(() => {
-    if (!hasLoaded) return; // Guard: Only run if initial load is complete
-    let running = false;
-    const attrInterval = setInterval(async () => {
-      const currentNodes = allNodeDataRef.current;
-      if (running || currentNodes.length === 0) return;
-      running = true;
-      try {
-        await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
-        setAllNodeData(prevNodes => [...prevNodes]); // Use functional update or ensure currentNodes is fresh
-      } catch (error) {
-        console.error("Error polling attributes:", error);
-      } finally {
-        running = false;
-      }
-    }, 2000);
-    return () => clearInterval(attrInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array
+    let timer;
+    if (rebootAlertNodeIp) {
+      timer = setTimeout(() => {
+        setRebootAlertNodeIp(null);
+      }, 5000); // Clear after 5 seconds, assuming NodeInfo's internal polling has updated status
+    }
+    return () => clearTimeout(timer);
+  }, [rebootAlertNodeIp]);
 
-  // Effect 4: Poll status every 8 seconds
-  useEffect(() => {
-    if (!hasLoaded) return; // Guard: Only run if initial load is complete
-    let running = false;
-    const statusInterval = setInterval(async () => {
-      const currentNodes = allNodeDataRef.current;
-      if (running || currentNodes.length === 0) return;
-      running = true;
-      try {
-        await Promise.all(currentNodes.map(node => node.refreshStatusFromServer()));
-        setAllNodeData(prevNodes => [...prevNodes]);
-      } catch (error) {
-        console.error("Error polling status:", error);
-      } finally {
-        running = false;
-      }
-    }, 5000);
-    return () => clearInterval(statusInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array
-
-  // Effect 5: Poll MANET connection every 2 seconds (as per user's current code)
-  useEffect(() => {
-    if (!hasLoaded) return; // Guard: Only run if initial load is complete
-    let running = false;
-    const manetInterval = setInterval(async () => {
-      const currentNodes = allNodeDataRef.current;
-      if (running || currentNodes.length === 0) return;
-      running = true;
-      try {
-        await Promise.all(currentNodes.map(node => node.checkManetConnection()));
-        setAllNodeData(prevNodes => [...prevNodes]);
-      } catch (error) {
-        console.error("Error polling MANET connection:", error);
-      } finally {
-        running = false;
-      }
-    }, 2000); // Interval was 2000 in user's code
-    return () => clearInterval(manetInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array
-
-  //console.log(allNodeData); // This will now log an array of NodeInfo instances
+  // console.log(allNodeData); 
 
   return (
     <>
       <CssBaseline />
-      <RebootAlertDialog // Added RebootAlertDialog
+      <RebootAlertDialog 
         open={!!rebootAlertNodeIp}
         nodeIp={rebootAlertNodeIp}
         onClose={() => setRebootAlertNodeIp(null)}
@@ -474,7 +473,8 @@ export default function App() {
           <Sidebar
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
-            setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
+            setRebootAlertNodeIp={setRebootAlertNodeIp}
+            rebootAlertNodeIp={rebootAlertNodeIp} // Pass rebootAlertNodeIp to Sidebar
           />
           <Box
             component="main"
