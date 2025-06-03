@@ -11,7 +11,8 @@ const lightColors = {
     main: '#dc004e',
     light: '#ff5983',
     dark: '#9a0036',
-  },  // Custom colors for your app
+  },
+  // Custom colors for your app
   nodeStatus: {
     running: '#d4edda',    // green
     initializing: '#fff3cd', // yellow
@@ -93,7 +94,8 @@ const darkColors = {
     main: '#f48fb1',
     light: '#fce4ec',
     dark: '#ad1457',
-  },  // Custom dark mode colors
+  },
+  // Custom dark mode colors
   nodeStatus: {
     running: '#2e7d32',    // darker green
     initializing: '#f57c00', // darker orange
@@ -207,6 +209,7 @@ export const createAppTheme = (mode) => {
           root: {
             backgroundColor: colors.background.paper,
             border: `1px solid ${colors.border.main}`,
+            borderRadius: 8, // Custom border radius
           },
         },
       },
@@ -214,20 +217,37 @@ export const createAppTheme = (mode) => {
         styleOverrides: {
           root: {
             backgroundColor: colors.background.paper,
+            borderRadius: 8, // Custom border radius
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8, // Custom border radius
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8, // Custom border radius
+          },
+        },
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8, // Custom border radius
           },
         },
       },
     },
+    shape: {
+      borderRadius: 8, // Custom border radius
+    },
     typography: {
-      fontFamily: [
-        '-apple-system',
-        'BlinkMacSystemFont',
-        '"Segoe UI"',
-        'Roboto',
-        '"Helvetica Neue"',
-        'Arial',
-        'sans-serif',
-      ].join(','),
+      fontFamily: "'DM Sans', Arial, sans-serif", // Restored DM Sans font
     },
   });
 };

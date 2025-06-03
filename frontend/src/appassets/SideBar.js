@@ -97,13 +97,13 @@ function Sidebar({
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
-          <Box sx={{ textAlign: 'center', mb: 2, position: 'relative' }}>
-            <DarkModeToggle />
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <img
               src="/ST_Engineering_logo_Singapore_Technologies_Engineering-700x118.png"
               alt="ST Engineering Logo"
               style={{ width: '70%', height: 'auto' }}
             />
+            <DarkModeToggle />
           </Box>
           <TextField
             fullWidth
