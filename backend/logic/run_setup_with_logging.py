@@ -52,8 +52,9 @@ def handle_simple_command(logger, cmd):
     except subprocess.CalledProcessError as e:
         for line in e.output.splitlines():
             logger.info(line.strip())
-        # For stop and status commands, return 0 as they are informational/state-changing
-        if cmd[-1] in ["stop", "status"]:
+        # For stop and status commands, always return 0 as they are informational/state-changing
+        if cmd[1] in ["stop", "status"]:  # Using cmd[1] instead of cmd[-1] to get the actual command
+            logger.info(f"Command {cmd[1]} completed. Forcing exit code to 0 regardless of actual exit code {e.returncode}")
             return 0
         return e.returncode
 
