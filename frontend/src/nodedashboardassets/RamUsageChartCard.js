@@ -2,8 +2,12 @@
 import React from 'react';
 import { Card, CardContent, Typography, Grid } from '@mui/material';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from '../theme';
 
 export default function RamUsageChartCard({ data, isLoading }) { // Removed smoothRam from props
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   if (!data || !data.ram_usage_history) { // Check for history existence
     return null;
   }
@@ -32,14 +36,13 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          minHeight: 250,
-          transition: 'transform 0.1s ease-in-out',
+          minHeight: 250,          transition: 'transform 0.1s ease-in-out',
+          backgroundColor: colors.background.paper,
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
-            backgroundColor: '#fff'
+            backgroundColor: colors.background.hover
           },
-          backgroundColor: '#fafafa'
         }}
       >
         <CardContent>
@@ -81,10 +84,9 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           <ResponsiveContainer width="100%" height={250}>
             {/* Use the internally calculated smoothRam */}
             <AreaChart data={smoothRam}>
-              <defs>
-                <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#82ca9d" stopOpacity={0.6}/>
-                  <stop offset="75%" stopColor="#82ca9d" stopOpacity={0.2}/>
+              <defs>                <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colors.charts.ram} stopOpacity={0.6}/>
+                  <stop offset="75%" stopColor={colors.charts.ramGradient} stopOpacity={0.2}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
@@ -103,7 +105,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
               <Area
                 type="basis"
                 dataKey="value"
-                stroke="#82ca9d"
+                stroke={colors.charts.ram}
                 strokeWidth={3}
                 fill="url(#colorRam)"
                 fillOpacity={0.6}

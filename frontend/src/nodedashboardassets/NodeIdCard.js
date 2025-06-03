@@ -14,26 +14,16 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '90%',     // increased modal width
-  maxWidth: 800,    // increased maxWidth
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 2,
-};
+import { getThemeColors } from '../theme';
 
 export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editDialog, setEditDialog] = useState({
     open: false,
@@ -41,6 +31,20 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
     label: ''
   });
   const [editValue, setEditValue] = useState('');
+
+  const modalStyle = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '90%',     // increased modal width
+    maxWidth: 800,    // increased maxWidth
+    bgcolor: 'background.paper',
+    border: `2px solid ${colors.border.dark}`,
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+  };
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -86,13 +90,12 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
-            transition: 'transform 0.1s ease-in-out',
-            '&:hover': {
+            transition: 'transform 0.1s ease-in-out',            '&:hover': {
               transform: 'scale(1.01)',
               boxShadow: 6,
-              backgroundColor: '#fff'
+              backgroundColor: colors.background.paper
             },
-            backgroundColor: '#fafafa',
+            backgroundColor: colors.background.hover,
             cursor: 'pointer'
           }}
         >

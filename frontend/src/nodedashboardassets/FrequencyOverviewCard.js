@@ -19,20 +19,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '90%',    // increased width
-  maxWidth: 800,   // increased maxWidth
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 2,
-};
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from '../theme';
 
 // helper: convert kHz → GHz and round to 2 decimal places
 const formatGhz = (khz) => {
@@ -42,6 +30,23 @@ const formatGhz = (khz) => {
 };
 
 export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
+  
+  const modalStyle = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '90%',    // increased width
+    maxWidth: 800,   // increased maxWidth
+    bgcolor: 'background.paper',
+    border: `2px solid ${colors.border.dark}`,
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+  };
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editDialog, setEditDialog] = useState({
     open: false,
@@ -97,15 +102,14 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
           onClick={handleOpenModal}
           sx={{
             display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
+            flexDirection: 'column',            flex: 1,
             transition: 'transform 0.1s ease-in-out',
+            backgroundColor: colors.background.paper,
             '&:hover': {
               transform: 'scale(1.01)',
               boxShadow: 6,
-              backgroundColor: '#fff'
+              backgroundColor: colors.background.hover
             },
-            backgroundColor: '#fafafa',
             cursor: 'pointer'
           }}
         >

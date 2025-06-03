@@ -1,6 +1,8 @@
 import React, { useEffect, useRef} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from './theme';
 // extract images from Leaflet's default icon set path
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
@@ -18,6 +20,9 @@ function MapView({
   markers       = [],
   linkQualityMatrix = []
 }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
+  
   const mapEl = useRef(null);
   const map   = useRef(null);
   const layer = useRef(null);
@@ -58,12 +63,10 @@ function MapView({
       const popupHtml = Object
         .entries(rest)
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
-        .join('<br>');
-
-      const circle = L.circle([lat, lng], {
+        .join('<br>');      const circle = L.circle([lat, lng], {
         radius:      10,
-        color:       '#007bff',
-        fillColor:   '#30a9de',
+        color:       colors.map.color,
+        fillColor:   colors.map.fillColor,
         fillOpacity: 0.4
       }).addTo(group)
         .bindPopup(popupHtml)

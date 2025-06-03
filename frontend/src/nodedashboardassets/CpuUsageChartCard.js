@@ -2,8 +2,12 @@
 import React from 'react';
 import { Card, CardContent, Typography, Grid } from '@mui/material';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from '../theme';
 
 export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoothCpu from props
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   if (!data || !data.cpu_usage_history) { // Check for history existence
     return null;
   }
@@ -24,8 +28,7 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
   // --- End of moved smoothing logic ---
 
   return (
-    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '25%' }}>
-      <Card
+    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '25%' }}>      <Card
         elevation={3}
         sx={{
           display: 'flex',
@@ -33,12 +36,12 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
           flex: 1,
           minHeight: 250,
           transition: 'transform 0.1s ease-in-out',
+          backgroundColor: colors.background.paper,
           '&:hover': {
             transform: 'scale(1.01)',
             boxShadow: 6,
-            backgroundColor: '#fff'
+            backgroundColor: colors.background.hover
           },
-          backgroundColor: '#fafafa'
         }}
       >
         <CardContent>
@@ -79,12 +82,11 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
           </Typography>
 
           <ResponsiveContainer width="100%" height={250}>
-            {/* Use the internally calculated smoothCpu */}
-            <AreaChart data={smoothCpu}> 
+            {/* Use the internally calculated smoothCpu */}            <AreaChart data={smoothCpu}> 
               <defs>
                 <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8884d8" stopOpacity={0.6}/>
-                  <stop offset="75%" stopColor="#8884d8" stopOpacity={0.2}/>
+                  <stop offset="0%" stopColor={colors.charts.cpu} stopOpacity={0.6}/>
+                  <stop offset="75%" stopColor={colors.charts.cpuGradient} stopOpacity={0.2}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
@@ -103,7 +105,7 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
               <Area
                 type="basis"
                 dataKey="value"
-                stroke="#8884d8"
+                stroke={colors.charts.cpu}
                 strokeWidth={3}
                 fill="url(#colorCpu)"
                 fillOpacity={0.6}
