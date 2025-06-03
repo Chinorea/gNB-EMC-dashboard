@@ -2,8 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, Typography, Grid, Box, Button, ButtonGroup, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from '../theme';
 
 export default function LogCard({ ip }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
   const [logLines, setLogLines] = useState([]);
   const [error, setError] = useState(null);
   const [logType, setLogType] = useState('du'); // 'du' or 'cu'
@@ -36,10 +40,22 @@ export default function LogCard({ ip }) {
   };
 
   return (
-    <Grid item xs={12} md={6} sx={{ display: 'flex', width: '40%' }}>
-      <Card
+    <Grid item xs={12} md={6} sx={{ display: 'flex', width: '40%' }}>      <Card
         elevation={3}
-        sx={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', transition: 'transform 0.1s ease-in-out', '&:hover': { transform: 'scale(1.01)', boxShadow: 6, backgroundColor: '#ffffff' }, backgroundColor: '#fafafa', width: '100%' }}
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          flex: 1, 
+          height: '100%', 
+          transition: 'transform 0.1s ease-in-out', 
+          backgroundColor: colors.background.paper,
+          '&:hover': { 
+            transform: 'scale(1.01)', 
+            boxShadow: 6, 
+            backgroundColor: colors.background.hover 
+          }, 
+          width: '100%' 
+        }}
       >
         <CardContent
           sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', p: 2, width: '100%' }}
@@ -74,7 +90,7 @@ export default function LogCard({ ip }) {
               {error}
             </Typography>
           ) : (
-            <Box sx={{ mt: 2, maxHeight:300, overflow: 'auto', backgroundColor: '#ffffff', p: 1, borderRadius: 1, width: '100%' }}>
+            <Box sx={{ mt: 2, maxHeight:300, overflow: 'auto', backgroundColor: colors.background.hover, p: 1, borderRadius: 1, width: '100%' }}>
               {logLines.length > 0 ? (
                 logLines.map((line, idx) => (
                   <Typography key={idx} component="pre" variant="caption" sx={{ fontFamily: 'monospace', mb: 0.5 }}>

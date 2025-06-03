@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  CssBaseline,
   Box
 } from '@mui/material';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeContextProvider } from './theme/ThemeContext';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
@@ -11,7 +11,7 @@ import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
 import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
-import Sidebar from './SideBar';
+import Sidebar from './appassets/SideBar';
 
 const drawerWidth = 350;
 
@@ -198,12 +198,10 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [rebootAlertNodeIp]);
 
-  // console.log(allNodeData); 
-
+  //console.log(allNodeData); // This will now log an array of NodeInfo instances
   return (
-    <>
-      <CssBaseline />
-      <RebootAlertDialog 
+    <ThemeContextProvider>
+      <RebootAlertDialog // Added RebootAlertDialog
         open={!!rebootAlertNodeIp}
         nodeIp={rebootAlertNodeIp}
         onClose={() => setRebootAlertNodeIp(null)}
@@ -227,11 +225,10 @@ export default function App() {
             <Routes>
               <Route
                 path="/"
-                element={( 
-                  <HomePage
+                element={(                  <HomePage
                     allNodeData={allNodeData}
-                    // handleToggle={handleToggleNodeScript} // Remove this prop
                     setAllNodeData={setAllNodeData}
+                    setRebootAlertNodeIp={setRebootAlertNodeIp}
                   />
                 )}
               />
@@ -254,6 +251,6 @@ export default function App() {
           </Box>
         </Box>
       </BrowserRouter>
-    </>
+    </ThemeContextProvider>
   );
 }

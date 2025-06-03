@@ -409,4 +409,3 @@ def get_config():
             snapshot[field] = None
 
     return jsonify(snapshot), 200
-

@@ -4,6 +4,8 @@ import {
   CssBaseline, AppBar, Toolbar, Typography,
   Container, Grid, Box
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { getThemeColors } from './theme';
 import NodeIdCard from './nodedashboardassets/NodeIdCard';
 import PciCard from './nodedashboardassets/PciCard';
 import TimeCard from './nodedashboardassets/TimeCard';
@@ -26,19 +28,19 @@ export default function NodeDashboard({
   // However, if App.js needs to initiate a toggle, it can find the NodeInfo instance
   // from nodeInfoMap and call its method. For the TopBar, we'll pass the specific method.
 }) {
+  const theme = useTheme();
+  const colors = getThemeColors(theme);
 
   console.log(allNodeData)
 
   const { ip } = useParams();
     console.log(ip)
-  const nodeInfo = allNodeData.find(node => node.ip === ip) || null;
-
-   // Fallback for when nodeInfo is not yet available
+  const nodeInfo = allNodeData.find(node => node.ip === ip) || null;   // Fallback for when nodeInfo is not yet available
    if (!nodeInfo || !nodeInfo.attributes) {
     return (
-      <Box sx={{ backgroundColor: '#f2f2f2', minHeight: '100vh' }}>
+      <Box sx={{ backgroundColor: colors.background.main, minHeight: '100vh' }}>
         <CssBaseline />
-        <AppBar position="static" elevation={2} sx={{ backgroundColor: '#2d2e2e' }}>
+        <AppBar position="static" elevation={2} sx={{ backgroundColor: colors.dashboard.appBarUnreachable }}>
           <Toolbar sx={{ justifyContent: 'space-between' }}>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               {ip}
@@ -68,19 +70,18 @@ export default function NodeDashboard({
   // Extract individual attribute groups
   const { coreData, ramData, diskData, transmitData, ipData } = attributes;
   const { ip: manetIp, connectionStatus: manetConnectionStatus } = nodeInfo.manet;
-
   // override colors to yellow when loading/toggling
   const bgColor = isInitializing
-    ? '#fcfbf2'    // light yellow
-    : nodeStatus === 'RUNNING'     ? '#f3f7f2'
-    : nodeStatus === 'OFF'         ? '#faf2f0'
-                                   : '#f2f2f2'; // Default for UNREACHABLE, INITIALIZING etc.
+    ? colors.dashboard.initializing
+    : nodeStatus === 'RUNNING'     ? colors.dashboard.running
+    : nodeStatus === 'OFF'         ? colors.dashboard.off
+                                   : colors.dashboard.unreachable;
 
   const appBarColor = isInitializing
-    ? '#805c19'    // darker yellow
-    : nodeStatus === 'RUNNING'     ? '#40613d'
-    : nodeStatus === 'OFF'         ? '#612a1f'
-                                   : '#2d2e2e'; // Default for UNREACHABLE, INITIALIZING etc.
+    ? colors.dashboard.appBarInitializing
+    : nodeStatus === 'RUNNING'     ? colors.dashboard.appBarRunning
+    : nodeStatus === 'OFF'         ? colors.dashboard.appBarOff
+                                   : colors.dashboard.appBarUnreachable;
   
   // if disconnected, show only TopBar and no cards
   if (nodeStatus === 'DISCONNECTED' && !isInitializing) {
