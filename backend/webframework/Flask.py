@@ -6,6 +6,9 @@ from backend.logic.editConfig import update_xml_by_path, read_xml_by_path
 import pexpect
 from backend.logic.setupLogManger import LogManager
 import threading
+import os
+import datetime
+import re
 
 # Import fcntl for non-blocking I/O
 import fcntl
@@ -86,180 +89,212 @@ def get_raptor_status():
 # Map of allowed "actions" to the real commands
 ACTIONS = {
     "setupv2": ["gnb_ctl", "start"],
-    "start": ["gnb_ctl", "start"], 
+    "start": ["gnb_ctl", "start"],
     "stop": ["gnb_ctl", "stop"],
-    "status": ["gnb_ctl", "status"] 
+    "status": ["gnb_ctl", "status"]
 }
+
+# Define a log directory for command outputs
+CMD_LOG_DIR = "/webdashboard/logdump"
+if not os.path.exists(CMD_LOG_DIR):
+    try:
+        os.makedirs(CMD_LOG_DIR)
+    except:
+        # Fallback to local logs directory if not writable
+        CMD_LOG_DIR = "logs"
+        if not os.path.exists(CMD_LOG_DIR):
+            os.makedirs(CMD_LOG_DIR)
+
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
     MAX_WAIT = 120  # seconds
     data = request.get_json(force=True, silent=True) or {}
     action = data.get("action")
+    logger = LogManager.get_logger('setup_script')
 
     if action not in ACTIONS:
-        return jsonify({"error": f"Unknown action '{action}'."}), 400
+        return jsonify({"error": f"Unknown action '{action}'"}), 400
 
     cmd = ACTIONS[action]
-    app.logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,  # Line buffered
-        universal_newlines=True # Ensures text mode works consistently
-    )
-
-    # STOP: wait for clean exit (original logic)
-    if action == "stop":
-        try:
-            out, err = proc.communicate(timeout=MAX_WAIT) # Added timeout to communicate
-            app.logger.info(f"Action '{action}' completed. Output: {out.strip()}, Error: {err.strip()}")
-            return jsonify({
-                "action": action,
-                "status": "stopped",
-                "output": out.strip(),
-                "stderr": err.strip()
-            }), 200
-        except subprocess.TimeoutExpired:
-            app.logger.warning(f"Action '{action}' timed out. Killing process.")
-            proc.kill()
-            out, err = proc.communicate() # Get any final output
-            return jsonify({
-                "action": action,
-                "error": "timeout",
-                "details": f"Stop action did not complete in {MAX_WAIT}s.",
-                "output": out.strip(),
-                "stderr": err.strip()
-            }), 504
-
-
-    # SETUP/START: stream stdout until CELL_IS_UP or timeout
-    # This part is modified for non-blocking reads
+    logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
     
-    # Set stdout to non-blocking
-    fd = proc.stdout.fileno()
-    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-    start_time = time.time()
-    collected_stdout = []
+    # Use a consistent log file name
+    log_filename = "setup_log.txt"
+    log_filepath = os.path.join(CMD_LOG_DIR, log_filename)
     
-    app.logger.info(f"Monitoring stdout for 'CELL_IS_UP' or timeout ({MAX_WAIT}s)...")
-
-    while True:
-        line = None
+    # Clear the log file if this is a start command (setupv2 or start)
+    if action in ["setupv2", "start"]:
         try:
-            line = proc.stdout.readline()
-        except BlockingIOError:
-            # No data available to read right now, this is expected in non-blocking mode
-            pass
-        except IOError as e:
-            # Other IO errors might occur if the pipe is closed, etc.
-            app.logger.error(f"IOError reading stdout: {e}")
-            pass # Continue to check process status and timeout
-
-        if line:  # If a line was successfully read
-            app.logger.debug(f"STDOUT: {line.strip()}")
-            collected_stdout.append(line)
-            if "CELL_IS_UP" in line:
-                app.logger.info("CELL_IS_UP detected.")
-                proc.send_signal(signal.SIGINT) # Politely ask to terminate
-                final_stdout = ""
-                final_stderr = ""
-                try:
-                    proc.wait(timeout=5) # Wait for graceful termination
-                except subprocess.TimeoutExpired:
-                    app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT, sending SIGKILL.")
-                    proc.kill() # Force terminate
-                    try:
-                        proc.wait(timeout=5) # Wait for SIGKILL
-                    except subprocess.TimeoutExpired:
-                        app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL.")
-                
-                # Try to read any remaining output after termination
-                try:
-                    final_stdout_remaining = proc.stdout.read()
-                    if final_stdout_remaining:
-                        collected_stdout.append(final_stdout_remaining)
-                    final_stderr = proc.stderr.read()
-                except Exception as e_read:
-                    app.logger.error(f"Error reading final output: {e_read}")
-
-                return jsonify({
-                    "action": action,
-                    "status": "ok",
-                    "output": "".join(collected_stdout).strip(),
-                    "stderr": final_stderr.strip() if final_stderr else ""
-                }), 200
-
-        # Check if process has terminated
-        if proc.poll() is not None:
-            app.logger.warning(f"Process terminated prematurely with code {proc.returncode}.")
-            # Read any remaining output
-            try:
-                remaining_stdout = proc.stdout.read()
-                if remaining_stdout:
-                    collected_stdout.append(remaining_stdout)
-                remaining_stderr = proc.stderr.read()
-            except Exception as e_read:
-                app.logger.error(f"Error reading output after premature termination: {e_read}")
-
-            return jsonify({
-                "action": action,
-                "error": "process_terminated_unexpectedly",
-                "details": f"Process terminated (code {proc.returncode}) before CELL_IS_UP was detected.",
-                "output": "".join(collected_stdout).strip(),
-                "stderr": remaining_stderr.strip() if remaining_stderr else ""
-            }), 500
-
-        # Check for timeout
-        if time.time() - start_time > MAX_WAIT:
-            app.logger.warning(f"Timeout: No CELL_IS_UP in {MAX_WAIT}s.")
-            proc.send_signal(signal.SIGINT)
-            final_stdout = ""
-            final_stderr = ""
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                app.logger.warning(f"Process {proc.pid} did not terminate after SIGINT on timeout, sending SIGKILL.")
-                proc.kill()
-                try:
-                    proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    app.logger.error(f"Process {proc.pid} did not terminate even after SIGKILL on timeout.")
+            # Make sure the directory exists
+            os.makedirs(os.path.dirname(log_filepath), exist_ok=True)
+            # Clear the file by opening it with 'w' mode and immediately closing
+            open(log_filepath, 'w').close()
+            logger.info(f"Cleared log file {log_filepath} for {action} command")
+        except Exception as e:
+            logger.error(f"Failed to clear log file: {str(e)}")
+    
+    try:
+        # Open the log file (in append mode since we may have cleared it already)
+        with open(log_filepath, 'a') as log_file:
+            # Write a header to the log file
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_file.write(f"=== {action} command started at {timestamp} ===\n")
+            log_file.flush()
             
+            # Start the process with output redirected to the log file
+            proc = subprocess.Popen(
+                cmd,
+                stdout=log_file,
+                stderr=log_file,
+                text=True,
+                bufsize=1,  # Line buffered
+                universal_newlines=True  # Ensures text mode works consistently
+            )
+            
+            logger.info(f"Process started. Output being logged to {log_filepath}")
+            
+            # For stop and status commands, just wait for completion
+            if action in ["stop", "status"]:
+                try:
+                    proc.wait(timeout=MAX_WAIT)
+                    # Read the log file to get output
+                    with open(log_filepath, 'r') as f:
+                        output = f.read()
+                    
+                    logger.info(f"Action '{action}' completed with no issue, exit code 0")
+                    return jsonify({
+                        "action": action,
+                        "status": "completed",
+                        "output": output.strip(),
+                        "log_file": log_filepath,
+                        "exit_code": 0  # Always return 0 for stop and status commands
+                    }), 200
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"Action '{action}' timed out. Killing process.")
+                    proc.kill()
+                    proc.wait()  # Make sure it's dead
+                    
+                    # Read partial output
+                    with open(log_filepath, 'r') as f:
+                        output = f.read()
+                    
+                    return jsonify({
+                        "action": action,
+                        "error": "timeout",
+                        "output": output.strip(),
+                        "log_file": log_filepath,
+                        "exit_code": -1
+                    }), 504
+            
+            # For start/setup actions, monitor the log file for "CELL_IS_UP"
+            start_time = time.time()
+            
+            # Monitor the log file for the "CELL_IS_UP" marker
+            while True:
+                # Check for timeout first
+                if time.time() - start_time > MAX_WAIT:
+                    logger.warning(f"Timeout: No CELL_IS_UP in {MAX_WAIT}s.")
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                    
+                    # Get the content from the log file
+                    with open(log_filepath, 'r') as f:
+                        output = f.read()
+                    
+                    return jsonify({
+                        "action": action,
+                        "error": "timeout",
+                        "details": f"No CELL_IS_UP in {MAX_WAIT}s",
+                        "output": output.strip(),
+                        "log_file": log_filepath,
+                        "exit_code": -1
+                    }), 504
+                
+                # Check if the process has terminated
+                if proc.poll() is not None:
+                    # Process has exited, read the log file
+                    with open(log_filepath, 'r') as f:
+                        output = f.read()
+                    
+                    # Check if "CELL_IS_UP" is in the output
+                    if "CELL_IS_UP" in output:
+                        logger.info("CELL_IS_UP detected in log.")
+                        return jsonify({
+                            "action": action,
+                            "status": "ok",
+                            "output": output.strip(),
+                            "log_file": log_filepath,
+                            "exit_code": 0
+                        }), 200
+                    else:
+                        logger.warning(f"Process terminated prematurely with code {proc.returncode}.")
+                        return jsonify({
+                            "action": action,
+                            "error": "process_terminated_unexpectedly",
+                            "details": f"Process terminated (code {proc.returncode}) before CELL_IS_UP was detected.",
+                            "output": output.strip(),
+                            "log_file": log_filepath,
+                            "exit_code": proc.returncode
+                        }), 500
+                
+                # Check the log file for "CELL_IS_UP" without loading the whole thing
+                try:
+                    with open(log_filepath, 'r') as f:
+                        # Read the last 4KB of the file to check for the marker
+                        f.seek(0, os.SEEK_END)
+                        file_size = f.tell()
+                        offset = max(0, file_size - 4096)  # Last 4KB
+                        f.seek(offset, os.SEEK_SET)
+                        recent_content = f.read()
+                        
+                        if "CELL_IS_UP" in recent_content:
+                            logger.info("CELL_IS_UP detected in log.")
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=5)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                        
+                            # Get the full content
+                            with open(log_filepath, 'r') as full_f:
+                                output = full_f.read()
+                        
+                            return jsonify({
+                                "action": action,
+                                "status": "ok", 
+                                "output": output.strip(),
+                                "log_file": log_filepath,
+                                "exit_code": proc.returncode
+                            }), 200
+                except Exception as e:
+                    logger.error(f"Error reading log file: {str(e)}")
+                
+                # Sleep briefly before checking again
+                time.sleep(0.5)
+
+    except Exception as e:
+        logger.error(f"Error in setup_script: {str(e)}")
+        if 'proc' in locals():
             try:
-                remaining_stdout_timeout = proc.stdout.read()
-                if remaining_stdout_timeout:
-                    collected_stdout.append(remaining_stdout_timeout)
-                final_stderr = proc.stderr.read()
-            except Exception as e_read:
-                app.logger.error(f"Error reading final output on timeout: {e_read}")
-
-            return jsonify({
-                "action": action,
-                "error": "timeout",
-                "details": f"No CELL_IS_UP in {MAX_WAIT}s",
-                "output": "".join(collected_stdout).strip(),
-                "stderr": final_stderr.strip() if final_stderr else ""
-            }), 504
-
-        # If no line was read, and process is still running and not timed out,
-        # sleep briefly to prevent a CPU-spinning busy loop.
-        if not line:
-            time.sleep(0.1)  # Sleep for 100ms
-
-    # This part of the code should ideally not be reached due to the while True loop's returns
-    # but as a fallback:
-    app.logger.error("Exited setup_script loop unexpectedly.")
-    return jsonify({"error": "internal_server_error", "details": "Exited loop unexpectedly"}), 500
-
+                proc.kill()
+            except:
+                pass
+        return jsonify({
+            "action": action,
+            "error": "execution_error",
+            "details": str(e),
+            "exit_code": -2
+        }), 500
 
 # map a URL‐friendly key to the real filesystem path
 FILE_PATHS = {
     "cu_log":     "/logdump/cu_log.txt",
     "du_log":     "/logdump/du_log.txt",
+    "setup_log": "/webdashboard/logdump/setup_log.txt",
 }
 
 @app.route("/api/download/<file_key>", methods=["GET"])
@@ -374,4 +409,3 @@ def get_config():
             snapshot[field] = None
 
     return jsonify(snapshot), 200
-
