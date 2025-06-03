@@ -153,8 +153,7 @@ function Sidebar({
           </List>          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Nodes</ListSubheader>}>
             {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
               const currentStatus = nodeInstance.status || 'DISCONNECTED';
-              let bg;
-              switch (currentStatus) {
+              let bg;              switch (currentStatus) {
                 case 'RUNNING':
                   bg = colors.nodeStatus.running;
                   break;
@@ -165,6 +164,11 @@ function Sidebar({
                   bg = colors.nodeStatus.off;
                   break;
                 case 'DISCONNECTED':
+                  bg = colors.nodeStatus.disconnected;
+                  break;
+                case 'UNREACHABLE':
+                  bg = colors.nodeStatus.unreachable;
+                  break;
                 default:
                   bg = colors.nodeStatus.disconnected;
               }

@@ -18,7 +18,7 @@ const lightColors = {
     initializing: '#fff3cd', // yellow
     off: '#f8d7da',        // red
     unreachable: '#e9ecef', // light grey
-    disconnected: '#f8f9fa',
+    disconnected: '#e9ecef',
   },  button: {
     turnOff: '#612a1f',
     turnOffHover: '#4d1914',

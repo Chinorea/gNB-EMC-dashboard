@@ -24,15 +24,14 @@ import { getThemeColors } from '../theme';
 export default function IpAddressesCard({ data, isLoading, nodeStatus, secondaryIp }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
-  
-  const modalStyle = {
+    const modalStyle = {
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
     width: '90%',      // increased width
     maxWidth: 800,     // increased maxWidth
-    bgcolor: 'background.paper',
+    bgcolor: colors.background.paper,
     border: `2px solid ${colors.border.dark}`,
     boxShadow: 24,
     p: 4,
@@ -91,14 +90,13 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
 
   return (
     <>
-      <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-        <Card
+      <Grid item xs={12} md={4} sx={{ display: 'flex' }}>        <Card
           elevation={3}
           onClick={handleOpenModal}          sx={{
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
-            transition: 'transform 0.1s ease-in-out, background-color 0.2s ease-in-out',
+            transition: 'transform 0.1s ease-in-out',
             backgroundColor: colors.background.paper,
             '&:hover': {
               transform: 'scale(1.01)',
