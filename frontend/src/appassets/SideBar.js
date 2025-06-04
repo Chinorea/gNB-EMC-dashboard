@@ -86,12 +86,22 @@ function Sidebar({
   };
 
   const removeNode = (ipToRemove) => {
-    setAllNodeData(prevInstances => prevInstances.filter(instance => instance.ip !== ipToRemove));
-    
-    // Trigger map data refresh when a node is removed
-    if (onMapDataRefresh) {
-      onMapDataRefresh();
-    }
+    console.log(`removeNode: Removing node with IP ${ipToRemove}`);
+    setAllNodeData(prevInstances => {
+      const filteredInstances = prevInstances.filter(instance => instance.ip !== ipToRemove);
+      console.log(`removeNode: Filtered from ${prevInstances.length} to ${filteredInstances.length} nodes`);
+      
+      // Immediately trigger map refresh with the filtered node list to avoid ref timing issues
+      if (onMapDataRefresh) {
+        console.log(`removeNode: Triggering immediate map data refresh for removal of ${ipToRemove}`);
+        // Pass the filtered instances directly to avoid ref timing issues
+        setTimeout(() => {
+          onMapDataRefresh({ nodeRemoved: true, updatedNodeList: filteredInstances });
+        }, 0);
+      }
+      
+      return filteredInstances;
+    });
   };
 
   const openEdit = (nodeIp) => {
