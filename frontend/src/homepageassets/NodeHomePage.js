@@ -72,6 +72,8 @@ export default function NodeHomePage({ allNodeData, setAllNodeData, onMapDataRef
   const saveEditDialog = () => {
     const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
     const newManetIp = editSecondary;
+    const oldNodeName = allNodeData.find(node => node.ip === editTarget)?.nodeName;
+    const newNodeName = editName;
     
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
@@ -81,13 +83,18 @@ export default function NodeHomePage({ allNodeData, setAllNodeData, onMapDataRef
         inst.manet.ip = editSecondary;
         // Assuming 'Not Configured' is a suitable default if manet.ip is cleared
         inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured'; 
+        
+        // Update the selfManetInfo label immediately if it exists
+        if (inst.manet.selfManetInfo) {
+          inst.manet.selfManetInfo.label = editName != '' ? editName : inst.ip;
+        }
       }
       return [...prev]; // Create a new array to trigger re-render
     });
     setEditOpen(false);
     
-    // Trigger map data refresh if MANET IP was changed
-    if (onMapDataRefresh && oldManetIp !== newManetIp) {
+    // Trigger map data refresh if MANET IP was changed OR node name was changed
+    if (onMapDataRefresh && (oldManetIp !== newManetIp || oldNodeName !== newNodeName)) {
       onMapDataRefresh();
     }
   };
