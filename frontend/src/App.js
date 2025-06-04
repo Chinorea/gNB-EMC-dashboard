@@ -28,6 +28,63 @@ export default function App() {
   // NEW: State to trigger map data refresh
   const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
 
+///— DUMMY TEST DATA —///
+const DUMMY_MARKERS = [
+  {
+    "nodeInfos": [
+    {
+      "id": 20,
+      "ip": "192.168.1.4",
+      "latitude": "1.33631",
+      "longitude": "103.744179",
+      "altitude": 15.2,
+      "resourceRatio": 0.73
+    },
+    {
+      "id": 25,
+      "ip": "192.168.1.5",
+      "latitude": "1.32631",
+      "longitude": "103.745179",
+      "altitude": 22.7,
+      "resourceRatio": 0.45
+    },
+    {
+      "id": 32,
+      "ip": "192.168.1.6",
+      "latitude": "1.33531",
+      "longitude": "103.746179",
+      "altitude":  8.9,
+      "resourceRatio": 0.88
+    },
+    {
+      "id": 36,
+      "ip": "192.168.1.7",
+      "latitude": "1.33731",
+      "longitude": "103.743179",
+      "altitude": 31.4,
+      "resourceRatio": 0.52
+    },
+    {
+      "id": 38,
+      "ip": "192.168.1.8",
+      "latitude": "1.33831",
+      "longitude": "103.740179",
+      "altitude": 19.6,
+      "resourceRatio": 0.29
+    }
+    ]}
+];
+
+// if you originally had 3×3 matrix, extend to 6×6.  Here we just
+// fill new rows/cols with some made-up SNRs between −10 and +30:
+const DUMMY_LQM = [
+  [-10,  12,   5,  30,  -3],  // node 0 to 0–4
+  [ 12, -10,  25,   0,  15],  // node 1
+  [  5,  25, -10,  10,  20],  // node 2
+  [ 30,   0,  10, -10,   8],  // node 3
+  [ -3,  15,  20,   8, -10],  // node 4
+];
+
   // Function to load map data from API
   const loadMapData = useCallback(() => {
     // Find the first node with a valid manet.ip
@@ -41,6 +98,8 @@ export default function App() {
     fetch(API_URL)
       .then(r => r.json())
       .then(data => {
+
+        // For Actual Map Data Testing
         const infos = Array.isArray(data.nodeInfos)
           ? data.nodeInfos
           : Object.values(data.nodeInfos || {});
@@ -51,9 +110,6 @@ export default function App() {
               ? (data.batteryLevel * 10).toFixed(2) + '%'
               : 'unknown'
         }));
-        // if (JSON.stringify(enriched) !== JSON.stringify(mapMarkers)) {
-        //   setMapMarkers(enriched);
-        // }
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
           : [];
@@ -78,6 +134,13 @@ export default function App() {
           .filter(info => info && info.latitude && info.longitude);
         setMapMarkers(selfManetMarkers);
 
+        // For Dummy Map Data Testing
+        // setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
+        // const rawLQM = Array.isArray(DUMMY_LQM)
+        //   ? DUMMY_LQM
+        //   : [];
+        // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
+        // setLQM(fullLQM);       
 
       })
       .catch(console.error);
