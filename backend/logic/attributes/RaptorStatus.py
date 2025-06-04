@@ -1,9 +1,12 @@
+import pexpect
+
 from .Attribute import Attribute
 from .RaptorStatusType import RaptorStatusType
-import os, subprocess
+import os, subprocess, re, sys
 
 class RaptorStatus(Attribute):
     du_Check = "CELL_IS_UP, CELL_ID:1"
+
 
     def __init__(self, new_log_path:str):
         super().__init__()
@@ -12,7 +15,9 @@ class RaptorStatus(Attribute):
 
     def refresh(self):
         self.duStatus = self.check_Du_Log()
-        self.raptorStatusMode = self.get_Raptor_Status()
+        #self.check_Cell_Status()
+        self.gnbStatus= self.check_process_status()
+        self.check_Cell_Status()
 
     def check_Du_Log(self) -> bool:
         if not os.path.isfile(self.log_path):
@@ -38,44 +43,89 @@ class RaptorStatus(Attribute):
         print("Last line:", last_line)
         return True if last_line == self.du_Check else False
 
-    def get_Raptor_Status(self):
-        # Simple: run and print its output
-        try:
-            result = subprocess.run(
-                ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
-                stdout=subprocess.PIPE,  # capture stdout
-                stderr=subprocess.PIPE,  # capture stderr
-                text=True,  # decode bytes to str
-                timeout=0.01  # immediately recalls command to bypass cmd request issue
-            )
-            output = result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            result = subprocess.run(
-                ["/raptor/bin/utility", "--getRfmgrStatus"],  # command and args as a list
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            output = result.stdout.strip()
+    def check_process_status(self) -> bool:
+        # call gnb_ctl status non‐interactively
+        cmd = ["gnb_ctl", "status"]
 
-        # ... after capturing `output` ...
-        if "error response received" in output.lower():
-            print("Raptor down, gNB not transmitting\n")
+        print("DEBUG: running command:", " ".join(cmd))
+        result = subprocess.run(
+            cmd,
+            stdin=subprocess.DEVNULL,     # don’t expect any input
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Now your usual logic:
+        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        if not lines:
+            print("No output from gnb_ctl status.")
             return False
 
-        # Extract all "key: value" pairs with a regex
-        else:
-            print(f"Raptor status: \n {output}")
-            return True
+        last = lines[-1].strip()
+        print("Last line:", last)
 
-    def print_Raptor_Status(self):
-        if  self.duStatus and self.raptorStatusMode:
+        mA = re.search(
+            r"gNB\s+is\s+running\s*\(\s*(\d+)\s*/\s*(\d+)\s*expected\s+processes\s+running\)",
+            last
+        )
+        if mA:
+            up, total = map(int, mA.groups())
+            if up == total:
+                print("✔ All systems up.")
+                return True
+
+        return False
+
+    def check_process_status_print_output(self) -> bool:
+
+        # 1) your “any‐cwd” prompt regex (adjust if needed)
+        PROMPT = re.compile(r"gnb-\d+:/webdashboard#\s*$")
+
+        # 2) spawn an interactive bash once (reuse for all checks)
+        child = pexpect.spawn("/bin/bash", ["-i"], encoding="utf-8", timeout=60)
+        child.logfile = sys.stdout
+
+        """
+        Sends `ctl status` to the shell, expects the gnb prompt,
+        then parses the last line of output. Returns True if
+        all processes are up, False otherwise.
+        """
+        # send the command
+        child.sendline("gnb_ctl status")
+        # wait until the prompt returns
+        child.expect(PROMPT)
+        # child.before is everything from after the command echo up to just before the prompt
+        output = child.before.strip()
+        # split into lines and pick last non‐empty
+        lines = [L for L in output.splitlines() if L.strip()]
+        if not lines:
+            print("No output from ctl status.")
+            return False
+
+        last = lines[-1]
+        print("Last line:", last)
+
+        # Pattern A: “... gNB is running (10/10 expected processes running)”
+        mA = re.search(
+            r"gNB\s+is\s+running\s*\(\s*(\d+)\s*/\s*(\d+)\s*expected\s+processes\s+running\)",
+            last
+        )
+        if mA:
+            up, total = map(int, mA.groups())
+            if up == total:
+                print("✔ All systems up.")
+                return True
+
+        # unknown format
+        print("?! Unrecognized status format.")
+        return False
+
+    def check_Cell_Status(self):
+        if self.duStatus and self.gnbStatus:
             self.raptorStatus = RaptorStatusType.RUNNING
-        elif (self.duStatus ^ self.raptorStatusMode):
-            self.raptorStatus = RaptorStatusType.INITIALISING
         else:
             self.raptorStatus = RaptorStatusType.OFF
 
+    def print_Raptor_Status(self):
         print(self.raptorStatus)
-
-

@@ -1,0 +1,44 @@
+@startuml
+!theme vibrant
+
+actor User
+
+package "User's Device" {
+  node "Browser" {
+    package "React Frontend (SPA)" <<JavaScript>> {
+      component "UI (Views & Components)" as FrontendUI
+      component "App Logic & State" as FrontendLogic
+      database "Browser localStorage" as LocalStorage
+    }
+  }
+}
+
+package "Server Infrastructure" {
+  node "Backend Server" {
+    package "Flask API" <<Python>> {
+      component "API Endpoints" as APIEndpoints
+      component "Business Logic / Attribute Management" as BackendLogic
+      component "gNB Control Interface (`gnb_ctl`)" as GnbControl
+    }
+  }
+}
+
+package "gNB Environment" {
+  node "gNB Hardware / System" as GNBSystem
+  folder "Data Sources (Configs, Logs)" as GNBDataSources
+}
+
+User --> FrontendUI : Interacts
+
+FrontendUI --> FrontendLogic : Triggers actions, Consumes state
+FrontendLogic --> APIEndpoints : HTTP Requests (JSON)
+FrontendLogic --> LocalStorage : Stores/Retrieves User Config
+
+APIEndpoints --> BackendLogic : Processes requests
+BackendLogic --> GNBSystem : Reads metrics/status
+BackendLogic --> GNBDataSources : Reads configs/logs
+BackendLogic --> GnbControl : Issues start/stop commands
+
+GnbControl --> GNBSystem : Executes control scripts
+
+@enduml
