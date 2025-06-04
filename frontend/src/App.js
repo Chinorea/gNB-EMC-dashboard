@@ -29,6 +29,12 @@ export default function App() {
   // NEW: State to trigger map data refresh
   const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
 
+  // Function to manually trigger map data refresh
+  const triggerMapDataRefresh = useCallback(() => {
+    console.log("Manually triggering map data refresh due to node changes");
+    setMapDataRefreshTrigger(prev => prev + 1);
+  }, []);
+
 ///— DUMMY TEST DATA —///
 const DUMMY_MARKERS = [
   {
@@ -305,6 +311,7 @@ const DUMMY_LQM = [
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
             setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
+            onMapDataRefresh={triggerMapDataRefresh} // Pass map refresh trigger function
           />
           <Box
             component="main"
@@ -321,6 +328,7 @@ const DUMMY_LQM = [
                     allNodeData={allNodeData}
                     setAllNodeData={setAllNodeData}
                     setRebootAlertNodeIp={setRebootAlertNodeIp}
+                    onMapDataRefresh={triggerMapDataRefresh} // Pass map refresh trigger function
                   />
                 )}
               />

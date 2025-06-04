@@ -33,6 +33,7 @@ function Sidebar({
   allNodeData, // This will be an array of NodeInfo instances
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
+  onMapDataRefresh, // New prop to trigger map data refresh
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -76,11 +77,21 @@ function Sidebar({
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
       setIp('');
+      
+      // Trigger map data refresh when a node is added
+      if (onMapDataRefresh) {
+        onMapDataRefresh();
+      }
     }
   };
 
   const removeNode = (ipToRemove) => {
     setAllNodeData(prevInstances => prevInstances.filter(instance => instance.ip !== ipToRemove));
+    
+    // Trigger map data refresh when a node is removed
+    if (onMapDataRefresh) {
+      onMapDataRefresh();
+    }
   };
 
   const openEdit = (nodeIp) => {
@@ -95,6 +106,9 @@ function Sidebar({
   };
 
   const saveEdit = () => {
+    const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
+    const newManetIp = editSecondary;
+    
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
       if (inst) {
@@ -106,6 +120,11 @@ function Sidebar({
       return [...prev];
     });
     setEditOpen(false);
+    
+    // Trigger map data refresh if MANET IP was changed
+    if (onMapDataRefresh && oldManetIp !== newManetIp) {
+      onMapDataRefresh();
+    }
   };
 
   return (
