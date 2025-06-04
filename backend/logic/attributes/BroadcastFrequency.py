@@ -51,9 +51,11 @@ class BroadcastFrequency(Attribute):
         return freq_info
 
     def set_Dl_CenterFreq(self, val: str) -> None:
+        # keep raw kHz value
         self.frequencyDownLink = val or "N/A"
 
     def set_Ul_CenterFreq(self, val: str) -> None:
+        # keep raw kHz value
         self.frequencyUpLink = val or "N/A"
 
     def set_Dl_Bw(self, val: str) -> None:
