@@ -48,7 +48,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
   );
 }
 
-export default function NodeHomePage({ allNodeData, setAllNodeData }) {
+export default function NodeHomePage({ allNodeData, setAllNodeData, onMapDataRefresh }) {
   const navigate = useNavigate();
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -70,6 +70,9 @@ export default function NodeHomePage({ allNodeData, setAllNodeData }) {
   };
 
   const saveEditDialog = () => {
+    const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
+    const newManetIp = editSecondary;
+    
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
       if (inst) {
@@ -82,6 +85,11 @@ export default function NodeHomePage({ allNodeData, setAllNodeData }) {
       return [...prev]; // Create a new array to trigger re-render
     });
     setEditOpen(false);
+    
+    // Trigger map data refresh if MANET IP was changed
+    if (onMapDataRefresh && oldManetIp !== newManetIp) {
+      onMapDataRefresh();
+    }
   };
 
   const coreConnectionMap = {

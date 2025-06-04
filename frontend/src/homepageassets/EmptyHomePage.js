@@ -11,7 +11,7 @@ import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
 import { getThemeColors } from '../theme/theme';
 
-export default function EmptyHomePage({ setAllNodeData, setRebootAlertNodeIp }) {
+export default function EmptyHomePage({ setAllNodeData, setRebootAlertNodeIp, onMapDataRefresh }) {
   const [ip, setIp] = useState('');
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -25,6 +25,11 @@ export default function EmptyHomePage({ setAllNodeData, setRebootAlertNodeIp }) 
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
       setIp('');
+      
+      // Trigger map data refresh when a node is added
+      if (onMapDataRefresh) {
+        onMapDataRefresh();
+      }
     }
   };
   return (
