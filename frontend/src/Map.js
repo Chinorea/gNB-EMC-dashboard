@@ -1,8 +1,10 @@
-import React, { useEffect, useRef} from 'react';
+import React, { useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from './theme';
+import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
+import { Satellite, Map as MapIcon, HighQuality } from '@mui/icons-material';
 // extract images from Leaflet's default icon set path
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
@@ -22,19 +24,88 @@ function MapView({
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
-  
   const mapEl = useRef(null);
   const map   = useRef(null);
   const layer = useRef(null);
+  const tileLayer = useRef(null);
+  const [isSatellite, setIsSatellite] = useState(false);
+  const [satelliteProvider, setSatelliteProvider] = useState('esri');  // Helper function to get tile URL based on current settings
+  const getTileUrl = (isDark, satelliteMode, provider = 'esri') => {
+    if (satelliteMode) {
+      const satelliteProviders = {
+        // Google Satellite - Highest resolution and clarity
+        google: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        
+        // ESRI World Imagery - Good balance of quality and reliability
+        esri: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        
+        // Google Hybrid - Satellite with labels and roads
+        googleHybrid: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+        
+        // ESRI World Imagery with Labels
+        esriHybrid: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      };
+      
+      return satelliteProviders[provider] || satelliteProviders.esri;
+    }
+    
+    // Regular map modes
+    const colorfulDarkOptions = {
+      // Stadia Alidade Smooth Dark - Beautiful dark theme with green parks/forests and blue water
+      stadia_dark: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    };
+    
+    return isDark 
+      ? colorfulDarkOptions.stadia_dark  // Dark mode with green vegetation and blue water
+      : 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';  // Light mode
+  };
+  // Helper function to get attribution based on current settings
+  const getAttribution = (satelliteMode, provider = 'esri') => {
+    if (satelliteMode) {
+      const attributions = {
+        google: '© Google',
+        googleHybrid: '© Google',
+        esri: '© <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        esriHybrid: '© <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      };
+      return attributions[provider] || attributions.esri;
+    }
+    return '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  };
 
   // initialize map once
   useEffect(() => {
     map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:20, attribution:'© OSM'
+      // Create initial tile layer based on current theme and satellite mode
+    const isDark = theme.palette.mode === 'dark';
+    const tileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
+    const attribution = getAttribution(isSatellite, satelliteProvider);
+    
+    tileLayer.current = L.tileLayer(tileUrl, {
+      maxZoom: 20,
+      attribution: attribution,
+      subdomains: 'abcd'
     }).addTo(map.current);
+    
     return () => map.current.remove();
   }, []);
+  // Update tile layer when theme or satellite mode changes
+  useEffect(() => {
+    if (!map.current || !tileLayer.current) return;
+      const isDark = theme.palette.mode === 'dark';
+    const newTileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
+    const attribution = getAttribution(isSatellite, satelliteProvider);
+    
+    // Remove current tile layer
+    map.current.removeLayer(tileLayer.current);
+    
+    // Add new tile layer with updated theme/mode
+    tileLayer.current = L.tileLayer(newTileUrl, {
+      maxZoom: 20,
+      attribution: attribution,
+      subdomains: 'abcd'
+    }).addTo(map.current);
+  }, [theme.palette.mode, isSatellite, satelliteProvider]);
 
     // helper: map SNR (-10..+30) → color (red→green)
   function qualityToColor(q) {
@@ -67,10 +138,16 @@ function MapView({
         radius:      10,
         color:       colors.map.color,
         fillColor:   colors.map.fillColor,
-        fillOpacity: 0.4
+        fillOpacity: 0.6,
+        weight:      2
       }).addTo(group)
         .bindPopup(popupHtml)
-        .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -10]});
+        .bindTooltip(label, { 
+          permanent: true, 
+          direction: 'top', 
+          offset: [0, -10],
+          className: 'leaflet-tooltip-custom'
+        });
       circle.on('click', function(e) { this.openPopup(); });
     });
 
@@ -106,12 +183,100 @@ function MapView({
   }, [markers, linkQualityMatrix]);
 
   //console.log("MapView rendered, markers:", markers);
-
   return (
-    <div
-      ref={mapEl}
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div
+        ref={mapEl}
+        style={{ width: '100%', height: '100%' }}
+      />
+        {/* Satellite View Toggle */}
+      <Paper
+        elevation={3}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          zIndex: 1000,
+          backgroundColor: colors.background.paper,
+          padding: '8px',
+        }}
+      >
+        <Box display="flex" flexDirection="column" gap={1}>
+          <ToggleButtonGroup
+            value={isSatellite ? 'satellite' : 'map'}
+            exclusive
+            onChange={(event, newValue) => {
+              if (newValue !== null) {
+                setIsSatellite(newValue === 'satellite');
+              }
+            }}
+            size="small"
+            sx={{
+              '& .MuiToggleButton-root': {
+                color: colors.text.primary,
+                border: `1px solid ${colors.border.main}`,
+                '&.Mui-selected': {
+                  backgroundColor: colors.primary.main,
+                  color: colors.background.paper,
+                  '&:hover': {
+                    backgroundColor: colors.primary.dark,
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: colors.background.hover,
+                },
+              },
+            }}
+          >
+            <ToggleButton value="map" aria-label="map view">
+              <MapIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="satellite" aria-label="satellite view">
+              <Satellite fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
+          
+          {/* Satellite Quality Selector */}
+          {isSatellite && (
+            <FormControl size="small" variant="outlined">
+              <InputLabel 
+                sx={{ 
+                  color: colors.text.secondary,
+                  '&.Mui-focused': { color: colors.primary.main }
+                }}
+              >
+                Quality
+              </InputLabel>
+              <Select
+                value={satelliteProvider}
+                onChange={(e) => setSatelliteProvider(e.target.value)}
+                label="Quality"
+                sx={{
+                  minWidth: 120,
+                  color: colors.text.primary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.border.main,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.primary.main,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.primary.main,
+                  },
+                  '& .MuiSelect-icon': {
+                    color: colors.text.primary,
+                  },
+                }}
+              >
+                <MenuItem value="google">🌟 Google (Best)</MenuItem>
+                <MenuItem value="googleHybrid">🏷️ Google + Labels</MenuItem>
+                <MenuItem value="esri">🗺️ ESRI (Standard)</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Box>
+      </Paper>
+    </div>
   );
 }
 
