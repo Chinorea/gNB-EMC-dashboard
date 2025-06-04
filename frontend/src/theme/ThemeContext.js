@@ -20,12 +20,50 @@ export const ThemeContextProvider = ({ children }) => {
     return savedMode ? savedMode : 'light';
   });
 
-  const theme = createAppTheme(mode);
-
-  // Save theme preference to localStorage
+  const theme = createAppTheme(mode);  // Save theme preference to localStorage and set data-theme attribute
   useEffect(() => {
     localStorage.setItem('themeMode', mode);
-  }, [mode]);
+    // Set data-theme attribute on document element for CSS selectors
+    document.documentElement.setAttribute('data-theme', mode);
+    
+    // Also set CSS custom properties for tooltip styling - SWAPPED for contrast
+    const root = document.documentElement;
+    if (mode === 'dark') {
+      // Light tooltips in dark mode for contrast
+      root.style.setProperty('--tooltip-bg-color', 'rgba(255, 255, 255, 0.95)');
+      root.style.setProperty('--tooltip-text-color', '#333');
+      root.style.setProperty('--tooltip-border-color', '#ccc');
+      root.style.setProperty('--tooltip-shadow', '0 2px 4px rgba(0,0,0,0.2)');
+    } else {
+      // Dark tooltips in light mode for contrast
+      root.style.setProperty('--tooltip-bg-color', 'rgba(33, 33, 33, 0.95)');
+      root.style.setProperty('--tooltip-text-color', '#e6e6e6');
+      root.style.setProperty('--tooltip-border-color', '#555');
+      root.style.setProperty('--tooltip-shadow', '0 2px 4px rgba(255,255,255,0.1)');
+    }
+    
+    console.log('Theme mode set to:', mode, 'data-theme attribute:', document.documentElement.getAttribute('data-theme'));
+  }, [mode]);  // Set initial data-theme attribute on mount
+  useEffect(() => {
+    // Set data-theme attribute on document element for CSS selectors
+    document.documentElement.setAttribute('data-theme', mode);
+    
+    // Also set CSS custom properties for tooltip styling - SWAPPED for contrast
+    const root = document.documentElement;
+    if (mode === 'dark') {
+      // Light tooltips in dark mode for contrast
+      root.style.setProperty('--tooltip-bg-color', 'rgba(255, 255, 255, 0.95)');
+      root.style.setProperty('--tooltip-text-color', '#333');
+      root.style.setProperty('--tooltip-border-color', '#ccc');
+      root.style.setProperty('--tooltip-shadow', '0 2px 4px rgba(0,0,0,0.2)');
+    } else {
+      // Dark tooltips in light mode for contrast
+      root.style.setProperty('--tooltip-bg-color', 'rgba(33, 33, 33, 0.95)');
+      root.style.setProperty('--tooltip-text-color', '#e6e6e6');
+      root.style.setProperty('--tooltip-border-color', '#555');
+      root.style.setProperty('--tooltip-shadow', '0 2px 4px rgba(255,255,255,0.1)');
+    }
+  }, []);
 
   const toggleMode = () => {
     setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
