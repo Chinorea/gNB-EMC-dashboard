@@ -5,6 +5,7 @@ import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from './theme';
 import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
 import { Satellite, Map as MapIcon, HighQuality } from '@mui/icons-material';
+import MapSideBar from './mapassets/MapSideBar';
 // extract images from Leaflet's default icon set path
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
@@ -29,7 +30,32 @@ function MapView({
   const layer = useRef(null);
   const tileLayer = useRef(null);
   const [isSatellite, setIsSatellite] = useState(false);
-  const [satelliteProvider, setSatelliteProvider] = useState('esri');  // Helper function to get tile URL based on current settings
+  const [satelliteProvider, setSatelliteProvider] = useState('esri');
+    // Sidebar state management
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+
+  // Function to handle node click from sidebar
+  const handleNodeClick = (node) => {
+    if (!map.current || !node.latitude || !node.longitude) return;
+    
+    const lat = parseFloat(node.latitude);
+    const lng = parseFloat(node.longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) return;
+    
+    // Center the map on the selected node
+    map.current.setView([lat, lng], 18, {
+      animate: true,
+      duration: 1
+    });
+    
+    // Set selected node for highlighting
+    setSelectedNodeId(node.id);
+  };
+
+  // Helper function to get tile URL based on current settings
   const getTileUrl = (isDark, satelliteMode, provider = 'esri') => {
     if (satelliteMode) {
       const satelliteProviders = {
@@ -183,19 +209,28 @@ function MapView({
   }, [markers, linkQualityMatrix]);
 
   //console.log("MapView rendered, markers:", markers);
+  
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
         ref={mapEl}
         style={{ width: '100%', height: '100%' }}
       />
-        {/* Satellite View Toggle */}
+        {/* MapSideBar */}
+      <MapSideBar
+        nodes={markers}
+        onNodeClick={handleNodeClick}
+        selectedNodeId={selectedNodeId}
+        isVisible={isSidebarVisible}
+        onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
+        onCollapseChange={setIsSidebarCollapsed}
+      />        {/* Satellite View Toggle - positioned relative to sidebar state */}
       <Paper
         elevation={3}
         style={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: 20,
+          right: isSidebarVisible ? (isSidebarCollapsed ? 100 : 360) : 20, // Adjust based on sidebar visibility and collapse state
           zIndex: 1000,
           backgroundColor: colors.background.paper,
           padding: '8px',
