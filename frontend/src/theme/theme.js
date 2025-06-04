@@ -67,10 +67,9 @@ const lightColors = {
     cpuGradient: '#8884d8',
     ram: '#82ca9d',
     ramGradient: '#82ca9d',
-  },
-  map: {
-    color: '#007bff',
-    fillColor: '#30a9de',
+  },  map: {
+    color: '#1976d2',        // Strong blue border for markers
+    fillColor: '#42a5f5',    // Lighter blue fill for markers
   },
   manetConnection: {
     connected: '#e1ede4',
@@ -151,10 +150,9 @@ const darkColors = {
     cpuGradient: '#90caf9',
     ram: '#a5d6a7',
     ramGradient: '#a5d6a7',
-  },
-  map: {
-    color: '#42a5f5',
-    fillColor: '#64b5f6',
+  },  map: {
+    color: '#90caf9',        // Light blue border for dark mode visibility
+    fillColor: '#64b5f6',    // Slightly darker blue fill for contrast
   },
   manetConnection: {
     connected: '#234020',
