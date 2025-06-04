@@ -86,14 +86,11 @@ function Sidebar({
   };
 
   const removeNode = (ipToRemove) => {
-    console.log(`removeNode: Removing node with IP ${ipToRemove}`);
     setAllNodeData(prevInstances => {
       const filteredInstances = prevInstances.filter(instance => instance.ip !== ipToRemove);
-      console.log(`removeNode: Filtered from ${prevInstances.length} to ${filteredInstances.length} nodes`);
       
       // Immediately trigger map refresh with the filtered node list to avoid ref timing issues
       if (onMapDataRefresh) {
-        console.log(`removeNode: Triggering immediate map data refresh for removal of ${ipToRemove}`);
         // Pass the filtered instances directly to avoid ref timing issues
         setTimeout(() => {
           onMapDataRefresh({ nodeRemoved: true, updatedNodeList: filteredInstances });
@@ -118,6 +115,8 @@ function Sidebar({
   const saveEdit = () => {
     const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
     const newManetIp = editSecondary;
+    const oldNodeName = allNodeData.find(node => node.ip === editTarget)?.nodeName;
+    const newNodeName = editName;
     
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
@@ -126,13 +125,18 @@ function Sidebar({
         inst.nodeName = editName;
         inst.manet.ip = editSecondary;
         inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured';
+        
+        // Update the selfManetInfo label immediately if it exists
+        if (inst.manet.selfManetInfo) {
+          inst.manet.selfManetInfo.label = editName != '' ? editName : inst.ip;
+        }
       }
       return [...prev];
     });
     setEditOpen(false);
     
-    // Trigger map data refresh if MANET IP was changed
-    if (onMapDataRefresh && oldManetIp !== newManetIp) {
+    // Trigger map data refresh if MANET IP was changed OR node name was changed
+    if (onMapDataRefresh && (oldManetIp !== newManetIp || oldNodeName !== newNodeName)) {
       onMapDataRefresh();
     }
   };
