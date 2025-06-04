@@ -204,7 +204,8 @@ function Sidebar({
                     : theme.palette.background.default,
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 1 
+                  zIndex: 1,
+                  pl: 4
                 }}
               >
                 Nodes
