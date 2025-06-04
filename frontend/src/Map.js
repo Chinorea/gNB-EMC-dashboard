@@ -116,7 +116,7 @@ function MapView({
     const hue = pct * 120;                       // 0=red, 120=green
     return `hsl(${hue},100%,50%)`;
   }
-
+  
   useEffect(() => {
     if (!map.current) return;
 
@@ -130,7 +130,7 @@ function MapView({
       const lat = parseFloat(marker.latitude)  || 0;
       const lng = parseFloat(marker.longitude) || 0;
       const { latitude, longitude, ...rest } = marker;
-      const label = "Id: " + String(marker.id || marker.label || '');
+      const label = String(marker.label);
       const popupHtml = Object
         .entries(rest)
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)

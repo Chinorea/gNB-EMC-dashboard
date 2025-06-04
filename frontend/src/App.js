@@ -24,6 +24,7 @@ export default function App() {
   // Add state for map markers and LQM
   const [mapMarkers, setMapMarkers] = useState([]);
   const [lqm, setLQM] = useState([]);
+  const lqmRef = useRef(lqm); // Add ref for lqm
 
   // NEW: State to trigger map data refresh
   const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
@@ -87,10 +88,13 @@ const DUMMY_LQM = [
 
   // Function to load map data from API
   const loadMapData = useCallback(() => {
+    const currentAllNodeData = allNodeDataRef.current;
+    const currentLQM = lqmRef.current;
+    
     // Find the first node with a valid manet.ip
-    const targetNode = allNodeData.find(node => node.manet && node.manet.ip);
+    const targetNode = currentAllNodeData.find(node => node.manet && node.manet.ip);
     if (!targetNode) {
-      console.warn("No node with a valid manet.ip found.");
+      console.warn("loadMapData: No node with a valid manet.ip found.");
       return;
     }
     const API_URL = `http://${targetNode.manet.ip}/status`;
@@ -113,23 +117,26 @@ const DUMMY_LQM = [
         const rawLQM = Array.isArray(data.linkQuality)
           ? data.linkQuality
           : [];
-        const fullLQM = buildStaticsLQM(infos, rawLQM, lqm, 100, null);
+        const fullLQM = buildStaticsLQM(infos, rawLQM, currentLQM, 100, null);
         setLQM(fullLQM);
 
-        setAllNodeData(prevAllNodeData => {
-          return prevAllNodeData.map(node => {
-            // Find enriched info by manet IP
-            const match = enriched.find(info => info.ip === node.manet.ip);
-            if (match) {
-              node.manet.nodeInfo = enriched;
-              node.manet.selfManetInfo = match;
-            }
-            return node;
-          });
+        // Update the node data by mutating the current array and triggering a state update
+        currentAllNodeData.forEach(node => {
+          const match = enriched.find(info => info.ip === node.manet.ip);
+          if (match) {
+            node.manet.nodeInfo = enriched;
+            node.manet.selfManetInfo = {
+              ...match,
+              label: node.nodeName != '' ? node.nodeName : node.ip
+            };
+          }
         });
+        
+        // Trigger state update to notify React of changes
+        setAllNodeData(prevNodes => [...prevNodes]);
 
         // Use selfManetInfo for map markers
-        const selfManetMarkers = allNodeData
+        const selfManetMarkers = currentAllNodeData
           .map(node => node.manet.selfManetInfo)
           .filter(info => info && info.latitude && info.longitude);
         setMapMarkers(selfManetMarkers);
@@ -140,27 +147,42 @@ const DUMMY_LQM = [
         //   ? DUMMY_LQM
         //   : [];
         // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
-        // setLQM(fullLQM);       
+        // setLQM(fullLQM);
 
       })
-      .catch(console.error);
-  }, [allNodeData, lqm, mapMarkers]); // Removed setAllNodeData from here as it's implicitly covered by allNodeData
+      .catch(error => console.error(`Failed to fetch map data from ${API_URL}:`, error));
+  }, [buildStaticsLQM]); // Only depend on buildStaticsLQM which should be stable
 
-  // NEW: Hard refresh rate for map data
+  // Effect to keep lqmRef in sync with state
+  useEffect(() => {
+    lqmRef.current = lqm;
+  }, [lqm]);
+
+  // NEW: Hard refresh rate for map data - only depends on hasLoaded and loadMapData (which is now stable)
   useEffect(() => {
     if (!hasLoaded) return; // Wait for initial load
+    
+    console.log("Setting up map data refresh interval");
     loadMapData(); // Initial load for map
+    
     const intervalId = setInterval(() => {
+      console.log("Map data refresh interval triggered");
       setMapDataRefreshTrigger(t => t + 1);
     }, 30000);
-    return () => clearInterval(intervalId);
-  }, [loadMapData, hasLoaded]); // Add hasLoaded
+    
+    return () => {
+      console.log("Cleaning up map data refresh interval");
+      clearInterval(intervalId);
+    };
+  }, [loadMapData, hasLoaded]); // loadMapData is now stable
 
   // Only update map data when mapDataRefreshTrigger changes
   useEffect(() => {
-    if (!hasLoaded) return; // Wait for initial load
+    if (!hasLoaded || mapDataRefreshTrigger === 0) return; // Wait for initial load and skip initial trigger
+    
+    console.log("Map data refresh triggered by mapDataRefreshTrigger:", mapDataRefreshTrigger);
     loadMapData();
-  }, [mapDataRefreshTrigger, loadMapData, hasLoaded]); // Add hasLoaded
+  }, [mapDataRefreshTrigger, loadMapData, hasLoaded]); // loadMapData is now stable
 
   // Effect to keep ref in sync with state
   useEffect(() => {
