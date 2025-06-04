@@ -112,3 +112,37 @@ code {
 [data-theme="dark"] * {
   scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
 }
+
+/* Custom Leaflet map styles for theme consistency */
+.leaflet-tooltip-custom {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid #ccc !important;
+  color: #333 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+/* Dark mode tooltip styles */
+[data-theme="dark"] .leaflet-tooltip-custom {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  border: 1px solid #555 !important;
+  color: #e6e6e6 !important;
+}
+
+/* Custom popup styles */
+.leaflet-popup-content-wrapper {
+  font-family: 'DM Sans', sans-serif !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="dark"] .leaflet-popup-content-wrapper {
+  background: rgba(33, 33, 33, 0.95) !important;
+  color: #e6e6e6 !important;
+}
+
+[data-theme="dark"] .leaflet-popup-tip {
+  background: rgba(33, 33, 33, 0.95) !important;
+}
