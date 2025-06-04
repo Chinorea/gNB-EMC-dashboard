@@ -122,7 +122,10 @@ const DUMMY_LQM = [
             const match = enriched.find(info => info.ip === node.manet.ip);
             if (match) {
               node.manet.nodeInfo = enriched;
-              node.manet.selfManetInfo = match;
+              node.manet.selfManetInfo = {
+                ...match,
+                label: node.nodeName != '' ? node.nodeName : node.ip // Appends node label to gNB name or IP if name is empty.
+              };
             }
             return node;
           });
