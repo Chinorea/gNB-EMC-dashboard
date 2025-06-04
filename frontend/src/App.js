@@ -29,6 +29,114 @@ export default function App() {
   // NEW: State to trigger map data refresh
   const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
 
+  // Function to load map data from API with optional node data override
+  const loadMapData = useCallback((nodeDataOverride = null) => {
+    const currentAllNodeData = nodeDataOverride || allNodeDataRef.current;
+    const currentLQM = lqmRef.current;
+    
+    // Always clear existing selfManetInfo first to prevent stale data
+    currentAllNodeData.forEach(node => {
+      if (node.manet) {
+        node.manet.selfManetInfo = null;
+      }
+    });
+    
+    // Find the first node with a valid manet.ip
+    const targetNode = currentAllNodeData.find(node => node.manet && node.manet.ip);
+    if (!targetNode) {
+      // Clear map markers and LQM when no valid MANET nodes exist
+      setMapMarkers([]);
+      setLQM([]);
+      return;
+    }
+    
+    const API_URL = `http://${targetNode.manet.ip}/status`;
+
+    fetch(API_URL)
+      .then(r => r.json())
+      .then(data => {
+
+        // For Actual Map Data Testing
+        const infos = Array.isArray(data.nodeInfos)
+          ? data.nodeInfos
+          : Object.values(data.nodeInfos || {});
+        const enriched = infos.map(info => ({
+          ...info,
+          batteryLevel:
+            data.selfId === info.id
+              ? (data.batteryLevel * 10).toFixed(2) + '%'
+              : 'unknown'
+        }));
+        const rawLQM = Array.isArray(data.linkQuality)
+          ? data.linkQuality
+          : [];
+        const fullLQM = buildStaticsLQM(infos, rawLQM, currentLQM, 100, null);
+        setLQM(fullLQM);
+
+        // Update the node data - only set selfManetInfo for nodes that have matching MANET IPs
+        currentAllNodeData.forEach(node => {
+          if (node.manet && node.manet.ip) {
+            const match = enriched.find(info => info.ip === node.manet.ip);
+            if (match) {
+              node.manet.nodeInfo = enriched;
+              node.manet.selfManetInfo = {
+                ...match,
+                label: node.nodeName != '' ? node.nodeName : node.ip
+              };
+            }
+          }
+        });
+        
+        // Only trigger state update if we're not using an override (avoid double updates)
+        if (!nodeDataOverride) {
+          setAllNodeData(prevNodes => [...prevNodes]);
+        }
+
+        // Generate map markers only from nodes that have valid selfManetInfo with coordinates
+        const selfManetMarkers = currentAllNodeData
+          .filter(node => node.manet && node.manet.selfManetInfo) // First filter: has selfManetInfo
+          .map(node => node.manet.selfManetInfo)
+          .filter(info => info && info.latitude && info.longitude); // Second filter: has coordinates
+        
+        setMapMarkers(selfManetMarkers);
+
+        // For Dummy Map Data Testing
+        //setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
+        // const rawLQM = Array.isArray(DUMMY_LQM)
+        //   ? DUMMY_LQM
+        //   : [];
+        // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
+        // setLQM(fullLQM);
+
+      })
+      .catch(error => {
+        console.error(`loadMapData: Failed to fetch map data from ${API_URL}:`, error);
+        // Clear map markers when API call fails
+        setMapMarkers([]);
+        setLQM([]);
+      });
+  }, [buildStaticsLQM]); // Only depend on buildStaticsLQM which should be stable
+
+  // Function to manually trigger map data refresh
+  const triggerMapDataRefresh = useCallback((options = {}) => {
+    // If this is a node removal, immediately clear map markers to prevent lag
+    if (options.nodeRemoved) {
+      setMapMarkers([]);
+      setLQM([]);
+      
+      // If we have the updated node list, use it directly to avoid ref timing issues
+      if (options.updatedNodeList) {
+        setTimeout(() => {
+          loadMapData(options.updatedNodeList);
+        }, 50); // Very small delay to ensure state clearing completes
+        return;
+      }
+    }
+    
+    // For other cases, use the normal trigger mechanism
+    setMapDataRefreshTrigger(prev => prev + 1);
+  }, [loadMapData]);
+
 ///— DUMMY TEST DATA —///
 const DUMMY_MARKERS = [
   {
@@ -86,73 +194,6 @@ const DUMMY_LQM = [
   [ -3,  15,  20,   8, -10],  // node 4
 ];
 
-  // Function to load map data from API
-  const loadMapData = useCallback(() => {
-    const currentAllNodeData = allNodeDataRef.current;
-    const currentLQM = lqmRef.current;
-    
-    // Find the first node with a valid manet.ip
-    const targetNode = currentAllNodeData.find(node => node.manet && node.manet.ip);
-    if (!targetNode) {
-      console.warn("loadMapData: No node with a valid manet.ip found.");
-      return;
-    }
-    const API_URL = `http://${targetNode.manet.ip}/status`;
-
-    fetch(API_URL)
-      .then(r => r.json())
-      .then(data => {
-
-        // For Actual Map Data Testing
-        const infos = Array.isArray(data.nodeInfos)
-          ? data.nodeInfos
-          : Object.values(data.nodeInfos || {});
-        const enriched = infos.map(info => ({
-          ...info,
-          batteryLevel:
-            data.selfId === info.id
-              ? (data.batteryLevel * 10).toFixed(2) + '%'
-              : 'unknown'
-        }));
-        const rawLQM = Array.isArray(data.linkQuality)
-          ? data.linkQuality
-          : [];
-        const fullLQM = buildStaticsLQM(infos, rawLQM, currentLQM, 100, null);
-        setLQM(fullLQM);
-
-        // Update the node data by mutating the current array and triggering a state update
-        currentAllNodeData.forEach(node => {
-          const match = enriched.find(info => info.ip === node.manet.ip);
-          if (match) {
-            node.manet.nodeInfo = enriched;
-            node.manet.selfManetInfo = {
-              ...match,
-              label: node.nodeName != '' ? node.nodeName : node.ip
-            };
-          }
-        });
-        
-        // Trigger state update to notify React of changes
-        setAllNodeData(prevNodes => [...prevNodes]);
-
-        // Use selfManetInfo for map markers
-        const selfManetMarkers = currentAllNodeData
-          .map(node => node.manet.selfManetInfo)
-          .filter(info => info && info.latitude && info.longitude);
-        setMapMarkers(selfManetMarkers);
-
-        // For Dummy Map Data Testing
-        // setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
-        // const rawLQM = Array.isArray(DUMMY_LQM)
-        //   ? DUMMY_LQM
-        //   : [];
-        // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
-        // setLQM(fullLQM);
-
-      })
-      .catch(error => console.error(`Failed to fetch map data from ${API_URL}:`, error));
-  }, [buildStaticsLQM]); // Only depend on buildStaticsLQM which should be stable
-
   // Effect to keep lqmRef in sync with state
   useEffect(() => {
     lqmRef.current = lqm;
@@ -162,16 +203,13 @@ const DUMMY_LQM = [
   useEffect(() => {
     if (!hasLoaded) return; // Wait for initial load
     
-    console.log("Setting up map data refresh interval");
     loadMapData(); // Initial load for map
     
     const intervalId = setInterval(() => {
-      console.log("Map data refresh interval triggered");
       setMapDataRefreshTrigger(t => t + 1);
     }, 30000);
     
     return () => {
-      console.log("Cleaning up map data refresh interval");
       clearInterval(intervalId);
     };
   }, [loadMapData, hasLoaded]); // loadMapData is now stable
@@ -180,7 +218,6 @@ const DUMMY_LQM = [
   useEffect(() => {
     if (!hasLoaded || mapDataRefreshTrigger === 0) return; // Wait for initial load and skip initial trigger
     
-    console.log("Map data refresh triggered by mapDataRefreshTrigger:", mapDataRefreshTrigger);
     loadMapData();
   }, [mapDataRefreshTrigger, loadMapData, hasLoaded]); // loadMapData is now stable
 
@@ -291,7 +328,7 @@ const DUMMY_LQM = [
     return () => clearInterval(manetInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
 
-  //console.log(allNodeData); // This will now log an array of NodeInfo instances
+
   return (
     <ThemeContextProvider>
       <RebootAlertDialog // Added RebootAlertDialog
@@ -305,6 +342,7 @@ const DUMMY_LQM = [
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
             setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
+            onMapDataRefresh={triggerMapDataRefresh} // Pass map refresh trigger function
           />
           <Box
             component="main"
@@ -321,6 +359,7 @@ const DUMMY_LQM = [
                     allNodeData={allNodeData}
                     setAllNodeData={setAllNodeData}
                     setRebootAlertNodeIp={setRebootAlertNodeIp}
+                    onMapDataRefresh={triggerMapDataRefresh} // Pass map refresh trigger function
                   />
                 )}
               />
