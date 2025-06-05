@@ -59,10 +59,8 @@ def get_attributes():
 
     data = {
         "ip_address_gnb":      ip_address.ipAddressGnb,
-        "ip_address_ngc":      ip_address.ipAddressNgc,
-        "ip_address_ngu":      ip_address.ipAddressNgu,
+        "ip_address_ngc":      ip_address.ipAddressNgc,        "ip_address_ngu":      ip_address.ipAddressNgu,
         "gnb_id":              ip_address.gnb_Id,
-        "gnb_pci":             ip_address.gnb_Pci[0],
         "cpu_usage":           cpu_usage.cpuUsage,
         "cpu_usage_history":   list(cpu_usage.usage_history),
         "cpu_temp":            cpu_temp.core_temp,

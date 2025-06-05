@@ -241,14 +241,11 @@ function Sidebar({
             overflow: 'auto', // Only this section scrolls
             p: 2, // Same padding as the fixed header section
             ...scrollbarStyle // Apply custom scrollbar only to this section
-          }}
-        ><List 
+          }}          ><List 
             subheader={
               <ListSubheader 
                 sx={{ 
-                  backgroundColor: theme.palette.mode === 'dark' 
-                    ? theme.palette.background.paper 
-                    : theme.palette.background.default,
+                  backgroundColor: 'transparent',
                   position: 'sticky', 
                   top: 0, 
                   zIndex: 1,

@@ -2,7 +2,7 @@ import configparser
 
 from .Attribute import Attribute
 import re, subprocess, os
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 
 
 class IpAddress(Attribute):
@@ -10,7 +10,6 @@ class IpAddress(Attribute):
     def __init__(self, new_config_path: str):
         super().__init__()
         self.gnb_Id = ""
-        self.gnb_Pci: List[str] = []
         self.ipAddressGnb = ""
         self.ipAddressNgc = ""
         self.ipAddressNgu = ""
@@ -30,11 +29,10 @@ class IpAddress(Attribute):
         if 'EP_NgU' in blocks:
             loc, rem = blocks['EP_NgU']['Local'], blocks['EP_NgU']['Remote']
             self.set_Ip_Ngu(loc, rem)
-
-        # gNB identifiers
-        gnb_id, pci_list = self.get_gnb_info()
+        
+        # gNB identifier
+        gnb_id = self.get_gnb_info()
         self.gnb_Id = gnb_id
-        self.gnb_Pci = pci_list
 
     @staticmethod
     def get_Ip_Info(self, block_tags: Optional[List[str]] = None) -> Dict[str, Dict[str, str]]:
@@ -85,20 +83,18 @@ class IpAddress(Attribute):
 
         return results
 
-    def get_gnb_info(self) -> Tuple[str, List[str]]:
+    def get_gnb_info(self) -> str:
         """
-        Extracts <gNBId> (single) and all <NRPci> occurrences from config.
-        Returns tuple (gNBId, [NRPci1, NRPci2, ...]).
+        Extracts <gNBId> from config.
+        Returns gNBId string.
         """
         if not os.path.isfile(self.config_path):
             print("File not found")
-            return 'File not found', ["File not found"]
+            return 'File not found'
 
         gnb_id = ''
-        pci_list: List[str] = []
-        # regex patterns
+        # regex pattern
         re_id = re.compile(r'<gNBId>\s*(.*?)\s*</gNBId>')
-        re_pci = re.compile(r'<NRPci>\s*(.*?)\s*</NRPci>')
 
         with open(self.config_path, 'r') as f:
             for line in f:
@@ -106,14 +102,11 @@ class IpAddress(Attribute):
                     m_id = re_id.search(line)
                     if m_id:
                         gnb_id = m_id.group(1)
-                m_p = re_pci.search(line)
-                if m_p:
-                    pci_list.append(m_p.group(1))
+                        break  # Found gNB ID, no need to continue
 
-        return gnb_id, pci_list
+        return gnb_id
 
-    # make these real instance methods
-    def set_Ip_Ngc(self, loc_Ip: str, rem_Ip: str) -> None:
+    # make these real instance methods    def set_Ip_Ngc(self, loc_Ip: str, rem_Ip: str) -> None:
         self.ipAddressGnb = loc_Ip
         self.ipAddressNgc = rem_Ip
 
@@ -134,7 +127,6 @@ class IpAddress(Attribute):
 
         print("IpAddress Info:")
         print(f"  gnbId: {self.gnb_Id or 'N/A'}")
-        print(f"  pci: {self.gnb_Pci or 'N/A'}")
         print(f"  gNB IP Address:  {self.ipAddressGnb or 'N/A'}")
         print(f"  NgC IP Address:  {self.ipAddressNgc or 'N/A'}")
         print(f"  NgU IP Address:  {self.ipAddressNgu or 'N/A'}\n")

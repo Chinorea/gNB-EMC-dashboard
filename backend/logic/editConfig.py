@@ -117,8 +117,7 @@ if __name__ == "__main__":
 
 # example usage
 if __name__ == "__main__":
-    config = Path("cu/config/me_config.xml")
-    targets = ["GNBCUFunction/gNBId", "GNBCUFunction/DPCIConfigurationFunction/nRPciList/NRPci",
+    config = Path("cu/config/me_config.xml")    targets = ["GNBCUFunction/gNBId",
                "GNBCUFunction/EP_NgC/localIpAddress", "GNBCUFunction/EP_NgC/remoteAddress",
                "GNBCUFunction/EP_NgU/localIpAddress"]
     values = read_xml_by_path(config, targets)
@@ -128,12 +127,11 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     xml_file = Path("cu/config/me_config.xml")
-
+    
     updates = {
         # local‐name paths; the function will prefix them with ns: if it
         # sees a default xmlns on the root element
         "GNBCUFunction/gNBId":   "25",
-        "GNBCUFunction/DPCIConfigurationFunction/nRPciList/NRPci": "8",
     }
 
     update_xml_by_path(xml_file, updates)

@@ -113,7 +113,7 @@ export default function App() {
             const data = await fetchWithTimeout(`http://${node.manet.ip}/status`);
             return {
               ip: node.manet.ip,
-              batteryLevel: data.batteryLevel ? `${(data.batteryLevel * 10).toFixed(2)}%` : 'unknown'
+              batteryLevel: data.batteryLevel ? `${(data.batteryLevel).toFixed(2)}V` : 'unknown'
             };
           } catch {
             return { ip: node.manet.ip, batteryLevel: 'unknown' };
