@@ -154,6 +154,14 @@ export default function App() {
         setMapMarkers([]);
         setLQM([]);
       }
+
+      // For Dummy Testing, uncomment below lines to only show dummy markers and LQM
+      // setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
+      // const rawLQM = Array.isArray(DUMMY_LQM)
+      //   ? DUMMY_LQM
+      //   : [];
+      // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
+      // setLQM(fullLQM);
     };
 
     executeMapDataFlow();
