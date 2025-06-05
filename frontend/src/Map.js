@@ -27,10 +27,9 @@ function MapView({
   const colors = getThemeColors(theme);
   const mapEl = useRef(null);
   const map   = useRef(null);
-  const layer = useRef(null);
-  const tileLayer = useRef(null);
+  const layer = useRef(null);  const tileLayer = useRef(null);
   const [isSatellite, setIsSatellite] = useState(false);
-  const [satelliteProvider, setSatelliteProvider] = useState('esri');
+  const [satelliteProvider, setSatelliteProvider] = useState('googleHybrid');
     // Sidebar state management
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
