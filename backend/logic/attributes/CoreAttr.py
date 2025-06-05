@@ -17,6 +17,7 @@ class CoreAttr(Attribute):
         self.nr_Tac = ""
         self.sst = ""
         self.sd = ""
+        self.profile = ""
 
     def refresh(self):
         """
@@ -42,6 +43,7 @@ class CoreAttr(Attribute):
         self.nr_Tac = data.get('nrTAC', self.nr_Tac)
         self.sst = data.get('sst', self.sst)
         self.sd = data.get('sd', self.sd)
+        self.profile = data.get('profile', self.profile)
         
         print(f"CoreAttr refreshed from {self.json_file_path}")
         return True
@@ -93,3 +95,4 @@ class CoreAttr(Attribute):
         print(f"NR TAC: {self.nr_Tac}")
         print(f"SST: {self.sst}")
         print(f"SD: {self.sd}")
+        print(f"Profile: {self.profile}")
