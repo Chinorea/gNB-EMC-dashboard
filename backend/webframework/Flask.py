@@ -23,6 +23,8 @@ from backend.logic.attributes.BoardDateTime      import BoardDateTime
 from backend.logic.attributes.RaptorStatus       import RaptorStatus
 from backend.logic.attributes.Network            import Network
 from backend.logic.attributes.TxPower            import TxPower
+from backend.logic.attributes.CoreAttr           import CoreAttr
+from backend.logic.attributes.RadioAttr          import RadioAttr 
 
 ip_address          = IpAddress("/cu/config/me_config.xml")
 cpu_usage           = CpuUsage()
@@ -33,6 +35,8 @@ broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
 tx_power            = TxPower("/du/config/me_config.xml")
+radio               = RadioAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
+core                = CoreAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
 
 raptor_status_timeout = 3
 
@@ -320,92 +324,26 @@ def download_file(file_key):
         mimetype="text/plain",
     )
 
-# Map logical field names → (file path, xml xpath)
-XML_MAPPING = {
-    "gnbIP": {
-        "file": Path("/cu/config/me_config.xml"),
-        "paths": {
-            "ngc": "GNBCUFunction/EP_NgC/localIpAddress",
-            "ngu": "GNBCUFunction/EP_NgU/localIpAddress"
-        }
-    },
-    "PCI": {
-        "file": Path("/cu/config/me_config.xml"),
-        "xpath": "GNBCUFunction/DPCIConfigurationFunction/nRPciList/NRPci"
-    },
-    "gnbId": {
-        "file": Path("/cu/config/me_config.xml"),
-        "xpath": "GNBCUFunction/gNBId"
-    },
-    "ngcIp": {
-        "file": Path("/cu/config/me_config.xml"),
-        "xpath": "GNBCUFunction/EP_NgC/remoteAddress"
-    },
-    "nguIp": {
-        "file": Path("/cu/config/me_config.xml"),
-        "xpath": "GNBCUFunction/EP_NgU/remoteAddress"
-    },
-    "ulFreq": {
-        "file": Path("/du/config/gnb_config.xml"),
-        "xpath": "gnbDuCfg/gnbCellDuVsCfg/l1-CfgInfo/nUlCenterFreq"
-    },
-    "dlFreq": {
-        "file": Path("/du/config/gnb_config.xml"),
-        "xpath": "gnbDuCfg/gnbCellDuVsCfg/l1-CfgInfo/nDlCenterFreq"
-    },
-    "maxTx": {
-        "file": Path("/du/config/me_config.xml"),
-        "xpath": "GNBDUFunction/NRSectorCarrier/configuredMaxTxPower"
-    }
-    # …your other writable fields…
-}
-
 @app.route("/api/config", methods=["POST"])
 def set_config():
     """
     Expects JSON { "field":"gnbIP", "value":"1.2.3.4" }
-    For gnbIP, updates both NgC and NgU local IP addresses
     """
     data = request.get_json(force=True)
     field = data.get("field")
     val = data.get("value")
 
-    if field not in XML_MAPPING:
-        return jsonify({"error": f"Unknown field '{field}'"}), 400
+    if radio.edit_config(field, val):
+        # create success response
+        return jsonify({
+            "status": "success",
+            "message": f"Updated {field} to {val}"
+        }), 200
+    else:
+        # create error response
+        return jsonify({
+            "status": "error",
+            "message": f"Failed to update {field} to {val}"
+        }), 400
+    
 
-    spec = XML_MAPPING[field]
-    try:
-        if field == "gnbIP":
-            # For gnbIP, update both paths with the same value
-            updates = {path: val for path in spec["paths"].values()}
-            update_xml_by_path(spec["file"], updates)
-        else:
-            # For other fields, update single xpath
-            update_xml_by_path(spec["file"], {spec["xpath"]: val})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    return jsonify({"field": field, "value": val}), 200
-
-@app.route("/api/config", methods=["GET"])
-def get_config():
-    """
-    Returns a JSON mapping each writable field in XML_MAPPING to its current value.
-    For gnbIP, returns the NgC local IP address value.
-    """
-    snapshot = {}
-    for field, spec in XML_MAPPING.items():
-        try:
-            if field == "gnbIP":
-                # For gnbIP, read NgC path (both NgC and NgU should have same value)
-                ngc_path = spec["paths"]["ngc"]
-                values = read_xml_by_path(spec["file"], [ngc_path])[ngc_path]
-                snapshot[field] = values[0] if values else None
-            else:
-                values = read_xml_by_path(spec["file"], [spec["xpath"]])[spec["xpath"]]
-                snapshot[field] = values[0] if values else None
-        except Exception as e:
-            # on error (file missing, parse error, etc.) report null
-            snapshot[field] = None
-
-    return jsonify(snapshot), 200
