@@ -13,28 +13,22 @@ import re
 # Import fcntl for non-blocking I/O
 import fcntl
 
-from backend.logic.attributes.IpAddress          import IpAddress
 from backend.logic.attributes.CpuUsage           import CpuUsage
 from backend.logic.attributes.SocTemp            import SocTemp
 from backend.logic.attributes.RamUsage           import RamUsage
 from backend.logic.attributes.DriveSpace         import DriveSpace
-from backend.logic.attributes.BroadcastFrequency import BroadcastFrequency
 from backend.logic.attributes.BoardDateTime      import BoardDateTime
 from backend.logic.attributes.RaptorStatus       import RaptorStatus
 from backend.logic.attributes.Network            import Network
-from backend.logic.attributes.TxPower            import TxPower
 from backend.logic.attributes.CoreAttr           import CoreAttr
 from backend.logic.attributes.RadioAttr          import RadioAttr 
 
-ip_address          = IpAddress("/cu/config/me_config.xml")
 cpu_usage           = CpuUsage()
 cpu_temp            = SocTemp()
 ram_usage           = RamUsage()
 drive_space         = DriveSpace()
-broadcast_frequency = BroadcastFrequency("/du/config/gnb_config.xml")
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
-tx_power            = TxPower("/du/config/me_config.xml")
 radio               = RadioAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
 core                = CoreAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
 
@@ -48,9 +42,8 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 def get_attributes():
     
     # refresh all attributes first
-    for attr in (ip_address, cpu_usage, cpu_temp, ram_usage,
-                 drive_space, broadcast_frequency, tx_power,
-                 board_date_time):
+    for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
+                 drive_space, board_date_time):
         attr.refresh()
 
     # then check core connection once
@@ -58,26 +51,40 @@ def get_attributes():
     core_connection.refresh()
 
     data = {
-        "ip_address_gnb":      ip_address.ipAddressGnb,
-        "ip_address_ngc":      ip_address.ipAddressNgc,        "ip_address_ngu":      ip_address.ipAddressNgu,
-        "gnb_id":              ip_address.gnb_Id,
+        "gnb_id":              radio.gnb_Id,
+        "gnb_id_length":       radio.gnb_Id_Length,
+        "nr_band":             radio.nr_Band,
+        "scs":                 radio.scs,
+        "tx_power":            radio.tx_Power,
+        "frequency_down_link": radio.dl_centre_frequency,
+
+        "ip_address_gnb":      core.gnb_Ngu_Ip,
+        "ip_address_ngc":      core.ngc_Ip,        
+        "ip_address_ngu":      core.ngu_Ip,
+        "MCC":                 core.MCC,
+        "MNC":                 core.MNC,
+        "cell_id":             core.cell_Id,
+        "nr_tac":              core.nr_Tac,
+        "sst":                 core.sst,
+        "sd":                  core.sd,
+        "profile":             core.profile,
+
         "cpu_usage":           cpu_usage.cpuUsage,
         "cpu_usage_history":   list(cpu_usage.usage_history),
         "cpu_temp":            cpu_temp.core_temp,
         "ram_usage":           ram_usage.ramUsage,
         "ram_usage_history":   list(ram_usage.usage_history),
         "ram_total":           ram_usage.totalRam,
+
         "drive_total":         drive_space.drive_data[0],
         "drive_used":          drive_space.drive_data[1],
         "drive_free":          drive_space.drive_data[2],
-        "frequency_down_link": broadcast_frequency.frequencyDownLink,
-        "frequency_up_link":   broadcast_frequency.frequencyUpLink,
-        "bandwidth_down_link": broadcast_frequency.downLinkBw,
-        "bandwidth_up_link":   broadcast_frequency.upLinkBw,
+
         "board_date":          board_date_time.boardDate,
         "board_time":          board_date_time.boardTime,
         "core_connection":     core_connection.networkStatus.name,
-        "tx_power":            tx_power.tx_power,
+
+        
     }
     return jsonify(data)
 
@@ -91,7 +98,7 @@ def get_raptor_status():
 # Map of allowed "actions" to the real commands
 ACTIONS = {
     "setupv2": ["gnb_ctl", "start"],
-    "start": ["gnb_ctl", "start"],
+    "start": ["/opt/ste/bin/gnb_ctl", "-c", "/opt/ste/active/commissioning/configs/gNB26_setup_Config.json", "start"],
     "stop": ["gnb_ctl", "stop"],
     "status": ["gnb_ctl", "status"]
 }
