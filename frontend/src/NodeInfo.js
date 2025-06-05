@@ -13,7 +13,6 @@ class NodeInfo {
     this.attributes = {
       coreData: {
         gnbId: null,
-        pci: null,
         boardTime: null,
         boardDate: null,
         coreConnection: null, // e.g., 'UP', 'DOWN', 'UNSTABLE'
@@ -69,12 +68,10 @@ class NodeInfo {
   }
 
   // Internal helper to parse and assign attributes from fetched data
-  _parseAndAssignAttributes(attrsData) {
-    // Reset attributes to the defined nested default state first
+  _parseAndAssignAttributes(attrsData) {    // Reset attributes to the defined nested default state first
     this.attributes = {
       coreData: {
         gnbId: null,
-        pci: null,
         boardTime: null,
         boardDate: null,
         coreConnection: null,
@@ -113,11 +110,8 @@ class NodeInfo {
       return;
     }
 
-    this.rawAttributes = attrsData;
-
-    // Populate coreData
+    this.rawAttributes = attrsData;    // Populate coreData
     this.attributes.coreData.gnbId = attrsData.gnb_id;
-    this.attributes.coreData.pci = attrsData.gnb_pci;
     this.attributes.coreData.boardTime = attrsData.board_time;
     this.attributes.coreData.boardDate = attrsData.board_date;
     this.attributes.coreData.coreConnection = attrsData.core_connection;

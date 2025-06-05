@@ -50,16 +50,15 @@ const lightColors = {
     appBarInitializing: '#805c19',
     appBarOff: '#612a1f',
     appBarUnreachable: '#2d2e2e',
-  },
-  coreConnection: {
+  },  coreConnection: {
     connected: '#e9f2eb',
-    connectedHover: '#e1ede4',
+    connectedHover: '#f0f4f1',
     connectedText: '#324a38',
     disconnected: '#fae1e3',
-    disconnectedHover: '#f8d7da',
+    disconnectedHover: '#fce8ea',
     disconnectedText: '#dc3545',
     unstable: '#fff7db',
-    unstableHover: '#fff3cd',
+    unstableHover: '#fffae5',
     unstableText: '#856404',
   },
   charts: {
