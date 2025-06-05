@@ -21,6 +21,8 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
+import HomeIcon from '@mui/icons-material/Home';
+import MapIcon from '@mui/icons-material/Map';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
@@ -200,21 +202,30 @@ function Sidebar({
             onClick={addNode}
           >
             Add
-          </Button>
-
-          <Divider sx={{ my: 2 }} />
-
-          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Navigation</ListSubheader>}>
-            <ListItemButton component={RouterLink} to="/">
+          </Button>          <Divider sx={{ my: 2 }} />          <List subheader={
+            <ListSubheader sx={{ 
+              backgroundColor: 'transparent',
+              fontSize: '1.0rem',
+              fontWeight: 'bold'
+            }}>
+              Navigation
+            </ListSubheader>
+          }>            <ListItemButton component={RouterLink} to="/">
+              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
+                <HomeIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
+              </ListItemIcon>
               <ListItemText
                 primary="Home"
-                primaryTypographyProps={{ fontWeight: 'bold' }}
+                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
             <ListItemButton component={RouterLink} to="/map">
+              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
+                <MapIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
+              </ListItemIcon>
               <ListItemText
                 primary="Map"
-                primaryTypographyProps={{ fontWeight: 'bold' }}
+                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
           </List>
@@ -227,8 +238,7 @@ function Sidebar({
             overflow: 'auto', // Only this section scrolls
             ...scrollbarStyle // Apply custom scrollbar only to this section
           }}
-        >
-          <List 
+        >          <List 
             subheader={
               <ListSubheader 
                 sx={{ 
@@ -238,7 +248,9 @@ function Sidebar({
                   position: 'sticky', 
                   top: 0, 
                   zIndex: 1,
-                  pl: 4
+                  pl: 4,
+                  fontSize: '1.0rem',
+                  fontWeight: 'bold'
                 }}
               >
                 Nodes
