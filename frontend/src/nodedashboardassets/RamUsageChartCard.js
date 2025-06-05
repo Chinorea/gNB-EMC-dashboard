@@ -27,24 +27,24 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
     return { name: pt.name, value: rounded };
   });
   // --- End of moved smoothing logic ---
-
   return (
-    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '25%' }}>
-      <Card
-        elevation={3}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: 250,          transition: 'transform 0.1s ease-in-out',
-          backgroundColor: colors.background.paper,
-          '&:hover': {
-            transform: 'scale(1.01)',
-            boxShadow: 6,
-            backgroundColor: colors.background.hover
-          },
-        }}
-      >
+    <Card
+      elevation={3}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        width: '100%',
+        minHeight: 250,
+        transition: 'transform 0.1s ease-in-out',
+        backgroundColor: colors.background.paper,
+        '&:hover': {
+          transform: 'scale(1.01)',
+          boxShadow: 6,
+          backgroundColor: colors.background.hover
+        },
+      }}
+    >
         <CardContent>
           <Typography
             color="textSecondary"
@@ -111,9 +111,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
                 fillOpacity={0.6}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
+          </ResponsiveContainer>        </CardContent>
       </Card>
-    </Grid>
   );
 }
