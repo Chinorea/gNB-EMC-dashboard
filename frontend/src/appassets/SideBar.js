@@ -126,8 +126,11 @@ function Sidebar({
         inst.manet.ip = editSecondary;
         inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured';
         
-        // Update the selfManetInfo label immediately if it exists
-        if (inst.manet.selfManetInfo) {
+        // Immediately clear selfManetInfo if changing to invalid/empty MANET IP
+        if (!editSecondary || editSecondary.trim() === '') {
+          inst.manet.selfManetInfo = null;
+        } else if (inst.manet.selfManetInfo) {
+          // Update the selfManetInfo label immediately if it exists and IP is valid
           inst.manet.selfManetInfo.label = editName != '' ? editName : inst.ip;
         }
       }
@@ -135,9 +138,12 @@ function Sidebar({
     });
     setEditOpen(false);
     
-    // Trigger map data refresh if MANET IP was changed OR node name was changed
+    // Always trigger map data refresh for any MANET IP or node name change
     if (onMapDataRefresh && (oldManetIp !== newManetIp || oldNodeName !== newNodeName)) {
-      onMapDataRefresh();
+      // Use a small delay to ensure the state update has been processed
+      setTimeout(() => {
+        onMapDataRefresh();
+      }, 10);
     }
   };
 

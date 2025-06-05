@@ -34,87 +34,129 @@ export default function App() {
     const currentAllNodeData = nodeDataOverride || allNodeDataRef.current;
     const currentLQM = lqmRef.current;
     
-    // Always clear existing selfManetInfo first to prevent stale data
-    currentAllNodeData.forEach(node => {
-      if (node.manet) {
-        node.manet.selfManetInfo = null;
-      }
-    });
+    // Find ALL nodes with valid manet.ip
+    const nodesWithManetIp = currentAllNodeData.filter(node => 
+      node.manet?.ip?.trim()
+    );
     
-    // Find the first node with a valid manet.ip
-    const targetNode = currentAllNodeData.find(node => node.manet && node.manet.ip);
-    if (!targetNode) {
-      // Clear map markers and LQM when no valid MANET nodes exist
+    // Helper function for API calls with timeout
+    const fetchWithTimeout = async (url, timeoutMs = 1000) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    };
+
+    // Clear markers and return early if no valid nodes
+    if (nodesWithManetIp.length === 0) {
+      currentAllNodeData.forEach(node => {
+        if (node.manet) node.manet.selfManetInfo = null;
+      });
       setMapMarkers([]);
       setLQM([]);
       return;
     }
-    
-    const API_URL = `http://${targetNode.manet.ip}/status`;
 
-    fetch(API_URL)
-      .then(r => r.json())
-      .then(data => {
+    // Clear invalid nodes' selfManetInfo
+    currentAllNodeData.forEach(node => {
+      if (node.manet && !node.manet.ip?.trim()) {
+        node.manet.selfManetInfo = null;
+      }
+    });
 
-        // For Actual Map Data Testing
-        const infos = Array.isArray(data.nodeInfos)
-          ? data.nodeInfos
-          : Object.values(data.nodeInfos || {});
-        const enriched = infos.map(info => ({
-          ...info,
-          batteryLevel:
-            data.selfId === info.id
-              ? (data.batteryLevel * 10).toFixed(2) + '%'
-              : 'unknown'
-        }));
-        const rawLQM = Array.isArray(data.linkQuality)
-          ? data.linkQuality
-          : [];
-        const fullLQM = buildStaticsLQM(infos, rawLQM, currentLQM, 100, null);
-        setLQM(fullLQM);
+    // Main execution flow
+    const executeMapDataFlow = async () => {
+      try {
+        // STEP 1: Get network data from first working node
+        let networkData = null;
+        for (const node of nodesWithManetIp) {
+          try {
+            networkData = await fetchWithTimeout(`http://${node.manet.ip}/status`);
+            break; // Success - exit loop
+          } catch (error) {
+            console.warn(`Failed to fetch from ${node.manet.ip}:`, error.message);
+            continue; // Try next node
+          }
+        }
 
-        // Update the node data - only set selfManetInfo for nodes that have matching MANET IPs
-        currentAllNodeData.forEach(node => {
-          if (node.manet && node.manet.ip) {
-            const match = enriched.find(info => info.ip === node.manet.ip);
-            if (match) {
-              node.manet.nodeInfo = enriched;
-              node.manet.selfManetInfo = {
-                ...match,
-                label: node.nodeName != '' ? node.nodeName : node.ip
-              };
-            }
+        if (!networkData) {
+          console.error("All MANET IP attempts failed");
+          setMapMarkers([]);
+          setLQM([]);
+          return;
+        }
+
+        // STEP 2: Process network data and get battery levels in parallel
+        const infos = Array.isArray(networkData.nodeInfos) 
+          ? networkData.nodeInfos 
+          : Object.values(networkData.nodeInfos || {});
+
+        // Set LQM
+        const rawLQM = Array.isArray(networkData.linkQuality) ? networkData.linkQuality : [];
+        setLQM(buildStaticsLQM(infos, rawLQM, currentLQM, 100, null));
+
+        // Get battery levels from all nodes in parallel
+        const batteryPromises = nodesWithManetIp.map(async (node) => {
+          try {
+            const data = await fetchWithTimeout(`http://${node.manet.ip}/status`);
+            return {
+              ip: node.manet.ip,
+              batteryLevel: data.batteryLevel ? `${(data.batteryLevel * 10).toFixed(2)}%` : 'unknown'
+            };
+          } catch {
+            return { ip: node.manet.ip, batteryLevel: 'unknown' };
           }
         });
-        
-        // Only trigger state update if we're not using an override (avoid double updates)
+
+        const batteryData = await Promise.all(batteryPromises);
+        const batteryMap = new Map(batteryData.map(item => [item.ip, item.batteryLevel]));
+
+        // STEP 3: Update node data with network info and battery levels
+        nodesWithManetIp.forEach(node => {
+          const match = infos.find(info => info.ip === node.manet.ip);
+          if (match) {
+            node.manet.nodeInfo = infos;
+            node.manet.selfManetInfo = {
+              ...match,
+              label: node.nodeName || node.ip,
+              batteryLevel: batteryMap.get(node.manet.ip) || 'unknown'
+            };
+          } else {
+            node.manet.selfManetInfo = null;
+          }
+        });
+
+        // STEP 4: Update state and generate markers
         if (!nodeDataOverride) {
           setAllNodeData(prevNodes => [...prevNodes]);
         }
 
-        // Generate map markers only from nodes that have valid selfManetInfo with coordinates
-        const selfManetMarkers = currentAllNodeData
-          .filter(node => node.manet && node.manet.selfManetInfo) // First filter: has selfManetInfo
-          .map(node => node.manet.selfManetInfo)
-          .filter(info => info && info.latitude && info.longitude); // Second filter: has coordinates
+        const markers = currentAllNodeData
+          .filter(node => node.manet?.selfManetInfo?.latitude && node.manet?.selfManetInfo?.longitude)
+          .map(node => node.manet.selfManetInfo);
         
-        setMapMarkers(selfManetMarkers);
+        setMapMarkers(markers);
 
-        // For Dummy Map Data Testing
-        //setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
-        // const rawLQM = Array.isArray(DUMMY_LQM)
-        //   ? DUMMY_LQM
-        //   : [];
-        // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
-        // setLQM(fullLQM);
-
-      })
-      .catch(error => {
-        console.error(`loadMapData: Failed to fetch map data from ${API_URL}:`, error);
-        // Clear map markers when API call fails
+      } catch (error) {
+        console.error("Map data flow failed:", error);
         setMapMarkers([]);
         setLQM([]);
-      });
+      }
+    };
+
+    executeMapDataFlow();
   }, [buildStaticsLQM]); // Only depend on buildStaticsLQM which should be stable
 
   // Function to manually trigger map data refresh
@@ -201,18 +243,22 @@ const DUMMY_LQM = [
 
   // NEW: Hard refresh rate for map data - only depends on hasLoaded and loadMapData (which is now stable)
   useEffect(() => {
-    if (!hasLoaded) return; // Wait for initial load
+    if (!hasLoaded || allNodeData.length === 0) return; // Wait for initial load AND nodes to be loaded
     
-    loadMapData(); // Initial load for map
+    // Small delay to ensure allNodeDataRef is updated
+    const timeoutId = setTimeout(() => {
+      loadMapData(); // Initial load for map
+    }, 100);
     
     const intervalId = setInterval(() => {
       setMapDataRefreshTrigger(t => t + 1);
     }, 30000);
     
     return () => {
+      clearTimeout(timeoutId);
       clearInterval(intervalId);
     };
-  }, [loadMapData, hasLoaded]); // loadMapData is now stable
+  }, [loadMapData, hasLoaded, allNodeData.length]); // Add allNodeData.length dependency
 
   // Only update map data when mapDataRefreshTrigger changes
   useEffect(() => {
