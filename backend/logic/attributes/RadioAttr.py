@@ -28,7 +28,7 @@ class RadioAttr(Attribute):
             return False
         
         # Extract values with fallback to current values if key doesn't exist
-        self.gnb_Id = data.get('gNBId:', self.gnb_Id)
+        self.gnb_Id = data.get('gNBId', self.gnb_Id)
         self.gnb_Id_Length = data.get('gNBIdLength', self.gnb_Id_Length)
         self.nr_Band = data.get('band', self.nr_Band)
         self.scs = data.get('scs', self.scs)

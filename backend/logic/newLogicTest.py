@@ -36,3 +36,10 @@ radio.refresh()
 core.refresh()
 radio.print_attributes()
 core.print_attributes()
+#core.edit_config("gNBIdLength", "28") //For testing edit functionality
+
+configs = [radio, core]
+for config in configs:
+    config.refresh()
+    config.print_attributes()
+
