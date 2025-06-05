@@ -7,7 +7,6 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from './theme';
 import NodeIdCard from './nodedashboardassets/NodeIdCard';
-import PciCard from './nodedashboardassets/PciCard';
 import TimeCard from './nodedashboardassets/TimeCard';
 import DateCard from './nodedashboardassets/DateCard';
 import CoreConnectionCard from './nodedashboardassets/CoreConnectionCard';
@@ -135,12 +134,10 @@ export default function NodeDashboard({
     DOWN:      'Disconnected',
     UNSTABLE:  'Unstable',
   };
-
   // Prepare data for child components, using properties from nodeInfo.attributes categories
   const cardDataForAttrs = { 
       // From coreData
       gnb_id: coreData?.gnbId,
-      gnb_pci: coreData?.pci,
       board_time: coreData?.boardTime,
       board_date: coreData?.boardDate,
       core_connection: coreData?.coreConnection,
@@ -235,13 +232,11 @@ export default function NodeDashboard({
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
                 Node Information
-              </Typography>
-              <NodeIdCard
+              </Typography>              <NodeIdCard
                 nodeId={coreData?.gnbId}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
               />
-              <PciCard pci={coreData?.pci} isLoading={loading} nodeStatus={nodeStatus} />
               <Box sx={{ flexGrow: 1 }}>
                 <FrequencyOverviewCard
                   data={cardDataForAttrs}
