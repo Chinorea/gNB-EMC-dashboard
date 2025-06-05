@@ -16,8 +16,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Typography,
-  ListItemSecondaryAction
+  Typography
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -229,16 +228,15 @@ function Sidebar({
               />
             </ListItemButton>
           </List>
-        </Box>
-
-        {/* Dynamically sized Nodes section with isolated scrolling */}
+        </Box>        {/* Dynamically sized Nodes section with isolated scrolling */}
         <Box 
           sx={{ 
             flex: 1, // Take remaining vertical space
             overflow: 'auto', // Only this section scrolls
+            p: 2, // Same padding as the fixed header section
             ...scrollbarStyle // Apply custom scrollbar only to this section
           }}
-        >          <List 
+        ><List 
             subheader={
               <ListSubheader 
                 sx={{ 
@@ -248,7 +246,6 @@ function Sidebar({
                   position: 'sticky', 
                   top: 0, 
                   zIndex: 1,
-                  pl: 4,
                   fontSize: '1.0rem',
                   fontWeight: 'bold'
                 }}
@@ -277,22 +274,29 @@ function Sidebar({
                   break;
                 default:
                   bg = colors.nodeStatus.disconnected;
-              }
-
-              return (
+              }              return (
                 <ListItem
                   key={nodeInstance.ip} // Use instance.ip as key
                   disablePadding
                   sx={{
                     width: '100%',
                     backgroundColor: bg,
+                    display: 'flex',
                   }}
-                >
-                  <ListItemIcon sx={{ pl: 1 }}>
-                    <IconButton onClick={() => openEdit(nodeInstance.ip)} size="small">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemIcon>
+                >                  <ListItemButton
+                    onClick={() => openEdit(nodeInstance.ip)}
+                    sx={{ 
+                      minWidth: '40px', 
+                      maxWidth: '40px',
+                      minHeight: '40px',
+                      maxHeight: '40px',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      padding: '4px'
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </ListItemButton>
                   <ListItemButton
                     component={RouterLink}
                     to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
@@ -333,11 +337,20 @@ function Sidebar({
                       }}
                     />
                   </ListItemButton>
-                  <ListItemSecondaryAction>
-                    <IconButton onClick={() => removeNode(nodeInstance.ip)} size="small">
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
+                  <ListItemButton
+                    onClick={() => removeNode(nodeInstance.ip)}
+                    sx={{ 
+                      minWidth: '40px', 
+                      maxWidth: '40px',
+                      minHeight: '40px',
+                      maxHeight: '40px',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      padding: '4px'
+                    }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </ListItemButton>
                 </ListItem>
               );
             })}
