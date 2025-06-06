@@ -231,7 +231,7 @@ export default function NodeHomePage({ allNodeData, setAllNodeData, onMapDataRef
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               // Directly call the toggleScript method on the nodeInfo instance
-                              nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'setupv2');                            }}
+                              nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start');                            }}
                             disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                             sx={{
                               position: 'absolute',

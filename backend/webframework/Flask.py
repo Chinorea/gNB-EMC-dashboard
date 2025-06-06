@@ -350,5 +350,5 @@ def set_config():
             "status": "error",
             "message": f"Failed to update {field} to {val}"
         }), 400
-    
+
 
