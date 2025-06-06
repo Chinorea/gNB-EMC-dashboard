@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from '@mui/material/styles';
-import { getThemeColors } from './theme';
+import { getThemeColors, lightColors, darkColors } from './theme';
 import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
 import { Satellite, Map as MapIcon, HighQuality } from '@mui/icons-material';
 import MapSideBar from './mapassets/MapSideBar';
@@ -148,21 +148,67 @@ function MapView({
     // clear old layer
     if (layer.current) {
       map.current.removeLayer(layer.current);
-    }
+    }    // Helper function to get status-based colors
+    // Uses inverted theme colors: light colors in dark mode, dark colors in light mode
+    const getStatusColors = (nodeStatus) => {
+      const isDarkMode = theme.palette.mode === 'dark';
+      
+      // Use inverted theme colors for better map contrast
+      const sourceColors = isDarkMode ? lightColors : darkColors;
+      
+      if (!nodeStatus) {
+        // Use inverted disconnected color
+        const statusColor = sourceColors.nodeStatus.disconnected;
+        return {
+          color: statusColor,
+          fillColor: statusColor
+        };
+      }
 
-    const group = L.layerGroup();
-    markers.forEach(marker => {
+      let statusColor;
+      switch (nodeStatus) {
+        case 'RUNNING':
+          statusColor = sourceColors.nodeStatus.running;
+          break;
+        case 'INITIALIZING':
+          statusColor = sourceColors.nodeStatus.initializing;
+          break;
+        case 'OFF':
+          statusColor = sourceColors.nodeStatus.off;
+          break;
+        case 'DISCONNECTED':
+          statusColor = sourceColors.nodeStatus.disconnected;
+          break;
+        case 'UNREACHABLE':
+          statusColor = sourceColors.nodeStatus.unreachable;
+          break;
+        default:
+          statusColor = sourceColors.nodeStatus.disconnected;
+      }
+
+      return {
+        color: statusColor,
+        fillColor: statusColor
+      };
+    };
+
+    const group = L.layerGroup();    markers.forEach(marker => {
       const lat = parseFloat(marker.latitude)  || 0;
       const lng = parseFloat(marker.longitude) || 0;
-      const { latitude, longitude, ...rest } = marker;
+      const { latitude, longitude, nodeStatus, ...rest } = marker;
       const label = String(marker.label);
       const popupHtml = Object
         .entries(rest)
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
-        .join('<br>');      const circle = L.circle([lat, lng], {
+        .join('<br>');
+
+      // Get status-based colors
+      const statusColors = getStatusColors(nodeStatus);
+
+      const circle = L.circle([lat, lng], {
         radius:      10,
-        color:       colors.map.color,
-        fillColor:   colors.map.fillColor,
+        color:       statusColors.color,
+        fillColor:   statusColors.fillColor,
         fillOpacity: 0.6,
         weight:      2
       }).addTo(group)
