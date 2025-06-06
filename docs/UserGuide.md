@@ -166,7 +166,13 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
    pip3 install *.whl
    ```
 
-4. Return to main directory:
+4. Install pytest dependencies:
+   ```bash
+   cd ../pytest_pkgs
+   python -m pip install *.whl --no-index --find-links . --no-deps
+   ```
+
+5. Return to main directory:
    ```bash
    cd /home/user/webdashboard
    ```
