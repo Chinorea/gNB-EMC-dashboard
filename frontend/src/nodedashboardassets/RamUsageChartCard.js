@@ -35,7 +35,6 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
         flexDirection: 'column',
         flex: 1,
         width: '100%',
-        minHeight: 250,
         transition: 'transform 0.1s ease-in-out',
         backgroundColor: colors.background.paper,
         '&:hover': {
@@ -44,15 +43,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           backgroundColor: colors.background.hover
         },
       }}
-    >
-        <CardContent>
-          <Typography
-            color="textSecondary"
-            variant="subtitle2"
-            sx={{ mb: 2, textAlign: 'center' }}
-          >
-            RAM Statistics
-          </Typography>
+    >        <CardContent>
           <Grid
             container
             spacing={2}
@@ -81,7 +72,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           <Typography color="textSecondary" gutterBottom variant="subtitle2">
             RAM Usage (Last 100 Seconds)
           </Typography>
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={150}>
             {/* Use the internally calculated smoothRam */}
             <AreaChart data={smoothRam}>
               <defs>                <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">

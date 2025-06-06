@@ -113,16 +113,14 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
             cursor: 'pointer'
           }}
         >
-          <CardContent sx={{ textAlign: 'center', py: 1 }}>
-            <Typography
+          <CardContent sx={{ textAlign: 'center', py: 1 }}>            <Typography
               color="textSecondary"
               gutterBottom
               variant="subtitle2"
               sx={{ fontSize: '1.2rem' }}
             >
               Frequency Overview (Configuration)
-            </Typography>
-            <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }}>
+            </Typography>            <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
               <Grid item xs={4}>
                 <Typography color="textSecondary" gutterBottom variant="subtitle2" sx={{ fontSize: '1.0rem' }}>
                   Downlink
