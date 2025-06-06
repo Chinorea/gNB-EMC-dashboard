@@ -231,19 +231,23 @@ export default function NodeDashboard({
                 variant="subtitle2"
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
-                Node Information
+                Node Configuration
               </Typography>              <NodeIdCard
                 nodeId={coreData?.gnbId}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
+              />              <FrequencyOverviewCard
+                data={cardDataForAttrs}
+                isLoading={loading}
+                nodeStatus={nodeStatus}
               />
-              <Box sx={{ flexGrow: 1 }}>
-                <FrequencyOverviewCard
-                  data={cardDataForAttrs}
-                  isLoading={loading}
-                  nodeStatus={nodeStatus}
-                />
-              </Box>
+
+              <IpAddressesCard
+                data={cardDataForAttrs}
+                isLoading={loading}
+                nodeStatus={nodeStatus}
+                secondaryIp={manetIp}
+              />
             </Box>
           </Grid>          {/* Right Box - Usage Charts */}
           <Grid item xs={12} md={6} lg={6}>
@@ -265,25 +269,25 @@ export default function NodeDashboard({
                 variant="subtitle2"
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
-                System Performance
-              </Typography>
-              <Box sx={{ width: '100%', flexGrow: 1 }}>
+                System Usage
+              </Typography>              <Box sx={{ width: '100%', flexGrow: 1 }}>
                 <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
               </Box>
               <Box sx={{ width: '100%', flexGrow: 1 }}>
                 <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
               </Box>
+              <Box sx={{ width: '100%', flexGrow: 1 }}>
+                <DiskOverviewCard data={cardDataForAttrs} isLoading={loading} />
+              </Box>
             </Box>
           </Grid>
-        </Grid>
-
-        {/* Layer 3 - Logs */}
+        </Grid>{/* Layer 3 - Logs */}
         <Grid
           container
           spacing={3}
           sx={{ mt: 4 }}
           justifyContent="center"
-          alignItems="stretch"
+          alignItems="center"
         >
           <LogCard ip={ip} isLoading={loading} />
         </Grid>

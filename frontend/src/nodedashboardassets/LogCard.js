@@ -38,16 +38,17 @@ export default function LogCard({ ip }) {
         setError(err.message);
       });
   };
-
   return (
-    <Grid item xs={12} md={6} sx={{ display: 'flex', width: '40%' }}>      <Card
+    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>      <Card
         elevation={3}
         sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
           flex: 1, 
           height: '100%', 
-          transition: 'transform 0.1s ease-in-out', 
+          maxWidth: '1000px',
+          minWidth: '600px',
+          transition: 'transform 0.1s ease-in-out',
           backgroundColor: colors.background.paper,
           '&:hover': { 
             transform: 'scale(1.01)', 
