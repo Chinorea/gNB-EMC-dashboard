@@ -1,4 +1,31 @@
 // utils.js
+
+// Helper function to convert battery voltage to percentage
+export function getBatteryPercentage(voltageString) {
+  // Extract numeric value from voltage string (e.g., "8.25V" -> 8.25)
+  const voltage = parseFloat(voltageString);
+
+  // Return 'unknown' if parsing fails
+  if (isNaN(voltage)) return 'unknown';
+
+  // Battery voltage range: 8.60V (100%) to 7.62V (40%)
+  // Extrapolate to 1% using linear behavior
+  const MAX_VOLTAGE = 8.6; // 100%
+  const MIN_VOLTAGE = 7.0; // 1% (extrapolated from linear trend)
+  const MAX_PERCENTAGE = 100;
+  const MIN_PERCENTAGE = 1;
+
+  // Clamp voltage to valid range
+  const clampedVoltage = Math.max(MIN_VOLTAGE, Math.min(MAX_VOLTAGE, voltage));
+
+  // Linear interpolation
+  const voltageRange = MAX_VOLTAGE - MIN_VOLTAGE;
+  const percentageRange = MAX_PERCENTAGE - MIN_PERCENTAGE;
+  const percentage = MIN_PERCENTAGE + ((clampedVoltage - MIN_VOLTAGE) / voltageRange) * percentageRange;
+
+  return Math.round(percentage);
+}
+
 export default function buildStaticLQM(
   nodeInfos,
   rawMatrix,
