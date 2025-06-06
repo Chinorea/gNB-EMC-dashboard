@@ -141,11 +141,12 @@ export default function App() {
         // STEP 4: Update state and generate markers
         if (!nodeDataOverride) {
           setAllNodeData(prevNodes => [...prevNodes]);
-        }
-
-        const markers = currentAllNodeData
+        }        const markers = currentAllNodeData
           .filter(node => node.manet?.selfManetInfo?.latitude && node.manet?.selfManetInfo?.longitude)
-          .map(node => node.manet.selfManetInfo);
+          .map(node => ({
+            ...node.manet.selfManetInfo,
+            nodeStatus: node.status // Add node status to marker data
+          }));
         
         setMapMarkers(markers);
 

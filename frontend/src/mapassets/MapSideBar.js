@@ -35,19 +35,36 @@ function MapSideBar({
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  // Helper function to get node status color
+  const [isCollapsed, setIsCollapsed] = useState(false);  // Helper function to get node status color
   const getStatusColor = (node) => {
     if (!node) return colors.nodeStatus.disconnected;
     
-    // Check if node has manet info and coordinates
+    // Use nodeStatus if available (from enhanced marker data)
+    if (node.nodeStatus) {
+      switch (node.nodeStatus) {
+        case 'RUNNING':
+          return colors.nodeStatus.running;
+        case 'INITIALIZING':
+          return colors.nodeStatus.initializing;
+        case 'OFF':
+          return colors.nodeStatus.off;
+        case 'DISCONNECTED':
+          return colors.nodeStatus.disconnected;
+        case 'UNREACHABLE':
+          return colors.nodeStatus.unreachable;
+        default:
+          return colors.nodeStatus.disconnected;
+      }
+    }
+    
+    // Fallback: Check if node has manet info and coordinates
     const hasLocation = node.latitude && node.longitude;
     
     if (!hasLocation) {
       return colors.nodeStatus.disconnected;
     }
     
-    // You can add more status logic here based on your node structure
+    // Default to running if we have location but no status info
     return colors.nodeStatus.running;
   };
 
