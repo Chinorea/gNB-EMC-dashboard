@@ -349,7 +349,7 @@ const DUMMY_LQM = [
       } finally {
         running = false;
       }
-    }, 2000);
+    }, 5000);
     return () => clearInterval(attrInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
 

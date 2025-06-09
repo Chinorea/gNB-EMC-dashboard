@@ -152,7 +152,7 @@ class NodeInfo {
     this.attributes.ipData.ipAddressNgu = attrsData.ip_address_ngu;
   }
 
-  async refreshAttributesFromServer(timeout = 1500) {
+  async refreshAttributesFromServer(timeout = 4000) {
     const controller = new AbortController();
     const signal = controller.signal;
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
@@ -282,7 +282,6 @@ class NodeInfo {
     // The lines that were previously here to set isInitializing = false and update _globalSetState
     // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
-
   async checkManetConnection(timeout = 4000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
@@ -294,7 +293,7 @@ class NodeInfo {
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      await fetch(`http://${this.manet.ip}`, { method: 'HEAD', mode: 'no-cors', signal }); // Corrected
+      await fetch(`http://${this.manet.ip}/status`, { method: 'GET', mode: 'no-cors', signal });
       clearTimeout(fetchTimeoutId);
       this.manet.connectionStatus = 'Connected';
     } catch (error) {
