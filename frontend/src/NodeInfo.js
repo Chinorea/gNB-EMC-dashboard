@@ -283,7 +283,7 @@ class NodeInfo {
     // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
 
-  async checkManetConnection(timeout = 1500) {
+  async checkManetConnection(timeout = 4000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
       return;
