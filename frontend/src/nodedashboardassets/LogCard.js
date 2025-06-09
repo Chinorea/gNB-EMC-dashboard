@@ -46,7 +46,7 @@ export default function LogCard({ ip }) {
           flexDirection: 'column', 
           flex: 1, 
           height: '100%', 
-          maxWidth: '1000px',
+          maxWidth: '1200px',
           minWidth: '600px',
           transition: 'transform 0.1s ease-in-out',
           backgroundColor: colors.background.paper,

@@ -88,27 +88,27 @@ export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
   };
 
   if (!data) return null;
-
   return (
     <>
-      <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-        <Card
-          elevation={3}
-          onClick={handleOpenCellIdentityModal}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            transition: 'transform 0.1s ease-in-out',
-            backgroundColor: colors.background.paper,
-            '&:hover': {
-              transform: 'scale(1.01)',
-              boxShadow: 6,
-              backgroundColor: colors.background.hover,
-            },
-            cursor: 'pointer'
-          }}
-        >
+      <Card
+        elevation={3}
+        onClick={handleOpenCellIdentityModal}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          width: '100%',
+          height: '100%',
+          transition: 'transform 0.1s ease-in-out',
+          backgroundColor: colors.background.paper,
+          '&:hover': {
+            transform: 'scale(1.01)',
+            boxShadow: 6,
+            backgroundColor: colors.background.hover,
+          },
+          cursor: 'pointer'
+        }}
+      >
           <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ textAlign: 'center', py: 1, width: '100%' }}>
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
@@ -120,7 +120,7 @@ export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
                 >
                   5G Cell Identity
                 </Typography>              </Box>
-              <Grid container spacing={1} sx={{ mt: 3 }} justifyContent="center" alignItems="flex-start">
+              <Grid container spacing={1} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
                 <Grid item xs={4} sm={4}>
                   <Typography
                     color="textSecondary"
@@ -165,10 +165,8 @@ export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
                   </Typography>
                 </Grid>
               </Grid>
-            </CardContent>
-          </Box>
+            </CardContent>          </Box>
          </Card>
-       </Grid>
 
        <Modal
          open={isCellIdentityModalOpen}

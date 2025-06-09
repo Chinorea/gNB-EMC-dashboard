@@ -116,7 +116,7 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                 >
                   IP Addresses (Configuration)
                 </Typography>              </Box>
-              <Grid container spacing={1} sx={{ mt: 3 }} justifyContent="center" alignItems="flex-start">
+              <Grid container spacing={1} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
                 <Grid item xs={4} sm={4}>
                   <Typography
                     color="textSecondary"
