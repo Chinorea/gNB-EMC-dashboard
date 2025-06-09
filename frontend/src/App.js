@@ -389,7 +389,7 @@ const DUMMY_LQM = [
       } finally {
         running = false;
       }
-    }, 2000); // Interval was 2000 in user's code
+    }, 5000);
     return () => clearInterval(manetInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
 
