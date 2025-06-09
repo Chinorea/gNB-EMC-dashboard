@@ -98,28 +98,56 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
             backgroundColor: colors.background.paper,
             cursor: 'pointer'
           }}
-        >
-          <CardContent sx={{
-            textAlign: 'center',
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center'
-          }}>
+        >          <CardContent sx={{ textAlign: 'center', py: 1 }}>
             <Typography
               color="textSecondary"
               gutterBottom
               variant="subtitle2"
-              sx={{ fontSize: '1.2rem', mb: 1 }}
+              sx={{ fontSize: '1.2rem' }}
             >
               Node ID (Configuration)
             </Typography>
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 'bold', fontSize: '1.5rem', wordBreak: 'break-word' }}
-            >
-              {String(nodeId)}
-            </Typography>
+            <Grid container spacing={1} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  Node ID
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', wordBreak: 'break-word' }}>
+                  {String(nodeId)}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  GNB ID Length
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                  {data?.gnb_id_length || 'N/A'}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  NR Band
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                  {data?.nr_band || 'N/A'}
+                </Typography>
+              </Grid>
+            </Grid>
           </CardContent>
         </Card>
       </Grid>
