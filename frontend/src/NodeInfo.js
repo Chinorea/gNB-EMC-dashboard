@@ -220,7 +220,7 @@ class NodeInfo {
   }
 
   // Method to toggle the script (start/stop)
-  async toggleScript(action) { // action is expected to be 'setupv2' or 'stop'
+  async toggleScript(action) { // action is expected to be 'start' or 'stop'
     if (!this._globalSetState) {
       console.warn(`[NodeInfo ${this.ip}] _globalSetState is not available. UI may not refresh.`);
     }
@@ -229,8 +229,8 @@ class NodeInfo {
     }
 
     // Validate action
-    if (action !== 'setupv2' && action !== 'stop') {
-      console.error(`Invalid action: ${action} passed to toggleScript. Expected 'setupv2' or 'stop'.`);
+    if (action !== 'start' && action !== 'stop') {
+      console.error(`Invalid action: ${action} passed to toggleScript. Expected 'start' or 'stop'.`);
       return;
     }
 

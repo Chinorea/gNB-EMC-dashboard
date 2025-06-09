@@ -81,15 +81,16 @@ function MapSideBar({
     return `${Math.abs(num).toFixed(4)}°${direction}`;
   };
   // Helper function to get battery gradient color
-  const getBatteryGradient = (batteryLevel) => {
-    if (!batteryLevel) return 'linear-gradient(135deg, #e0e0e0, #f5f5f5)';
+  const getBatteryGradient = (batteryPercentage) => {
+    if (!batteryPercentage || batteryPercentage === 'unknown') return 'linear-gradient(135deg, #e0e0e0, #f5f5f5)';
     
-    // Extract percentage from battery level string (e.g., "85%" -> 85)
-    const percentage = parseInt(batteryLevel.replace('%', ''));
+    // batteryPercentage is already a number from App.js
+    const percentage = typeof batteryPercentage === 'number' ? batteryPercentage : parseInt(batteryPercentage);
     if (isNaN(percentage)) return 'linear-gradient(135deg, #e0e0e0, #f5f5f5)';
     
     const isDark = theme.palette.mode === 'dark';
-      // Define colors based on theme mode
+    
+    // Define colors based on theme mode
     const pastels = isDark ? {
       // Dark mode: Low luminance (25%), moderate saturation (45%)
       green: { r: 35, g: 67, b: 35 },   // HSL(120, 45%, 25%)
@@ -106,11 +107,12 @@ function MapSideBar({
     
     let color1, color2;
     
-    if (percentage >= 75) {      // Green gradient for high battery
+    if (percentage >= 75) {
+      // Green gradient for high battery
       color1 = pastels.green;
       color2 = isDark ? 
-        { r: 41, g: 77, b: 41 } :    // Slightly lighter desaturated dark green
-        { r: 215, g: 235, b: 215 };  // Slightly lighter light green
+        { r: 41, g: 77, b: 41 } :
+        { r: 215, g: 235, b: 215 };
     } else if (percentage >= 50) {
       // Yellow-green gradient for medium-high battery
       const ratio = (percentage - 50) / 25;
@@ -129,11 +131,12 @@ function MapSideBar({
         b: Math.round(pastels.orange.b + (pastels.yellow.b - pastels.orange.b) * ratio)
       };
       color2 = pastels.orange;
-    } else {      // Red gradient for low battery
+    } else {
+      // Red gradient for low battery
       color1 = pastels.red;
       color2 = isDark ? 
-        { r: 77, g: 41, b: 41 } :    // Slightly lighter desaturated dark red
-        { r: 245, g: 220, b: 220 };  // Slightly lighter light red
+        { r: 77, g: 41, b: 41 } :
+        { r: 245, g: 220, b: 220 };
     }
     
     return `linear-gradient(135deg, rgb(${color1.r}, ${color1.g}, ${color1.b}), rgb(${color2.r}, ${color2.g}, ${color2.b}))`;
@@ -308,14 +311,14 @@ function MapSideBar({
                               }}
                             >
                               {getNodeDisplayName(node)}
-                            </Typography>                            {node.batteryLevel && (
+                            </Typography>                            {node.batteryPercentage && node.batteryPercentage !== 'unknown' && (
                               <Chip
-                                label={node.batteryLevel}
+                                label={`${node.batteryPercentage}%`}
                                 size="small"
                                 sx={{
                                   height: 18,
                                   fontSize: '0.7rem',
-                                  background: getBatteryGradient(node.batteryLevel),
+                                  background: getBatteryGradient(node.batteryPercentage),
                                   color: colors.text.primary,
                                   border: `1px solid ${colors.border.light}`,
                                   fontWeight: 500,

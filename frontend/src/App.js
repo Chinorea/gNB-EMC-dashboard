@@ -8,7 +8,7 @@ import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
-import buildStaticsLQM from './utils';
+import buildStaticsLQM, { getBatteryPercentage } from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
 import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
 import Sidebar from './appassets/SideBar';
@@ -111,27 +111,37 @@ export default function App() {
         const batteryPromises = nodesWithManetIp.map(async (node) => {
           try {
             const data = await fetchWithTimeout(`http://${node.manet.ip}/status`);
+            const batteryVoltage = data.batteryLevel ? `${(data.batteryLevel).toFixed(2)}V` : 'unknown';
+            const batteryPercentage = getBatteryPercentage(batteryVoltage);
+            
             return {
               ip: node.manet.ip,
-              batteryLevel: data.batteryLevel ? `${(data.batteryLevel).toFixed(2)}V` : 'unknown'
+              batteryLevel: batteryVoltage,
+              batteryPercentage: batteryPercentage
             };
           } catch {
-            return { ip: node.manet.ip, batteryLevel: 'unknown' };
+            return { 
+              ip: node.manet.ip, 
+              batteryLevel: 'unknown',
+              batteryPercentage: 'unknown'
+            };
           }
         });
 
         const batteryData = await Promise.all(batteryPromises);
-        const batteryMap = new Map(batteryData.map(item => [item.ip, item.batteryLevel]));
+        const batteryMap = new Map(batteryData.map(item => [item.ip, item]));
 
         // STEP 3: Update node data with network info and battery levels
         nodesWithManetIp.forEach(node => {
           const match = infos.find(info => info.ip === node.manet.ip);
           if (match) {
+            const batteryInfo = batteryMap.get(node.manet.ip) || { batteryLevel: 'unknown', batteryPercentage: 'unknown' };
             node.manet.nodeInfo = infos;
             node.manet.selfManetInfo = {
               ...match,
               label: node.nodeName || node.ip,
-              batteryLevel: batteryMap.get(node.manet.ip) || 'unknown'
+              batteryLevel: batteryInfo.batteryLevel,
+              batteryPercentage: batteryInfo.batteryPercentage
             };
           } else {
             node.manet.selfManetInfo = null;
