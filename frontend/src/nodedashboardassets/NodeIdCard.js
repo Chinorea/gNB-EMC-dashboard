@@ -21,7 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import { getThemeColors } from '../theme';
 
-export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
+export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,24 +150,66 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
                 Do note that it takes a few seconds for the changes to take effect after pressing "Save". 
                 Configurations cannot be changed when the node is broadcasting.
               </Typography>
-            </Box>
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography color="textSecondary" variant="subtitle2">
-                  Node ID
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {String(nodeId)}
-                </Typography>
+            </Box>            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Node ID */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    Node ID
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {String(nodeId)}
+                  </Typography>
+                </Box>
+                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
               </Box>
-              {nodeStatus === 'OFF' && !isLoading && (
-                <IconButton
-                  onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
-                  size="small"
-                >
-                  <EditIcon />
-                </IconButton>
-              )}
+              
+              {/* GNB ID Length */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    GNB ID Length
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {data?.gnb_id_length || 'N/A'}
+                  </Typography>
+                </Box>
+                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('gnbIdLength', data?.gnb_id_length, 'GNB ID Length'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </Box>
+              
+              {/* NR Band */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    NR Band
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {data?.nr_band || 'N/A'}
+                  </Typography>
+                </Box>
+                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('nrBand', data?.nr_band, 'NR Band'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </Box>
             </Box>
           </Box>
         </Fade>

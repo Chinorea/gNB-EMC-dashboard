@@ -15,6 +15,8 @@ import CpuUsageChartCard from './nodedashboardassets/CpuUsageChartCard';
 import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
 import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
+import CellIdentityCard from './nodedashboardassets/CellIdentityCard';
+import NetworkSliceCard from './nodedashboardassets/NetworkSliceCard';
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import LogCard from './nodedashboardassets/LogCard';
 import TopBar from './nodedashboardassets/TopBar';
@@ -133,8 +135,7 @@ export default function NodeDashboard({
     UP:        'Connected',
     DOWN:      'Disconnected',
     UNSTABLE:  'Unstable',
-  };
-  // Prepare data for child components, using properties from nodeInfo.attributes categories
+  };  // Prepare data for child components, using properties from nodeInfo.attributes categories
   const cardDataForAttrs = { 
       // From coreData
       gnb_id: coreData?.gnbId,
@@ -167,6 +168,18 @@ export default function NodeDashboard({
       ip_address_gnb: ipData?.ipAddressGnb,
       ip_address_ngc: ipData?.ipAddressNgc,
       ip_address_ngu: ipData?.ipAddressNgu,
+      
+      // New fields from rawAttributes for the new cards
+      gnb_id_length: rawAttributes?.gnb_id_length,
+      nr_band: rawAttributes?.nr_band,
+      scs: rawAttributes?.scs,
+      MCC: rawAttributes?.MCC,
+      MNC: rawAttributes?.MNC,
+      cell_id: rawAttributes?.cell_id,
+      NRTAC: rawAttributes?.NRTAC,
+      SST: rawAttributes?.SST,
+      SD: rawAttributes?.SD,
+      profile: rawAttributes?.profile,
       
       ...rawAttributes // Spread rawAttributes for any missing direct mappings or if it contains everything
   };
@@ -232,11 +245,41 @@ export default function NodeDashboard({
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
                 Node Configuration
-              </Typography>              <NodeIdCard
+              </Typography>
+
+              {/* Profile Display */}
+              {cardDataForAttrs.profile && (
+                <Box sx={{ 
+                  mb: 2, 
+                  p: 2, 
+                  backgroundColor: colors.background.light,
+                  borderRadius: 1,
+                  border: `1px solid ${colors.border.light}`
+                }}>
+                  <Typography
+                    color="textSecondary"
+                    variant="subtitle2"
+                    sx={{ fontSize: '1.0rem', mb: 0.5 }}
+                  >
+                    Active Profile
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}
+                  >
+                    {cardDataForAttrs.profile}
+                  </Typography>
+                </Box>
+              )}
+
+              <NodeIdCard
                 nodeId={coreData?.gnbId}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
-              />              <FrequencyOverviewCard
+                data={cardDataForAttrs}
+              />
+
+              <FrequencyOverviewCard
                 data={cardDataForAttrs}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
@@ -247,6 +290,18 @@ export default function NodeDashboard({
                 isLoading={loading}
                 nodeStatus={nodeStatus}
                 secondaryIp={manetIp}
+              />
+
+              <CellIdentityCard
+                data={cardDataForAttrs}
+                isLoading={loading}
+                nodeStatus={nodeStatus}
+              />
+
+              <NetworkSliceCard
+                data={cardDataForAttrs}
+                isLoading={loading}
+                nodeStatus={nodeStatus}
               />
             </Box>
           </Grid>          {/* Right Box - Usage Charts */}

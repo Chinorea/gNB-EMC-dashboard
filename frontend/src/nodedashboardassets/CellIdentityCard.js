@@ -21,17 +21,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from '../theme';
 
-export default function IpAddressesCard({ data, isLoading, nodeStatus, secondaryIp }) {
+export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
-  const ipModalStyle = {
+  const cellIdentityModalStyle = {
     position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '90%',      // increased width
-    maxWidth: 800,     // increased maxWidth
+    width: '90%',
+    maxWidth: 800,
     bgcolor: colors.background.paper,
     border: `2px solid ${colors.border.dark}`,
     boxShadow: 24,
@@ -39,22 +39,24 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
     borderRadius: 2,
   };
   
-  const [isIpModalOpen, setIsIpModalOpen] = useState(false);
-  const [ipEditDialog, setIpEditDialog] = useState({ open: false, field: '', currentValue: '', label: '' });
-  const [ipEditValue, setIpEditValue] = useState('');
+  const [isCellIdentityModalOpen, setIsCellIdentityModalOpen] = useState(false);
+  const [cellIdentityEditDialog, setCellIdentityEditDialog] = useState({ open: false, field: '', currentValue: '', label: '' });
+  const [cellIdentityEditValue, setCellIdentityEditValue] = useState('');
 
-  const handleOpenIpModal = () => setIsIpModalOpen(true);
-  const handleCloseIpModal = () => setIsIpModalOpen(false);
+  const handleOpenCellIdentityModal = () => setIsCellIdentityModalOpen(true);
+  const handleCloseCellIdentityModal = () => setIsCellIdentityModalOpen(false);
 
-  const handleIpEditClick = (field, currentValue, label) => {
-    setIpEditDialog({ open: true, field, currentValue, label });
-    setIpEditValue(currentValue);
+  const handleCellIdentityEditClick = (field, currentValue, label) => {
+    setCellIdentityEditDialog({ open: true, field, currentValue, label });
+    setCellIdentityEditValue(currentValue);
   };
-  const handleIpEditClose = () => {
-    setIpEditDialog({ open: false, field: '', currentValue: '', label: '' });
-    setIpEditValue('');
+
+  const handleCellIdentityEditClose = () => {
+    setCellIdentityEditDialog({ open: false, field: '', currentValue: '', label: '' });
+    setCellIdentityEditValue('');
   };
-  const handleIpEditSave = async () => {
+
+  const handleCellIdentityEditSave = async () => {
     try {
       // Get the node IP from the current URL or pass it as a prop
       const nodeIp = window.location.pathname.split('/node/')[1];
@@ -65,15 +67,15 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          field: ipEditDialog.field,
-          value: ipEditValue
+          field: cellIdentityEditDialog.field,
+          value: cellIdentityEditValue
         })
       });
 
       if (response.ok) {
-        console.log(`Successfully updated ${ipEditDialog.field} to ${ipEditValue}`);
+        console.log(`Successfully updated ${cellIdentityEditDialog.field} to ${cellIdentityEditValue}`);
         // You might want to trigger a refresh of the data here
-        handleIpEditClose();
+        handleCellIdentityEditClose();
       } else {
         const error = await response.json();
         console.error('Failed to update config:', error);
@@ -89,9 +91,11 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
 
   return (
     <>
-      <Grid item xs={12} md={4} sx={{ display: 'flex' }}>        <Card
+      <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+        <Card
           elevation={3}
-          onClick={handleOpenIpModal}          sx={{
+          onClick={handleOpenCellIdentityModal}
+          sx={{
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
@@ -114,7 +118,7 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                   variant="subtitle2"
                   sx={{ fontSize: '1.2rem', flexGrow: 1 }}
                 >
-                  IP Addresses (Configuration)
+                  5G Cell Identity
                 </Typography>
               </Box>
               <Grid container spacing={1} sx={{ mt: 3 }}>
@@ -124,13 +128,13 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                     gutterBottom variant="subtitle2"
                     sx={{fontSize: '1.0rem'}}
                   >
-                    gNB IP
+                    MCC
                   </Typography>
                   <Typography variant="body1" sx={{
                     fontWeight: 'bold',
                     fontSize: '1.5rem'
                     }}>
-                    {data.ip_address_gnb}
+                    {data.MCC || 'N/A'}
                   </Typography>
                 </Grid>
                 <Grid item xs={4} sm={4}>
@@ -138,13 +142,13 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                     color="textSecondary"
                     gutterBottom variant="subtitle2"
                     sx={{fontSize: '1.0rem'}}>
-                    NgC IP
+                    MNC
                   </Typography>
                   <Typography variant="body1" sx={{
                     fontWeight: 'bold',
                     fontSize: '1.5rem'
                     }}>
-                    {data.ip_address_ngc}
+                    {data.MNC || 'N/A'}
                   </Typography>
                 </Grid>
                 <Grid item xs={4} sm={4}>
@@ -152,45 +156,33 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                     color="textSecondary"
                     gutterBottom variant="subtitle2"
                     sx={{fontSize: '1.0rem'}}>
-                    NgU IP
+                    Cell ID
                   </Typography>
                   <Typography variant="body1" sx={{
                     fontWeight: 'bold',
                     fontSize: '1.5rem'
                     }}>
-                    {data.ip_address_ngu}
-                  </Typography>
-                </Grid>
-                <Grid item xs={4} sm={4}>
-                  <Typography
-                    color="textSecondary"
-                    gutterBottom variant="subtitle2"
-                    sx={{fontSize: '1.0rem'}}>
-                    MANET IP
-                  </Typography>
-                  <Typography variant="body1" sx={{
-                    fontWeight: 'bold',
-                    fontSize: '1.5rem'
-                    }}>
-                    {secondaryIp || 'Not Configured'}
+                    {data.cell_id || 'N/A'}
                   </Typography>
                 </Grid>
               </Grid>
             </CardContent>
           </Box>
          </Card>
-       </Grid>       <Modal
-         open={isIpModalOpen}
-         onClose={handleCloseIpModal}
+       </Grid>
+
+       <Modal
+         open={isCellIdentityModalOpen}
+         onClose={handleCloseCellIdentityModal}
          closeAfterTransition
          BackdropComponent={Backdrop}
          BackdropProps={{ timeout: 150 }}
        >
-         <Fade in={isIpModalOpen} timeout={150}>
-           <Box sx={ipModalStyle}>
+         <Fade in={isCellIdentityModalOpen} timeout={150}>
+           <Box sx={cellIdentityModalStyle}>
              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>IP Address Details</Typography>
-               <IconButton onClick={handleCloseIpModal}>
+               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>5G Cell Identity Details</Typography>
+               <IconButton onClick={handleCloseCellIdentityModal}>
                  <CloseIcon />
                </IconButton>
              </Box>
@@ -208,14 +200,15 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                  <Typography color="textSecondary" variant="subtitle2" sx={{ fontSize: '1.1rem' }}>
-                    gNB IP
+                    Mobile Country Code (MCC)
                   </Typography>
                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                   {data.ip_address_gnb}
+                   {data.MCC || 'N/A'}
                  </Typography>
-                </Box>                {nodeStatus === 'OFF' && !isLoading && (
+                </Box>
+                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('gnbIP', data.ip_address_gnb, 'gNB IP'); }}
+                    onClick={e => { e.stopPropagation(); handleCellIdentityEditClick('MCC', data.MCC, 'MCC'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -225,15 +218,15 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                  <Typography color="textSecondary" variant="subtitle2" sx={{ fontSize: '1.1rem' }}>
-                    NgC IP
+                    Mobile Network Code (MNC)
                   </Typography>
                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                   {data.ip_address_ngc}
+                   {data.MNC || 'N/A'}
                  </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('ngcIp', data.ip_address_ngc, 'NgC IP'); }}
+                    onClick={e => { e.stopPropagation(); handleCellIdentityEditClick('MNC', data.MNC, 'MNC'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -243,15 +236,15 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                  <Typography color="textSecondary" variant="subtitle2" sx={{ fontSize: '1.1rem' }}>
-                    NgU IP
+                    Cell Identity (Cell ID)
                   </Typography>
                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                   {data.ip_address_ngu}
+                   {data.cell_id || 'N/A'}
                  </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('nguIp', data.ip_address_ngu, 'NgU IP'); }}
+                    onClick={e => { e.stopPropagation(); handleCellIdentityEditClick('cell_id', data.cell_id, 'Cell ID'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -261,23 +254,25 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
             </Box>
            </Box>
          </Fade>
-       </Modal>       {/* Edit Dialog */}
-       <Dialog open={ipEditDialog.open} onClose={handleIpEditClose} maxWidth="sm" fullWidth>
+       </Modal>
+
+       {/* Edit Dialog */}
+       <Dialog open={cellIdentityEditDialog.open} onClose={handleCellIdentityEditClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          Edit {ipEditDialog.label}
+          Edit {cellIdentityEditDialog.label}
         </DialogTitle>
          <DialogContent>
            <TextField
              autoFocus
              margin="dense"
-             label={ipEditDialog.label}
+             label={cellIdentityEditDialog.label}
              fullWidth
              variant="outlined"
-             value={ipEditValue}
-             onChange={(e) => setIpEditValue(e.target.value)}
+             value={cellIdentityEditValue}
+             onChange={(e) => setCellIdentityEditValue(e.target.value)}
              onKeyPress={(e) => {
               if (e.key === 'Enter') {
-                handleIpEditSave();
+                handleCellIdentityEditSave();
               }
             }}
              InputProps={{
@@ -286,9 +281,8 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
            />
          </DialogContent>
          <DialogActions>
-           <Button onClick={handleIpEditClose}>Cancel</Button>
-           <Button onClick={handleIpEditSave} variant="contained">Save</Button>
-         </DialogActions>
+           <Button onClick={handleCellIdentityEditClose}>Cancel</Button>
+           <Button onClick={handleCellIdentityEditSave} variant="contained">Save</Button>         </DialogActions>
        </Dialog>
      </>
    );
