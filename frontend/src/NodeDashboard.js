@@ -290,18 +290,16 @@ export default function NodeDashboard({
                 isLoading={loading}
                 nodeStatus={nodeStatus}
                 secondaryIp={manetIp}
-              />
-
-              {/* Cell Identity and Network Slice Cards Side by Side */}
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+              />              {/* Cell Identity and Network Slice Cards Side by Side */}
+              <Grid container spacing={2} sx={{ width: '100%', display: 'flex', flexDirection: 'row' }}>
+                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
                   <CellIdentityCard
                     data={cardDataForAttrs}
                     isLoading={loading}
                     nodeStatus={nodeStatus}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
                   <NetworkSliceCard
                     data={cardDataForAttrs}
                     isLoading={loading}

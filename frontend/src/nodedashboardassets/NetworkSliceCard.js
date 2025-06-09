@@ -89,15 +89,14 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
 
   if (!data) return null;
   return (
-    <>
-      <Card
+    <>      <Card
         elevation={3}
         onClick={handleOpenNetworkSliceModal}
         sx={{
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          width: '100%',
+          width: '45%',
           height: '100%',
           transition: 'transform 0.1s ease-in-out',
           backgroundColor: colors.background.paper,
