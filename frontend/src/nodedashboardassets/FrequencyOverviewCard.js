@@ -119,7 +119,7 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
               variant="subtitle2"
               sx={{ fontSize: '1.2rem' }}
             >
-              Frequency Overview (Configuration)
+              Frequency Overview
             </Typography>
             <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
               <Grid item xs={4}>

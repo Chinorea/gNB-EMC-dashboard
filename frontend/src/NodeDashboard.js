@@ -269,40 +269,49 @@ export default function NodeDashboard({
                   >
                     {cardDataForAttrs.profile}
                   </Typography>
-                </Box>
-              )}
+                </Box>              )}
 
-              <NodeIdCard
-                nodeId={coreData?.gnbId}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-                data={cardDataForAttrs}
-              />
-
-              <FrequencyOverviewCard
-                data={cardDataForAttrs}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-              />
-
-              <IpAddressesCard
+              {/* Node ID and Frequency Overview Cards Side by Side */}
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <NodeIdCard
+                    nodeId={coreData?.gnbId}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                    data={cardDataForAttrs}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FrequencyOverviewCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                  />
+                </Grid>
+              </Grid>              <IpAddressesCard
                 data={cardDataForAttrs}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
                 secondaryIp={manetIp}
               />
 
-              <CellIdentityCard
-                data={cardDataForAttrs}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-              />
-
-              <NetworkSliceCard
-                data={cardDataForAttrs}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-              />
+              {/* Cell Identity and Network Slice Cards Side by Side */}
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <CellIdentityCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <NetworkSliceCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                  />
+                </Grid>
+              </Grid>
             </Box>
           </Grid>          {/* Right Box - Usage Charts */}
           <Grid item xs={12} md={6} lg={6}>
@@ -325,12 +334,22 @@ export default function NodeDashboard({
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
                 System Usage
-              </Typography>              <Box sx={{ width: '100%', flexGrow: 1 }}>
-                <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-              </Box>
-              <Box sx={{ width: '100%', flexGrow: 1 }}>
-                <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-              </Box>
+              </Typography>
+
+              {/* CPU and RAM Charts Side by Side */}
+              <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+                <Grid item xs={12} sm={6} sx={{ display: 'flex' }}>
+                  <Box sx={{ width: '100%', flexGrow: 1 }}>
+                    <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ display: 'flex' }}>
+                  <Box sx={{ width: '100%', flexGrow: 1 }}>
+                    <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+                  </Box>
+                </Grid>
+              </Grid>
+
               <Box sx={{ width: '100%', flexGrow: 1 }}>
                 <DiskOverviewCard data={cardDataForAttrs} isLoading={loading} />
               </Box>

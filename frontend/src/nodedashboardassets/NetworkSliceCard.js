@@ -119,9 +119,8 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
                   sx={{ fontSize: '1.2rem', flexGrow: 1 }}
                 >
                   5G Network Slice
-                </Typography>
-              </Box>
-              <Grid container spacing={1} sx={{ mt: 3 }}>
+                </Typography>              </Box>
+              <Grid container spacing={1} sx={{ mt: 3 }} justifyContent="center" alignItems="flex-start">
                 <Grid item xs={4} sm={4}>
                   <Typography
                     color="textSecondary"
