@@ -226,8 +226,7 @@ export default function NodeDashboard({
           justifyContent="center"
           alignItems="stretch"
         >          {/* Left Box - Node Info & Frequency */}
-          <Grid item xs={12} md={6} lg={6}>
-            <Box
+          <Grid item xs={12} md={6} lg={6}>            <Box
               sx={{
                 border: `1px solid ${colors.border.main}`,
                 borderRadius: 2,
@@ -239,27 +238,25 @@ export default function NodeDashboard({
                 gap: 2,
                 boxShadow: 3,
               }}
-            >              <Typography
+            ><Typography
                 color="textSecondary"
                 variant="subtitle2"
-                sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
+                sx={{ fontSize: '1.2rem', mb: 0, textAlign: 'center' }}
               >
                 Node Configuration
-              </Typography>
-
-              {/* Profile Display */}
-              {cardDataForAttrs.profile && (
+              </Typography>              {/* Profile Display */}              {cardDataForAttrs.profile && (
                 <Box sx={{ 
-                  mb: 2, 
-                  p: 2, 
+                  mb: 0, 
+                  p: 0.5, 
                   backgroundColor: colors.background.light,
                   borderRadius: 1,
-                  border: `1px solid ${colors.border.light}`
+                  border: `1px solid ${colors.border.light}`,
+                  textAlign: 'center'
                 }}>
                   <Typography
                     color="textSecondary"
                     variant="subtitle2"
-                    sx={{ fontSize: '1.0rem', mb: 0.5 }}
+                    sx={{ fontSize: '1.0rem', mb: 0 }}
                   >
                     Active Profile
                   </Typography>
