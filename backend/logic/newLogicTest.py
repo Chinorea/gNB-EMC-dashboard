@@ -10,7 +10,7 @@ from attributes.RadioAttr import RadioAttr
 from attributes.CoreAttr import CoreAttr
 
 ping = "192.168.2.10"
-CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
+CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gnb_webdashboard.json"
 
 radio = RadioAttr(CONFIG_FILE_PATH)
 core = CoreAttr(CONFIG_FILE_PATH)

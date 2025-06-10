@@ -14,7 +14,7 @@ import re
 import fcntl
 
 # Configuration constants
-CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
+CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gnb_webdashboard.json"
 
 from backend.logic.attributes.CpuUsage           import CpuUsage
 from backend.logic.attributes.SocTemp            import SocTemp
@@ -80,10 +80,9 @@ def ensure_config_file_exists():
                     logger.info("Clearing existing filename...")
                     for _ in range(200):
                         proc.send('\b')  # Send backspace
-                    
-                    # Send the new filename
-                    proc.sendline('gNB_webdashboard_config')
-                    logger.info("Sent filename: gNB_webdashboard_config")
+                      # Send the new filename
+                    proc.sendline('gnb_webdashboard')
+                    logger.info("Sent filename: gnb_webdashboard")
                     
                     # Wait for the process to complete
                     try:
@@ -122,14 +121,38 @@ def ensure_config_file_exists():
             proc.close()
         except:
             pass  # Ignore close errors
-        
-        # Check if the config file was created
+          # Check if the config file was created
         if os.path.exists(CONFIG_FILE_PATH):
             logger.info(f"Successfully created config file: {CONFIG_FILE_PATH}")
+            
+            # Add the profile field to the newly created config file
+            try:
+                import json
+                
+                # Read the existing config file
+                with open(CONFIG_FILE_PATH, 'r') as f:
+                    config_data = json.load(f)
+                
+                # Add the profile field if it doesn't exist
+                if 'profile' not in config_data:
+                    config_data['profile'] = "40MHz_MET_2x2"
+                    
+                    # Write the updated config back to the file
+                    with open(CONFIG_FILE_PATH, 'w') as f:
+                        json.dump(config_data, f, indent=4)
+                    
+                    logger.info("Added profile field to config file: 40MHz_MET_2x2")
+                else:
+                    logger.info("Profile field already exists in config file")
+                    
+            except Exception as e:
+                logger.error(f"Failed to add profile field to config file: {str(e)}")
+                # Don't return False here as the config file was created successfully
+            
             return True
         else:
             logger.error("Config file was not created despite running GNBCommission")
-            # Try to list files in the configs directory for debugging
+            # Try to list files in the configs directory for debugging 
             try:
                 configs_dir = os.path.dirname(CONFIG_FILE_PATH)
                 if os.path.exists(configs_dir):
@@ -137,83 +160,6 @@ def ensure_config_file_exists():
                     logger.info(f"Files in {configs_dir}: {files}")
             except Exception as e:
                 logger.error(f"Could not list config directory: {e}")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error running GNBCommission: {str(e)}")
-        return False
-    """
-    Ensure the gNB config file exists. If it doesn't, automatically create it
-    by running the GNBCommission script with automated responses.
-    """
-    config_path = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
-    
-    if os.path.exists(config_path):
-        return True  # File already exists
-    
-    logger = LogManager.get_logger('config_creation')
-    logger.info(f"Config file {config_path} not found. Running GNBCommission to create it...")
-    
-    try:
-        # Change to the commissioning directory
-        commission_dir = "/opt/ste/active/commissioning"
-        
-        # Check if GNBCommission exists
-        gnb_commission_path = os.path.join(commission_dir, "GNBCommission")
-        if not os.path.exists(gnb_commission_path):
-            logger.error(f"GNBCommission script not found at {gnb_commission_path}")
-            return False
-        
-        # Run GNBCommission with automated responses
-        proc = pexpect.spawn("python3 GNBCommission", cwd=commission_dir, timeout=60)
-        
-        # Keep pressing enter until we reach the "Select output filename" prompt
-        while True:
-            try:
-                index = proc.expect([
-                    r"Select output filename.*:",  # Look for filename selection prompt
-                    pexpect.TIMEOUT,
-                    pexpect.EOF
-                ], timeout=5)
-                
-                if index == 0:  # Found filename prompt
-                    logger.info("Found 'Select output filename' prompt")
-                    
-                    # Send backspaces to clear existing name (200 times as requested)
-                    for _ in range(200):
-                        proc.send('\b')  # Send backspace
-                    
-                    # Send the new filename
-                    proc.sendline('gNB_webdashboard_config')
-                    logger.info("Sent filename: gNB_webdashboard_config")
-                    
-                    # Wait for the process to complete
-                    proc.expect(pexpect.EOF, timeout=30)
-                    break
-                    
-                elif index == 1:  # Timeout - probably waiting for input
-                    # Send enter and continue
-                    proc.sendline('')
-                    continue
-                    
-                else:  # EOF - process ended
-                    break
-                    
-            except pexpect.TIMEOUT:
-                # Send enter and continue
-                proc.sendline('')
-                continue
-            except pexpect.EOF:
-                break
-        
-        proc.close()
-        
-        # Check if the config file was created
-        if os.path.exists(config_path):
-            logger.info(f"Successfully created config file: {config_path}")
-            return True
-        else:
-            logger.error("Config file was not created despite running GNBCommission")
             return False
             
     except Exception as e:
