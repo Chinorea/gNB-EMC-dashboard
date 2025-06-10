@@ -13,6 +13,9 @@ import re
 # Import fcntl for non-blocking I/O
 import fcntl
 
+# Configuration constants
+CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
+
 from backend.logic.attributes.CpuUsage           import CpuUsage
 from backend.logic.attributes.SocTemp            import SocTemp
 from backend.logic.attributes.RamUsage           import RamUsage
@@ -23,14 +26,211 @@ from backend.logic.attributes.Network            import Network
 from backend.logic.attributes.CoreAttr           import CoreAttr
 from backend.logic.attributes.RadioAttr          import RadioAttr 
 
+def ensure_config_file_exists():
+    """
+    Ensure the gNB config file exists. If it doesn't, automatically create it
+    by running the GNBCommission script with automated responses.
+    """
+    if os.path.exists(CONFIG_FILE_PATH):
+        return True  # File already exists
+    
+    logger = LogManager.get_logger('config_creation')
+    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Running GNBCommission to create it...")
+    
+    try:
+        # Change to the commissioning directory
+        commission_dir = "/opt/ste/active/commissioning"
+        
+        # Check if GNBCommission exists
+        gnb_commission_path = os.path.join(commission_dir, "GNBCommission")
+        if not os.path.exists(gnb_commission_path):
+            logger.error(f"GNBCommission script not found at {gnb_commission_path}")
+            return False
+        
+        # Make sure configs directory exists
+        config_dir = os.path.dirname(CONFIG_FILE_PATH)
+        os.makedirs(config_dir, exist_ok=True)
+        
+        # Run GNBCommission with automated responses
+        logger.info("Starting GNBCommission process...")
+        proc = pexpect.spawn("python3 GNBCommission", cwd=commission_dir, timeout=120)
+        
+        # Keep pressing enter until we reach the "Select output filename" prompt
+        step_count = 0
+        max_steps = 50  # Safety limit to prevent infinite loops
+        
+        while step_count < max_steps:
+            try:
+                step_count += 1
+                logger.debug(f"Step {step_count}: Waiting for prompt...")
+                
+                index = proc.expect([
+                    r"[Ss]elect output filename.*:.*",  # Look for filename selection prompt
+                    r"filename.*:.*",  # Alternative filename prompt pattern
+                    r"Enter.*filename.*:.*",  # Another filename prompt pattern
+                    r".*:.*",  # Any prompt ending with colon
+                    pexpect.TIMEOUT,
+                    pexpect.EOF
+                ], timeout=10)
+                
+                if index in [0, 1, 2]:  # Found filename prompt
+                    logger.info(f"Found filename prompt at step {step_count}")
+                    
+                    # Send backspaces to clear existing name (200 times as requested)
+                    logger.info("Clearing existing filename...")
+                    for _ in range(200):
+                        proc.send('\b')  # Send backspace
+                    
+                    # Send the new filename
+                    proc.sendline('gNB_webdashboard_config')
+                    logger.info("Sent filename: gNB_webdashboard_config")
+                    
+                    # Wait for the process to complete
+                    try:
+                        proc.expect(pexpect.EOF, timeout=60)
+                        logger.info("GNBCommission process completed")
+                    except pexpect.TIMEOUT:
+                        logger.warning("Process completion timeout, but continuing...")
+                    break
+                    
+                elif index == 3:  # Other prompt - send enter
+                    logger.debug("Found generic prompt, sending enter...")
+                    proc.sendline('')
+                    continue
+                    
+                elif index == 4:  # Timeout - probably waiting for input
+                    logger.debug("Timeout, sending enter...")
+                    proc.sendline('')
+                    continue
+                    
+                else:  # EOF - process ended
+                    logger.info("Process ended with EOF")
+                    break
+                    
+            except pexpect.TIMEOUT:
+                logger.debug("Timeout exception, sending enter...")
+                proc.sendline('')
+                continue
+            except pexpect.EOF:
+                logger.info("Process ended with EOF exception")
+                break
+        
+        if step_count >= max_steps:
+            logger.warning(f"Reached maximum steps ({max_steps}) without finding filename prompt")
+        
+        try:
+            proc.close()
+        except:
+            pass  # Ignore close errors
+        
+        # Check if the config file was created
+        if os.path.exists(CONFIG_FILE_PATH):
+            logger.info(f"Successfully created config file: {CONFIG_FILE_PATH}")
+            return True
+        else:
+            logger.error("Config file was not created despite running GNBCommission")
+            # Try to list files in the configs directory for debugging
+            try:
+                configs_dir = os.path.dirname(CONFIG_FILE_PATH)
+                if os.path.exists(configs_dir):
+                    files = os.listdir(configs_dir)
+                    logger.info(f"Files in {configs_dir}: {files}")
+            except Exception as e:
+                logger.error(f"Could not list config directory: {e}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error running GNBCommission: {str(e)}")
+        return False
+    """
+    Ensure the gNB config file exists. If it doesn't, automatically create it
+    by running the GNBCommission script with automated responses.
+    """
+    config_path = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
+    
+    if os.path.exists(config_path):
+        return True  # File already exists
+    
+    logger = LogManager.get_logger('config_creation')
+    logger.info(f"Config file {config_path} not found. Running GNBCommission to create it...")
+    
+    try:
+        # Change to the commissioning directory
+        commission_dir = "/opt/ste/active/commissioning"
+        
+        # Check if GNBCommission exists
+        gnb_commission_path = os.path.join(commission_dir, "GNBCommission")
+        if not os.path.exists(gnb_commission_path):
+            logger.error(f"GNBCommission script not found at {gnb_commission_path}")
+            return False
+        
+        # Run GNBCommission with automated responses
+        proc = pexpect.spawn("python3 GNBCommission", cwd=commission_dir, timeout=60)
+        
+        # Keep pressing enter until we reach the "Select output filename" prompt
+        while True:
+            try:
+                index = proc.expect([
+                    r"Select output filename.*:",  # Look for filename selection prompt
+                    pexpect.TIMEOUT,
+                    pexpect.EOF
+                ], timeout=5)
+                
+                if index == 0:  # Found filename prompt
+                    logger.info("Found 'Select output filename' prompt")
+                    
+                    # Send backspaces to clear existing name (200 times as requested)
+                    for _ in range(200):
+                        proc.send('\b')  # Send backspace
+                    
+                    # Send the new filename
+                    proc.sendline('gNB_webdashboard_config')
+                    logger.info("Sent filename: gNB_webdashboard_config")
+                    
+                    # Wait for the process to complete
+                    proc.expect(pexpect.EOF, timeout=30)
+                    break
+                    
+                elif index == 1:  # Timeout - probably waiting for input
+                    # Send enter and continue
+                    proc.sendline('')
+                    continue
+                    
+                else:  # EOF - process ended
+                    break
+                    
+            except pexpect.TIMEOUT:
+                # Send enter and continue
+                proc.sendline('')
+                continue
+            except pexpect.EOF:
+                break
+        
+        proc.close()
+        
+        # Check if the config file was created
+        if os.path.exists(config_path):
+            logger.info(f"Successfully created config file: {config_path}")
+            return True
+        else:
+            logger.error("Config file was not created despite running GNBCommission")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error running GNBCommission: {str(e)}")
+        return False
+
+# Ensure config file exists before initializing attributes
+ensure_config_file_exists()
+
 cpu_usage           = CpuUsage()
 cpu_temp            = SocTemp()
 ram_usage           = RamUsage()
 drive_space         = DriveSpace()
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
-radio               = RadioAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
-core                = CoreAttr("/opt/ste/active/commissioning/configs/gNB26_setup_Config.json")
+radio               = RadioAttr(CONFIG_FILE_PATH)
+core                = CoreAttr(CONFIG_FILE_PATH)
 
 raptor_status_timeout = 3
 
@@ -41,13 +241,15 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
     
+    # Ensure config file exists before trying to read attributes
+    if not ensure_config_file_exists():
+        return jsonify({"error": "Failed to create or access config file"}), 500
+    
     # refresh all attributes first
     for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
                  drive_space, board_date_time):
-        attr.refresh()
-
-    # then check core connection once
-    core_connection = Network(ip_address.ipAddressNgc)
+        attr.refresh()    # then check core connection once
+    core_connection = Network(core.ngc_Ip)
     core_connection.refresh()
 
     data = {
@@ -98,7 +300,7 @@ def get_raptor_status():
 # Map of allowed "actions" to the real commands
 ACTIONS = {
     "setupv2": ["gnb_ctl", "start"],
-    "start": ["/opt/ste/bin/gnb_ctl", "-c", "/opt/ste/active/commissioning/configs/gNB26_setup_Config.json", "start"],
+    "start": ["/opt/ste/bin/gnb_ctl", "-c", CONFIG_FILE_PATH, "start"],
     "stop": ["gnb_ctl", "stop"],
     "status": ["gnb_ctl", "status"]
 }
