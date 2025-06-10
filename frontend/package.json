@@ -64,21 +64,23 @@
     "productName": "gNB Dashboard",
     "directories": {
       "output": "dist"
-    },
-    "files": [
+    },    "files": [
       "build/**/*",
-      "public/electron.js",
-      "node_modules/**/*"
+      "public/electron.js"
     ],
     "mac": {
       "icon": "build/favicon.ico",
       "category": "public.app-category.utilities"
-    },
-    "win": {
+    },    "win": {
       "icon": "build/favicon.ico",
+      "executableName": "gnb-dashboard",
       "target": [
         {
           "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
           "arch": ["x64"]
         }
       ]

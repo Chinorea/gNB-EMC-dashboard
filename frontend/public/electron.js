@@ -21,11 +21,13 @@ function createWindow() {
     show: false, // Don't show until ready
     titleBarStyle: 'default',
   });
-
   // Load the app
   const startUrl = isDev 
     ? 'http://localhost:3000' 
     : `file://${path.join(__dirname, '../build/index.html')}`;
+    console.log('Loading URL:', startUrl);
+  console.log('__dirname:', __dirname);
+  console.log('isDev:', isDev);
   
   mainWindow.loadURL(startUrl);
 
