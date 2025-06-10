@@ -1,0 +1,196 @@
+name: Build and Release App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build React app
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Build Electron app (Windows)
+      if: matrix.os == 'windows-latest'
+      working-directory: frontend
+      run: npm run dist
+      
+    - name: Build Electron app (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      working-directory: frontend
+      run: npm run build-linux
+      
+    - name: Build Electron app (macOS)
+      if: matrix.os == 'macos-latest'
+      working-directory: frontend
+      run: |
+        npm run build
+        npx electron-builder --mac dmg
+        
+    - name: Upload Windows artifacts
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-portable
+        path: frontend/dist/*.exe
+        
+    - name: Upload Linux artifacts
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-portable
+        path: |
+          frontend/dist/*.AppImage
+          frontend/dist/*.tar.gz
+            - name: Upload macOS artifacts
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-portable
+        path: frontend/dist/*.dmg
+
+  # Package Backend
+  package-backend:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+          - name: Package Backend
+      run: |
+        # Create backend package
+        mkdir -p backend-package
+        cp -r backend/ backend-package/
+        cp README.md backend-package/
+        
+        # Create a simple startup script
+        cat > backend-package/start-backend.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        python3 backend/WebDashboard.py
+        EOF
+        
+        cat > backend-package/start-backend.bat << 'EOF'
+        @echo off
+        cd /d "%~dp0"
+        python backend\WebDashboard.py
+        pause
+        EOF
+        
+        chmod +x backend-package/start-backend.sh
+        
+        # Create archive
+        tar -czf backend-package.tar.gz backend-package/
+        
+    - name: Upload Backend Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-package
+        path: backend-package.tar.gz
+
+  # Auto-release when main branch is updated
+  auto-release:
+    needs: [build, package-backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Generate version number
+      id: version
+      run: |
+        # Generate version based on date and commit
+        VERSION="v$(date +'%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-8)"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+        
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Prepare release assets
+      run: |
+        # Create release directory
+        mkdir -p release-assets
+        
+        # Copy and rename artifacts with version
+        if [ -d "windows-portable" ]; then
+          cp windows-portable/* release-assets/ 2>/dev/null || true
+        fi
+        
+        if [ -d "linux-portable" ]; then
+          cp linux-portable/* release-assets/ 2>/dev/null || true
+        fi
+        
+        if [ -d "macos-portable" ]; then
+          cp macos-portable/* release-assets/ 2>/dev/null || true
+        fi
+        
+        if [ -f "backend-package/backend-package.tar.gz" ]; then
+          cp backend-package/backend-package.tar.gz release-assets/ST-Engineering-Backend-${{ steps.version.outputs.version }}.tar.gz
+        fi
+        
+        # List what we have
+        echo "Release assets:"
+        ls -la release-assets/
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: "Release ${{ steps.version.outputs.version }}"
+        body: |
+          🚀 **Automated Release**
+          
+          **Changes in this release:**
+          - Latest updates from main branch
+          - Commit: ${{ github.sha }}
+          
+          **Downloads:**
+          - **Windows**: `.exe` portable executable
+          - **Linux**: `.AppImage` and `.tar.gz` 
+          - **macOS**: `.dmg` installer
+          - **Backend**: Complete Python backend package
+          
+          **Quick Start:**
+          1. Download the appropriate frontend for your OS
+          2. Download the backend package
+          3. Extract backend and run `start-backend.sh` (Linux/Mac) or `start-backend.bat` (Windows)
+          4. Run the frontend executable
+          
+          **Backend Requirements:**
+          - Python 3.9+
+          - Dependencies included in package
+        files: release-assets/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
