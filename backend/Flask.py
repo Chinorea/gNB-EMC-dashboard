@@ -2,9 +2,8 @@ from flask import Flask, jsonify, request, send_file, abort
 from flask_cors import CORS
 import subprocess, os, time, signal
 from pathlib import Path
-from backend.logic.editConfig import update_xml_by_path, read_xml_by_path
 import pexpect
-from backend.logic.setupLogManger import LogManager
+from logic.setupLogManger import LogManager
 import threading
 import os
 import datetime
@@ -16,15 +15,15 @@ import fcntl
 # Configuration constants
 CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gnb_webdashboard.json"
 
-from backend.logic.attributes.CpuUsage           import CpuUsage
-from backend.logic.attributes.SocTemp            import SocTemp
-from backend.logic.attributes.RamUsage           import RamUsage
-from backend.logic.attributes.DriveSpace         import DriveSpace
-from backend.logic.attributes.BoardDateTime      import BoardDateTime
-from backend.logic.attributes.RaptorStatus       import RaptorStatus
-from backend.logic.attributes.Network            import Network
-from backend.logic.attributes.CoreAttr           import CoreAttr
-from backend.logic.attributes.RadioAttr          import RadioAttr 
+from logic.attributes.CpuUsage           import CpuUsage
+from logic.attributes.SocTemp            import SocTemp
+from logic.attributes.RamUsage           import RamUsage
+from logic.attributes.DriveSpace         import DriveSpace
+from logic.attributes.BoardDateTime      import BoardDateTime
+from logic.attributes.RaptorStatus       import RaptorStatus
+from logic.attributes.Network            import Network
+from logic.attributes.CoreAttr           import CoreAttr
+from logic.attributes.RadioAttr          import RadioAttr
 
 def ensure_config_file_exists():
     """

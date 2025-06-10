@@ -91,8 +91,7 @@ jobs:
         mkdir -p backend-package
         cp -r backend/ backend-package/
         cp README.md backend-package/
-        
-        # Create a simple startup script
+          # Create a simple startup script
         cat > backend-package/start-backend.sh << 'EOF'
         #!/bin/bash
         cd "$(dirname "$0")"
