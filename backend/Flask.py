@@ -166,17 +166,36 @@ def ensure_config_file_exists():
         logger.error(f"Error running GNBCommission: {str(e)}")
         return False
 
-# Ensure config file exists before initializing attributes
-ensure_config_file_exists()
-
+# Initialize attributes
 cpu_usage           = CpuUsage()
 cpu_temp            = SocTemp()
 ram_usage           = RamUsage()
 drive_space         = DriveSpace()
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
-radio               = RadioAttr(CONFIG_FILE_PATH)
-core                = CoreAttr(CONFIG_FILE_PATH)
+
+# Initialize radio and core as None - will be created when needed
+radio = None
+core = None
+
+def get_or_create_config_attributes():
+    """
+    Get radio and core attributes, creating them if needed.
+    This function ensures the config file exists before creating the attributes.
+    """
+    global radio, core
+    
+    # Ensure config file exists
+    if not ensure_config_file_exists():
+        raise Exception("Failed to create or access config file")
+    
+    # Create attributes if they don't exist
+    if radio is None:
+        radio = RadioAttr(CONFIG_FILE_PATH)
+    if core is None:
+        core = CoreAttr(CONFIG_FILE_PATH)
+    
+    return radio, core
 
 raptor_status_timeout = 3
 
@@ -187,54 +206,57 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
     
-    # Ensure config file exists before trying to read attributes
-    if not ensure_config_file_exists():
-        return jsonify({"error": "Failed to create or access config file"}), 500
-    
-    # refresh all attributes first
-    for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
-                 drive_space, board_date_time):
-        attr.refresh()    # then check core connection once
-    core_connection = Network(core.ngc_Ip)
-    core_connection.refresh()
-
-    data = {
-        "gnb_id":              radio.gnb_Id,
-        "gnb_id_length":       radio.gnb_Id_Length,
-        "nr_band":             radio.nr_Band,
-        "scs":                 radio.scs,
-        "tx_power":            radio.tx_Power,
-        "frequency_down_link": radio.dl_centre_frequency,
-
-        "ip_address_gnb":      core.gnb_Ngu_Ip,
-        "ip_address_ngc":      core.ngc_Ip,        
-        "ip_address_ngu":      core.ngu_Ip,
-        "MCC":                 core.MCC,
-        "MNC":                 core.MNC,
-        "cell_id":             core.cell_Id,
-        "nr_tac":              core.nr_Tac,
-        "sst":                 core.sst,
-        "sd":                  core.sd,
-        "profile":             core.profile,
-
-        "cpu_usage":           cpu_usage.cpuUsage,
-        "cpu_usage_history":   list(cpu_usage.usage_history),
-        "cpu_temp":            cpu_temp.core_temp,
-        "ram_usage":           ram_usage.ramUsage,
-        "ram_usage_history":   list(ram_usage.usage_history),
-        "ram_total":           ram_usage.totalRam,
-
-        "drive_total":         drive_space.drive_data[0],
-        "drive_used":          drive_space.drive_data[1],
-        "drive_free":          drive_space.drive_data[2],
-
-        "board_date":          board_date_time.boardDate,
-        "board_time":          board_date_time.boardTime,
-        "core_connection":     core_connection.networkStatus.name,
-
+    try:
+        # Get or create config-dependent attributes
+        radio, core = get_or_create_config_attributes()
         
-    }
-    return jsonify(data)
+        # refresh all attributes first
+        for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
+                     drive_space, board_date_time):
+            attr.refresh()
+        
+        # then check core connection once
+        core_connection = Network(core.ngc_Ip)
+        core_connection.refresh()
+
+        data = {
+            "gnb_id":              radio.gnb_Id,
+            "gnb_id_length":       radio.gnb_Id_Length,
+            "nr_band":             radio.nr_Band,
+            "scs":                 radio.scs,
+            "tx_power":            radio.tx_Power,
+            "frequency_down_link": radio.dl_centre_frequency,
+
+            "ip_address_gnb":      core.gnb_Ngu_Ip,
+            "ip_address_ngc":      core.ngc_Ip,        
+            "ip_address_ngu":      core.ngu_Ip,
+            "MCC":                 core.MCC,
+            "MNC":                 core.MNC,
+            "cell_id":             core.cell_Id,
+            "nr_tac":              core.nr_Tac,
+            "sst":                 core.sst,
+            "sd":                  core.sd,
+            "profile":             core.profile,
+
+            "cpu_usage":           cpu_usage.cpuUsage,
+            "cpu_usage_history":   list(cpu_usage.usage_history),
+            "cpu_temp":            cpu_temp.core_temp,
+            "ram_usage":           ram_usage.ramUsage,
+            "ram_usage_history":   list(ram_usage.usage_history),
+            "ram_total":           ram_usage.totalRam,
+
+            "drive_total":         drive_space.drive_data[0],
+            "drive_used":          drive_space.drive_data[1],
+            "drive_free":          drive_space.drive_data[2],
+
+            "board_date":          board_date_time.boardDate,
+            "board_time":          board_date_time.boardTime,
+            "core_connection":     core_connection.networkStatus.name,
+        }
+        return jsonify(data)
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to get attributes: {str(e)}"}), 500
 
 @app.route("/api/node_status", methods=["GET"])
 def get_raptor_status():
@@ -482,21 +504,31 @@ def set_config():
     """
     Expects JSON { "field":"gnbIP", "value":"1.2.3.4" }
     """
-    data = request.get_json(force=True)
-    field = data.get("field")
-    val = data.get("value")
+    try:
+        data = request.get_json(force=True)
+        field = data.get("field")
+        val = data.get("value")
 
-    if radio.edit_config(field, val):
-        # create success response
-        return jsonify({
-            "status": "success",
-            "message": f"Updated {field} to {val}"
-        }), 200
-    else:
-        # create error response
+        # Get or create config-dependent attributes
+        radio, core = get_or_create_config_attributes()
+
+        if radio.edit_config(field, val):
+            # create success response
+            return jsonify({
+                "status": "success",
+                "message": f"Updated {field} to {val}"
+            }), 200
+        else:
+            # create error response
+            return jsonify({
+                "status": "error",
+                "message": f"Failed to update {field} to {val}"
+            }), 400
+            
+    except Exception as e:
         return jsonify({
             "status": "error",
-            "message": f"Failed to update {field} to {val}"
-        }), 400
+            "message": f"Failed to set config: {str(e)}"
+        }), 500
 
 
