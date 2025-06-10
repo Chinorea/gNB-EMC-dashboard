@@ -10,10 +10,10 @@ from attributes.RadioAttr import RadioAttr
 from attributes.CoreAttr import CoreAttr
 
 ping = "192.168.2.10"
-json_config_path = "/opt/ste/active/commissioning/configs/gNB26_setup_Config.json"
+CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gNB_webdashboard_config.json"
 
-radio = RadioAttr(json_config_path)
-core = CoreAttr(json_config_path)
+radio = RadioAttr(CONFIG_FILE_PATH)
+core = CoreAttr(CONFIG_FILE_PATH)
 boardDateTime = BoardDateTime()
 cpu = CpuUsage()
 ram = RamUsage()
