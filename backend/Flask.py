@@ -8,6 +8,7 @@ import threading
 import os
 import datetime
 import re
+import json # ADDED: Import json module
 
 # Import fcntl for non-blocking I/O
 import fcntl
@@ -30,11 +31,13 @@ def ensure_config_file_exists():
     Ensure the gNB config file exists. If it doesn't, automatically create it
     by running the gnb_commission script with automated responses.
     """
+    logger = LogManager.get_logger('config_creation') # Moved logger init up
+
     if os.path.exists(CONFIG_FILE_PATH):
-        return True  # File already exists
+        logger.info(f"Config file {CONFIG_FILE_PATH} found.") # MODIFIED
+        return True
     
-    logger = LogManager.get_logger('config_creation')
-    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Running gnb_commission to create it...")
+    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Generating...") # MODIFIED
     
     try:
         # Check if gnb_commission script exists in /opt/ste/bin/
@@ -49,14 +52,21 @@ def ensure_config_file_exists():
             logger.error(f"Config directory {config_dir} does not exist")
             return False
         else:
-            logger.info(f"Config directory {config_dir} found")
+            logger.debug(f"Config directory {config_dir} found") # MODIFIED from info to debug
         
         # Run gnb_commission with -g flag and automated responses
-        logger.info("Starting gnb_commission process with -g flag...")
+        logger.debug("Starting gnb_commission process with -g flag...") # MODIFIED from info to debug
         proc = pexpect.spawn("gnb_commission -g", timeout=120)
-        proc.logfile_read = open(f"/tmp/gnb_commission_output_{int(time.time())}.log", "wb")  # Log to file
         
-        # Wait for "Downlink Bandwidth MHz" then press enter for every colon until "Service Differentiator"
+        # Log gnb_commission output to a file
+        try:
+            log_file_path = f"/tmp/gnb_commission_output_{int(time.time())}.log"
+            proc.logfile_read = open(log_file_path, "wb")
+            logger.debug(f"gnb_commission output will be logged to {log_file_path}")
+        except Exception as log_e:
+            logger.warning(f"Could not open log file for gnb_commission: {log_e}. Output will not be saved to file.")
+            proc.logfile_read = None # Ensure it's None if opening failed
+
         step_count = 0
         max_steps = 50  # Safety limit to prevent infinite loops
         automation_started = False  # Flag to track when to start automation
@@ -83,20 +93,20 @@ def ensure_config_file_exists():
                         pexpect.EOF
                     ], timeout=10)
                 
-                # Log what we received
+                # Log what we received (at debug level)
                 if hasattr(proc, 'before') and proc.before:
                     output_text = proc.before.decode('utf-8', errors='ignore')
-                    logger.info(f"Script output: {repr(output_text)}")
+                    logger.debug(f"Script output: {repr(output_text)}") # MODIFIED from info to debug
                 if hasattr(proc, 'after') and proc.after:
                     match_text = proc.after.decode('utf-8', errors='ignore')
-                    logger.info(f"Matched pattern: {repr(match_text)}")
+                    logger.debug(f"Matched pattern: {repr(match_text)}") # MODIFIED from info to debug
                 
                 if not automation_started:
                     if index == 0:  # Found "Downlink Bandwidth MHz"
-                        logger.info(f"Found 'Downlink Bandwidth MHz' at step {step_count}, starting automation...")
+                        logger.debug(f"Found 'Downlink Bandwidth MHz' at step {step_count}, starting automation...") # MODIFIED from info to debug
                         automation_started = True
                         proc.sendline('')  # Press Enter for this prompt
-                        time.sleep(0.2)
+                        time.sleep(0.1)
                         continue
                     elif index == 1:  # Other colon prompt before automation starts - IGNORE
                         logger.debug("Found colon prompt before automation start, IGNORING (not responding)...")
@@ -105,19 +115,17 @@ def ensure_config_file_exists():
                         logger.debug("Timeout before automation start, continuing...")
                         continue
                     else:  # EOF
-                        logger.info("Process ended with EOF before automation started")
+                        logger.debug("Process ended with EOF before automation started") # MODIFIED from info to debug
                         break
                 else:
                     # Automation has started
                     if index == 0:  # Found "Service Differentiator" (last prompt)
-                        logger.info(f"Found 'Service Differentiator' at step {step_count}, this is the last prompt...")
+                        logger.debug(f"Found 'Service Differentiator' at step {step_count}, this is the last prompt...") # MODIFIED from info to debug
                         proc.sendline('')  # Press Enter for this final prompt
-                        time.sleep(0.2)
+                        time.sleep(0.1)
                         
-                        # After Service Differentiator, handle filename customization then ignore further prompts
-                        logger.info("Service Differentiator complete. Looking for filename prompt to customize...")
+                        logger.debug("Service Differentiator complete. Looking for filename prompt to customize...") # MODIFIED from info to debug
                         
-                        # Look for filename prompt and customize it
                         try:
                             filename_index = proc.expect([
                                 r".*filename.*",  # Look for filename prompt
@@ -126,40 +134,28 @@ def ensure_config_file_exists():
                             ], timeout=15)
                             
                             if filename_index == 0:  # Found filename prompt
-                                logger.info("Found filename prompt, customizing filename...")
-                                
-                                # Wait 0.2 second before manipulating filename
-                                time.sleep(0.2)
-                                
-                                # Send Ctrl+U to clear the preset filename
-                                logger.info("Sending Ctrl+U to clear preset filename...")
+                                logger.debug("Found filename prompt, customizing filename...") # MODIFIED from info to debug
+                                time.sleep(0.1)
+                                logger.debug("Sending Ctrl+U to clear preset filename...") # MODIFIED from info to debug
                                 proc.send('\x15')  # Ctrl+U
                                 time.sleep(0.2)
-                                
-                                # Type the custom filename
-                                logger.info("Typing custom filename: gnb_webdashboard.json")
+                                logger.debug("Typing custom filename: gnb_webdashboard.json") # MODIFIED from info to debug
                                 proc.send('gnb_webdashboard.json')
-                                time.sleep(0.2)
-                                
-                                # Press Enter to confirm
-                                logger.info("Pressing Enter to confirm filename...")
+                                time.sleep(0.1)
+                                logger.debug("Pressing Enter to confirm filename...") # MODIFIED from info to debug
                                 proc.sendline('')
-                                time.sleep(0.2)
-                                
-                                logger.info("Filename customization complete!")
-                                
-                            else:
-                                logger.warning("No filename prompt found or timeout/EOF occurred")
+                                time.sleep(0.1)
+                                logger.debug("Filename customization complete!") # MODIFIED from info to debug
+                            else: # Timeout or EOF
+                                logger.warning("No filename prompt found or timeout/EOF occurred during filename customization")
                                 
                         except (pexpect.TIMEOUT, pexpect.EOF) as e:
                             logger.warning(f"Exception while looking for filename prompt: {e}")
                         
-                        # Now ignore any further colon prompts and wait for process to end
-                        logger.info("Ignoring any further prompts and waiting for process to end...")
+                        logger.debug("Ignoring any further prompts and waiting for process to end...") # MODIFIED from info to debug
                         
-                        # Just wait for EOF without responding to any more prompts
                         try:
-                            while True:
+                            while True: # Loop to consume any remaining output until EOF
                                 final_index = proc.expect([
                                     r".*:.*",  # Any colon prompt - but we'll ignore it
                                     pexpect.TIMEOUT,
@@ -168,102 +164,93 @@ def ensure_config_file_exists():
                                 
                                 if final_index == 0:  # Colon prompt after Service Differentiator - IGNORE
                                     logger.debug("Found colon prompt after filename handling, IGNORING...")
+                                    if hasattr(proc, 'before') and proc.before: # Log ignored output at debug
+                                        logger.debug(f"Ignored output: {proc.before.decode('utf-8', errors='ignore')}")
                                     continue
                                 elif final_index == 1:  # Timeout
-                                    logger.debug("Timeout after filename handling, continuing to wait...")
+                                    logger.debug("Timeout after filename handling, continuing to wait for EOF...")
                                     continue
                                 else:  # EOF
-                                    logger.info("gnb_commission process completed after filename handling")
+                                    logger.debug("gnb_commission process completed (EOF) after filename handling") # MODIFIED from info to debug
                                     if hasattr(proc, 'before') and proc.before:
                                         final_output = proc.before.decode('utf-8', errors='ignore')
-                                        logger.info(f"Final script output: {repr(final_output)}")
-                                    break
+                                        logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
+                                    break 
                         except pexpect.EOF:
-                            logger.info("Process ended with EOF after filename handling")
+                            logger.debug("Process ended with EOF after filename handling (expected)") # MODIFIED from info to debug
                         except pexpect.TIMEOUT:
-                            logger.warning("Final timeout after filename handling, but continuing...")
-                        break
+                            logger.warning("Final timeout after filename handling, process might not have exited cleanly.")
+                        break # Exit the main while loop
                         
                     elif index == 1:  # Other colon prompt during automation
-                        logger.info(f"Found colon prompt during automation at step {step_count}, pressing Enter...")
+                        logger.debug(f"Found colon prompt during automation at step {step_count}, pressing Enter...") # MODIFIED from info to debug
                         proc.sendline('')
-                        time.sleep(0.2)
+                        time.sleep(0.1)
                         continue
                         
                     elif index == 2:  # Timeout during automation
                         logger.debug("Timeout during automation, continuing...")
                         continue
                     else:  # EOF during automation
-                        logger.info("Process ended with EOF during automation")
+                        logger.debug("Process ended with EOF during automation") # MODIFIED from info to debug
                         if hasattr(proc, 'before') and proc.before:
                             final_output = proc.before.decode('utf-8', errors='ignore')
-                            logger.info(f"Final script output: {repr(final_output)}")
+                            logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
                         break
                     
             except pexpect.TIMEOUT:
-                logger.debug("Timeout exception, continuing...")
+                logger.debug("Timeout exception in main automation loop, continuing...")
                 continue
             except pexpect.EOF:
-                logger.info("Process ended with EOF exception")
+                logger.debug("Process ended with EOF exception in main automation loop") # MODIFIED from info to debug
                 if hasattr(proc, 'before') and proc.before:
                     final_output = proc.before.decode('utf-8', errors='ignore')
-                    logger.info(f"Final script output: {repr(final_output)}")
+                    logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
                 break
         
         if step_count >= max_steps:
-            logger.warning(f"Reached maximum steps ({max_steps}) without completing automation")
+            logger.warning(f"Reached maximum steps ({max_steps}) without completing automation.")
         
         try:
             proc.close()
             # Close the log file if it was opened
-            if hasattr(proc, 'logfile_read') and proc.logfile_read:
+            if proc.logfile_read and not proc.logfile_read.closed:
                 proc.logfile_read.close()
-        except:
-            pass  # Ignore close errors
+        except Exception as close_e:
+            logger.warning(f"Error closing pexpect process or log file: {close_e}")
         
         # Check if the config file was created
         if os.path.exists(CONFIG_FILE_PATH):
-            logger.info(f"Successfully created config file: {CONFIG_FILE_PATH}")
+            logger.info(f"Successfully generated config file: {CONFIG_FILE_PATH}") # MODIFIED
             
             # Add the profile field to the newly created config file
             try:
-                import json
-                
-                # Read the existing config file
                 with open(CONFIG_FILE_PATH, 'r') as f:
                     config_data = json.load(f)
                 
-                # Add the profile field if it doesn't exist
                 if 'profile' not in config_data:
                     config_data['profile'] = "40MHz_MET_2x2"
-                    
-                    # Write the updated config back to the file
                     with open(CONFIG_FILE_PATH, 'w') as f:
                         json.dump(config_data, f, indent=4)
-                    
                     logger.info("Added profile field to config file: 40MHz_MET_2x2")
                 else:
                     logger.info("Profile field already exists in config file")
-                    
             except Exception as e:
                 logger.error(f"Failed to add profile field to config file: {str(e)}")
-                # Don't return False here as the config file was created successfully
-            
             return True
         else:
-            logger.error("Config file was not created despite running gnb_commission")
-            # Try to list files in the configs directory for debugging 
-            try:
-                configs_dir = os.path.dirname(CONFIG_FILE_PATH)
-                if os.path.exists(configs_dir):
-                    files = os.listdir(configs_dir)
-                    logger.info(f"Files in {configs_dir}: {files}")
-            except Exception as e:
-                logger.error(f"Could not list config directory: {e}")
+            logger.error(f"Failed to generate config file: {CONFIG_FILE_PATH}") # MODIFIED
+            # Removed listing files in config_dir for brevity
             return False
             
     except Exception as e:
-        logger.error(f"Error running gnb_commission: {str(e)}")
+        logger.error(f"Error during config file generation: {str(e)}") # MODIFIED
+        # Ensure logfile is closed if open on exception
+        if 'proc' in locals() and hasattr(proc, 'logfile_read') and proc.logfile_read and not proc.logfile_read.closed:
+            try:
+                proc.logfile_read.close()
+            except Exception as log_close_e:
+                logger.warning(f"Could not close gnb_commission log file on error: {log_close_e}")
         return False
 
 # Initialize attributes
