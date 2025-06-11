@@ -36,12 +36,14 @@ def ensure_config_file_exists():
     logger = LogManager.get_logger('config_creation')
     logger.info(f"Config file {CONFIG_FILE_PATH} not found. Running gnb_commission to create it...")
     
-    try:        # Check if gnb_commission script exists in /opt/ste/bin/
+    try:
+        # Check if gnb_commission script exists in /opt/ste/bin/
         gnb_commission_path = "/opt/ste/bin/gnb_commission"
         if not os.path.exists(gnb_commission_path):
             logger.error(f"gnb_commission script not found at {gnb_commission_path}")
             return False
-          # Check if configs directory exists (don't create it)
+        
+        # Check if configs directory exists (don't create it)
         config_dir = os.path.dirname(CONFIG_FILE_PATH)
         if not os.path.exists(config_dir):
             logger.error(f"Config directory {config_dir} does not exist")
@@ -53,21 +55,35 @@ def ensure_config_file_exists():
         logger.info("Starting gnb_commission process with -g flag...")
         proc = pexpect.spawn("gnb_commission -g", timeout=120)
         proc.logfile_read = open(f"/tmp/gnb_commission_output_{int(time.time())}.log", "wb")  # Log to file
-          # Keep pressing enter until we reach the "Select output filename" prompt
+        
+        # Wait for "Downlink Bandwidth MHz" then press enter for every colon until "Service Differentiator"
         step_count = 0
         max_steps = 50  # Safety limit to prevent infinite loops
+        automation_started = False  # Flag to track when to start automation
         
         while step_count < max_steps:
             try:
                 step_count += 1
                 logger.debug(f"Step {step_count}: Waiting for prompt...")
                 
-                index = proc.expect([
-                    r"(?i).*output filename.*",  # Look for anything with "output filename" anywhere in the line
-                    r".*:.*",  # Any other prompt with colon (for other prompts)
-                    pexpect.TIMEOUT,
-                    pexpect.EOF                ], timeout=10)
-                  # Log what we received
+                if not automation_started:
+                    # Look for "Downlink Bandwidth MHz" to start automation
+                    index = proc.expect([
+                        r"(?i).*downlink bandwidth mhz.*",  # Look for Downlink Bandwidth MHz
+                        r".*:.*",  # Any other prompt with colon
+                        pexpect.TIMEOUT,
+                        pexpect.EOF
+                    ], timeout=10)
+                else:
+                    # After automation started, look for Service Differentiator to stop
+                    index = proc.expect([
+                        r"(?i).*service differentiator.*",  # Look for Service Differentiator (last prompt)
+                        r".*:.*",  # Any other prompt with colon
+                        pexpect.TIMEOUT,
+                        pexpect.EOF
+                    ], timeout=10)
+                
+                # Log what we received
                 if hasattr(proc, 'before') and proc.before:
                     output_text = proc.before.decode('utf-8', errors='ignore')
                     logger.info(f"Script output: {repr(output_text)}")
@@ -75,78 +91,127 @@ def ensure_config_file_exists():
                     match_text = proc.after.decode('utf-8', errors='ignore')
                     logger.info(f"Matched pattern: {repr(match_text)}")
                 
-                if index == 0:  # Found filename prompt
-                    logger.info(f"Found filename prompt at step {step_count}")
-                    
-                    # Wait 1 second after detecting the filename prompt
-                    logger.info("Waiting 1 second after detecting filename prompt...")
-                    time.sleep(1.0)
-                    
-                    # Send Ctrl+U to clear the input field
-                    logger.info("Sending Ctrl+U to clear input field...")
-                    proc.send('\x15')  # Ctrl+U
-                    
-                    # Wait another second after Ctrl+U
-                    logger.info("Waiting 1 second after Ctrl+U...")
-                    time.sleep(1.0)
-                    
-                    # Send our filename
-                    logger.info("Sending new filename...")
-                    proc.send('gnb_webdashboard.json')
-                    
-                    # Wait 1 second before pressing Enter
-                    logger.info("Waiting 1 second before pressing Enter...")
-                    time.sleep(1.0)
-                    
-                    # Press Enter to confirm
-                    logger.info("Pressing Enter to confirm filename...")
-                    proc.send('\r')
-                    logger.info("Sent filename with timing delays: gnb_webdashboard.json")
-                    
-                    # Wait for the process to complete
-                    try:
-                        proc.expect(pexpect.EOF, timeout=60)
-                        logger.info("gnb_commission process completed")
-                        # Log final output
+                if not automation_started:
+                    if index == 0:  # Found "Downlink Bandwidth MHz"
+                        logger.info(f"Found 'Downlink Bandwidth MHz' at step {step_count}, starting automation...")
+                        automation_started = True
+                        proc.sendline('')  # Press Enter for this prompt
+                        time.sleep(0.2)
+                        continue
+                    elif index == 1:  # Other colon prompt before automation starts - IGNORE
+                        logger.debug("Found colon prompt before automation start, IGNORING (not responding)...")
+                        continue
+                    elif index == 2:  # Timeout
+                        logger.debug("Timeout before automation start, continuing...")
+                        continue
+                    else:  # EOF
+                        logger.info("Process ended with EOF before automation started")
+                        break
+                else:
+                    # Automation has started
+                    if index == 0:  # Found "Service Differentiator" (last prompt)
+                        logger.info(f"Found 'Service Differentiator' at step {step_count}, this is the last prompt...")
+                        proc.sendline('')  # Press Enter for this final prompt
+                        time.sleep(0.2)
+                        
+                        # After Service Differentiator, handle filename customization then ignore further prompts
+                        logger.info("Service Differentiator complete. Looking for filename prompt to customize...")
+                        
+                        # Look for filename prompt and customize it
+                        try:
+                            filename_index = proc.expect([
+                                r".*filename.*",  # Look for filename prompt
+                                pexpect.TIMEOUT,
+                                pexpect.EOF
+                            ], timeout=15)
+                            
+                            if filename_index == 0:  # Found filename prompt
+                                logger.info("Found filename prompt, customizing filename...")
+                                
+                                # Wait 0.2 second before manipulating filename
+                                time.sleep(0.2)
+                                
+                                # Send Ctrl+U to clear the preset filename
+                                logger.info("Sending Ctrl+U to clear preset filename...")
+                                proc.send('\x15')  # Ctrl+U
+                                time.sleep(0.2)
+                                
+                                # Type the custom filename
+                                logger.info("Typing custom filename: gnb_webdashboard.json")
+                                proc.send('gnb_webdashboard.json')
+                                time.sleep(0.2)
+                                
+                                # Press Enter to confirm
+                                logger.info("Pressing Enter to confirm filename...")
+                                proc.sendline('')
+                                time.sleep(0.2)
+                                
+                                logger.info("Filename customization complete!")
+                                
+                            else:
+                                logger.warning("No filename prompt found or timeout/EOF occurred")
+                                
+                        except (pexpect.TIMEOUT, pexpect.EOF) as e:
+                            logger.warning(f"Exception while looking for filename prompt: {e}")
+                        
+                        # Now ignore any further colon prompts and wait for process to end
+                        logger.info("Ignoring any further prompts and waiting for process to end...")
+                        
+                        # Just wait for EOF without responding to any more prompts
+                        try:
+                            while True:
+                                final_index = proc.expect([
+                                    r".*:.*",  # Any colon prompt - but we'll ignore it
+                                    pexpect.TIMEOUT,
+                                    pexpect.EOF
+                                ], timeout=10)
+                                
+                                if final_index == 0:  # Colon prompt after Service Differentiator - IGNORE
+                                    logger.debug("Found colon prompt after filename handling, IGNORING...")
+                                    continue
+                                elif final_index == 1:  # Timeout
+                                    logger.debug("Timeout after filename handling, continuing to wait...")
+                                    continue
+                                else:  # EOF
+                                    logger.info("gnb_commission process completed after filename handling")
+                                    if hasattr(proc, 'before') and proc.before:
+                                        final_output = proc.before.decode('utf-8', errors='ignore')
+                                        logger.info(f"Final script output: {repr(final_output)}")
+                                    break
+                        except pexpect.EOF:
+                            logger.info("Process ended with EOF after filename handling")
+                        except pexpect.TIMEOUT:
+                            logger.warning("Final timeout after filename handling, but continuing...")
+                        break
+                        
+                    elif index == 1:  # Other colon prompt during automation
+                        logger.info(f"Found colon prompt during automation at step {step_count}, pressing Enter...")
+                        proc.sendline('')
+                        time.sleep(0.2)
+                        continue
+                        
+                    elif index == 2:  # Timeout during automation
+                        logger.debug("Timeout during automation, continuing...")
+                        continue
+                    else:  # EOF during automation
+                        logger.info("Process ended with EOF during automation")
                         if hasattr(proc, 'before') and proc.before:
                             final_output = proc.before.decode('utf-8', errors='ignore')
                             logger.info(f"Final script output: {repr(final_output)}")
-                    except pexpect.TIMEOUT:
-                        logger.warning("Process completion timeout, but continuing...")
-                    break
-                    
-                elif index == 1:  # Other prompt - send enter to continue
-                    logger.debug("Found generic prompt, sending enter to continue...")
-                    proc.sendline('')
-                    continue
-                    
-                elif index == 2:  # Timeout - send enter to continue
-                    logger.debug("Timeout, sending enter to continue...")
-                    proc.sendline('')
-                    continue
-                    
-                else:  # EOF - process ended
-                    logger.info("Process ended with EOF")
-                    # Log final output
-                    if hasattr(proc, 'before') and proc.before:
-                        final_output = proc.before.decode('utf-8', errors='ignore')
-                        logger.info(f"Final script output: {repr(final_output)}")
-                    break
+                        break
                     
             except pexpect.TIMEOUT:
-                logger.debug("Timeout exception, sending enter to continue...")
-                proc.sendline('')
+                logger.debug("Timeout exception, continuing...")
                 continue
             except pexpect.EOF:
                 logger.info("Process ended with EOF exception")
-                # Log final output
                 if hasattr(proc, 'before') and proc.before:
                     final_output = proc.before.decode('utf-8', errors='ignore')
                     logger.info(f"Final script output: {repr(final_output)}")
                 break
         
         if step_count >= max_steps:
-            logger.warning(f"Reached maximum steps ({max_steps}) without finding filename prompt")
+            logger.warning(f"Reached maximum steps ({max_steps}) without completing automation")
         
         try:
             proc.close()
