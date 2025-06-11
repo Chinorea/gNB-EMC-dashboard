@@ -28,33 +28,32 @@ from logic.attributes.RadioAttr          import RadioAttr
 def ensure_config_file_exists():
     """
     Ensure the gNB config file exists. If it doesn't, automatically create it
-    by running the GNBCommission script with automated responses.
+    by running the gnb_commission script with automated responses.
     """
     if os.path.exists(CONFIG_FILE_PATH):
         return True  # File already exists
     
     logger = LogManager.get_logger('config_creation')
-    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Running GNBCommission to create it...")
+    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Running gnb_commission to create it...")
     
-    try:
-        # Change to the commissioning directory
-        commission_dir = "/opt/ste/active/commissioning"
-        
-        # Check if GNBCommission exists
-        gnb_commission_path = os.path.join(commission_dir, "GNBCommission")
+    try:        # Check if gnb_commission script exists in /opt/ste/bin/
+        gnb_commission_path = "/opt/ste/bin/gnb_commission"
         if not os.path.exists(gnb_commission_path):
-            logger.error(f"GNBCommission script not found at {gnb_commission_path}")
+            logger.error(f"gnb_commission script not found at {gnb_commission_path}")
             return False
-        
-        # Make sure configs directory exists
+          # Check if configs directory exists (don't create it)
         config_dir = os.path.dirname(CONFIG_FILE_PATH)
-        os.makedirs(config_dir, exist_ok=True)
+        if not os.path.exists(config_dir):
+            logger.error(f"Config directory {config_dir} does not exist")
+            return False
+        else:
+            logger.info(f"Config directory {config_dir} found")
         
-        # Run GNBCommission with automated responses
-        logger.info("Starting GNBCommission process...")
-        proc = pexpect.spawn("python3 GNBCommission", cwd=commission_dir, timeout=120)
-        
-        # Keep pressing enter until we reach the "Select output filename" prompt
+        # Run gnb_commission with -g flag and automated responses
+        logger.info("Starting gnb_commission process with -g flag...")
+        proc = pexpect.spawn("gnb_commission -g", timeout=120)
+        proc.logfile_read = open(f"/tmp/gnb_commission_output_{int(time.time())}.log", "wb")  # Log to file
+          # Keep pressing enter until we reach the "Select output filename" prompt
         step_count = 0
         max_steps = 50  # Safety limit to prevent infinite loops
         
@@ -64,53 +63,86 @@ def ensure_config_file_exists():
                 logger.debug(f"Step {step_count}: Waiting for prompt...")
                 
                 index = proc.expect([
-                    r"[Ss]elect output filename.*:.*",  # Look for filename selection prompt
-                    r"filename.*:.*",  # Alternative filename prompt pattern
-                    r"Enter.*filename.*:.*",  # Another filename prompt pattern
-                    r".*:.*",  # Any prompt ending with colon
+                    r"(?i).*output filename.*",  # Look for anything with "output filename" anywhere in the line
+                    r".*:.*",  # Any other prompt with colon (for other prompts)
                     pexpect.TIMEOUT,
-                    pexpect.EOF
-                ], timeout=10)
+                    pexpect.EOF                ], timeout=10)
+                  # Log what we received
+                if hasattr(proc, 'before') and proc.before:
+                    output_text = proc.before.decode('utf-8', errors='ignore')
+                    logger.info(f"Script output: {repr(output_text)}")
+                if hasattr(proc, 'after') and proc.after:
+                    match_text = proc.after.decode('utf-8', errors='ignore')
+                    logger.info(f"Matched pattern: {repr(match_text)}")
                 
-                if index in [0, 1, 2]:  # Found filename prompt
+                if index == 0:  # Found filename prompt
                     logger.info(f"Found filename prompt at step {step_count}")
                     
-                    # Send backspaces to clear existing name (200 times as requested)
-                    logger.info("Clearing existing filename...")
-                    for _ in range(200):
-                        proc.send('\b')  # Send backspace
-                      # Send the new filename
-                    proc.sendline('gnb_webdashboard')
-                    logger.info("Sent filename: gnb_webdashboard")
+                    # Wait 1 second after detecting the filename prompt
+                    logger.info("Waiting 1 second after detecting filename prompt...")
+                    time.sleep(1.0)
+                    
+                    # Send Ctrl+U to clear the input field
+                    logger.info("Sending Ctrl+U to clear input field...")
+                    proc.send('\x15')  # Ctrl+U
+                    
+                    # Wait another second after Ctrl+U
+                    logger.info("Waiting 1 second after Ctrl+U...")
+                    time.sleep(1.0)
+                    
+                    # Send our filename
+                    logger.info("Sending new filename...")
+                    proc.send('gnb_webdashboard.json')
+                    
+                    # Wait 1 second before pressing Enter
+                    logger.info("Waiting 1 second before pressing Enter...")
+                    time.sleep(1.0)
+                    
+                    # Press Enter to confirm
+                    logger.info("Pressing Enter to confirm filename...")
+                    proc.send('\r')
+                    logger.info("Sent filename with timing delays: gnb_webdashboard.json")
                     
                     # Wait for the process to complete
                     try:
                         proc.expect(pexpect.EOF, timeout=60)
-                        logger.info("GNBCommission process completed")
+                        logger.info("gnb_commission process completed")
+                        # Log final output
+                        if hasattr(proc, 'before') and proc.before:
+                            final_output = proc.before.decode('utf-8', errors='ignore')
+                            logger.info(f"Final script output: {repr(final_output)}")
                     except pexpect.TIMEOUT:
                         logger.warning("Process completion timeout, but continuing...")
                     break
                     
-                elif index == 3:  # Other prompt - send enter
-                    logger.debug("Found generic prompt, sending enter...")
+                elif index == 1:  # Other prompt - send enter to continue
+                    logger.debug("Found generic prompt, sending enter to continue...")
                     proc.sendline('')
                     continue
                     
-                elif index == 4:  # Timeout - probably waiting for input
-                    logger.debug("Timeout, sending enter...")
+                elif index == 2:  # Timeout - send enter to continue
+                    logger.debug("Timeout, sending enter to continue...")
                     proc.sendline('')
                     continue
                     
                 else:  # EOF - process ended
                     logger.info("Process ended with EOF")
+                    # Log final output
+                    if hasattr(proc, 'before') and proc.before:
+                        final_output = proc.before.decode('utf-8', errors='ignore')
+                        logger.info(f"Final script output: {repr(final_output)}")
                     break
                     
             except pexpect.TIMEOUT:
-                logger.debug("Timeout exception, sending enter...")
+                logger.debug("Timeout exception, sending enter to continue...")
                 proc.sendline('')
                 continue
             except pexpect.EOF:
                 logger.info("Process ended with EOF exception")
+                # Log final output
+                if hasattr(proc, 'before') and proc.before:
+                    final_output = proc.before.decode('utf-8', errors='ignore')
+                    logger.info(f"Final script output: {repr(final_output)}")
                 break
         
         if step_count >= max_steps:
@@ -118,9 +150,13 @@ def ensure_config_file_exists():
         
         try:
             proc.close()
+            # Close the log file if it was opened
+            if hasattr(proc, 'logfile_read') and proc.logfile_read:
+                proc.logfile_read.close()
         except:
             pass  # Ignore close errors
-          # Check if the config file was created
+        
+        # Check if the config file was created
         if os.path.exists(CONFIG_FILE_PATH):
             logger.info(f"Successfully created config file: {CONFIG_FILE_PATH}")
             
@@ -150,7 +186,7 @@ def ensure_config_file_exists():
             
             return True
         else:
-            logger.error("Config file was not created despite running GNBCommission")
+            logger.error("Config file was not created despite running gnb_commission")
             # Try to list files in the configs directory for debugging 
             try:
                 configs_dir = os.path.dirname(CONFIG_FILE_PATH)
@@ -162,7 +198,7 @@ def ensure_config_file_exists():
             return False
             
     except Exception as e:
-        logger.error(f"Error running GNBCommission: {str(e)}")
+        logger.error(f"Error running gnb_commission: {str(e)}")
         return False
 
 # Initialize attributes
@@ -173,28 +209,16 @@ drive_space         = DriveSpace()
 board_date_time     = BoardDateTime()
 raptor_status       = RaptorStatus("/logdump/du_log.txt")
 
-# Initialize radio and core as None - will be created when needed
-radio = None
-core = None
+# Initialize config file check and radio/core attributes at startup
+print("Checking for gNB config file at startup...")
+if not ensure_config_file_exists():
+    raise Exception("Failed to create or access config file during startup")
 
-def get_or_create_config_attributes():
-    """
-    Get radio and core attributes, creating them if needed.
-    This function ensures the config file exists before creating the attributes.
-    """
-    global radio, core
-    
-    # Ensure config file exists
-    if not ensure_config_file_exists():
-        raise Exception("Failed to create or access config file")
-    
-    # Create attributes if they don't exist
-    if radio is None:
-        radio = RadioAttr(CONFIG_FILE_PATH)
-    if core is None:
-        core = CoreAttr(CONFIG_FILE_PATH)
-    
-    return radio, core
+# Initialize radio and core attributes now that config file exists
+print("Initializing radio and core attributes...")
+radio = RadioAttr(CONFIG_FILE_PATH)
+core = CoreAttr(CONFIG_FILE_PATH)
+print("Flask application initialization complete.")
 
 raptor_status_timeout = 3
 
@@ -206,9 +230,6 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 def get_attributes():
     
     try:
-        # Get or create config-dependent attributes
-        radio, core = get_or_create_config_attributes()
-        
         # refresh all attributes first
         for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
                      drive_space, board_date_time):
@@ -507,9 +528,6 @@ def set_config():
         data = request.get_json(force=True)
         field = data.get("field")
         val = data.get("value")
-
-        # Get or create config-dependent attributes
-        radio, core = get_or_create_config_attributes()
 
         if radio.edit_config(field, val):
             # create success response
