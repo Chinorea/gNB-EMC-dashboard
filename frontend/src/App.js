@@ -173,10 +173,8 @@ export default function App() {
       //   : [];
       // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
       // setLQM(fullLQM);
-    };
-
-    executeMapDataFlow();
-  }, [buildStaticsLQM]); // Only depend on buildStaticsLQM which should be stable
+    };    executeMapDataFlow();
+  }, []); // No dependencies needed since buildStaticsLQM is imported function
 
   // Function to manually trigger map data refresh
   const triggerMapDataRefresh = useCallback((options = {}) => {
@@ -195,65 +193,7 @@ export default function App() {
     }
     
     // For other cases, use the normal trigger mechanism
-    setMapDataRefreshTrigger(prev => prev + 1);
-  }, [loadMapData]);
-
-///— DUMMY TEST DATA —///
-const DUMMY_MARKERS = [
-  {
-    "nodeInfos": [
-    {
-      "id": 20,
-      "ip": "192.168.1.4",
-      "latitude": "1.33631",
-      "longitude": "103.744179",
-      "altitude": 15.2,
-      "resourceRatio": 0.73
-    },
-    {
-      "id": 25,
-      "ip": "192.168.1.5",
-      "latitude": "1.32631",
-      "longitude": "103.745179",
-      "altitude": 22.7,
-      "resourceRatio": 0.45
-    },
-    {
-      "id": 32,
-      "ip": "192.168.1.6",
-      "latitude": "1.33531",
-      "longitude": "103.746179",
-      "altitude":  8.9,
-      "resourceRatio": 0.88
-    },
-    {
-      "id": 36,
-      "ip": "192.168.1.7",
-      "latitude": "1.33731",
-      "longitude": "103.743179",
-      "altitude": 31.4,
-      "resourceRatio": 0.52
-    },
-    {
-      "id": 38,
-      "ip": "192.168.1.8",
-      "latitude": "1.33831",
-      "longitude": "103.740179",
-      "altitude": 19.6,
-      "resourceRatio": 0.29
-    }
-    ]}
-];
-
-// if you originally had 3×3 matrix, extend to 6×6.  Here we just
-// fill new rows/cols with some made-up SNRs between −10 and +30:
-const DUMMY_LQM = [
-  [-10,  12,   5,  30,  -3],  // node 0 to 0–4
-  [ 12, -10,  25,   0,  15],  // node 1
-  [  5,  25, -10,  10,  20],  // node 2
-  [ 30,   0,  10, -10,   8],  // node 3
-  [ -3,  15,  20,   8, -10],  // node 4
-];
+    setMapDataRefreshTrigger(prev => prev + 1);  }, [loadMapData]);
 
   // Effect to keep lqmRef in sync with state
   useEffect(() => {
@@ -332,7 +272,6 @@ const DUMMY_LQM = [
     }));
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
   }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
-
   // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
@@ -343,7 +282,7 @@ const DUMMY_LQM = [
       running = true;
       try {
         await Promise.all(currentNodes.map(node => node.refreshAttributesFromServer()));
-        setAllNodeData(prevNodes => [...prevNodes]); // Use functional update or ensure currentNodes is fresh
+        // No UI update - data is refreshed silently
       } catch (error) {
         console.error("Error polling attributes:", error);
       } finally {
@@ -372,7 +311,6 @@ const DUMMY_LQM = [
     }, 5000);
     return () => clearInterval(statusInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
-
   // Effect 5: Poll MANET connection every 2 seconds (as per user's current code)
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
@@ -383,7 +321,7 @@ const DUMMY_LQM = [
       running = true;
       try {
         await Promise.all(currentNodes.map(node => node.checkManetConnection()));
-        setAllNodeData(prevNodes => [...prevNodes]);
+        // No UI update - data is refreshed silently
       } catch (error) {
         console.error("Error polling MANET connection:", error);
       } finally {
