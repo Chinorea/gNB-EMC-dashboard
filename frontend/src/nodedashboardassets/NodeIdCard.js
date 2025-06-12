@@ -21,7 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import { getThemeColors } from '../theme';
 
-export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
+export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,25 +56,19 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
   const handleEditClose = () => {
     setEditDialog({ open: false, field: '', label: '' });
     setEditValue('');
-  };
-  const handleEditSave = async () => {
-    try {
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      const res = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          field: editDialog.field,
-          value: editValue
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(`Failed to update: ${err.error || 'Unknown error'}`);
-      }
+  };  const handleEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
+
+    const result = await nodeInfo.editConfigWithRefresh(editDialog.field, editValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
       handleEditClose();
-    } catch {
-      alert('Error updating configuration');
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 

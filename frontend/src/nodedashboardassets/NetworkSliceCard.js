@@ -21,7 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from '../theme';
 
-export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
+export default function NetworkSliceCard({ data, isLoading, nodeStatus, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
@@ -54,36 +54,19 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
   const handleNetworkSliceEditClose = () => {
     setNetworkSliceEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setNetworkSliceEditValue('');
-  };
+  };  const handleNetworkSliceEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
 
-  const handleNetworkSliceEditSave = async () => {
-    try {
-      // Get the node IP from the current URL or pass it as a prop
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      
-      const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          field: networkSliceEditDialog.field,
-          value: networkSliceEditValue
-        })
-      });
-
-      if (response.ok) {
-        console.log(`Successfully updated ${networkSliceEditDialog.field} to ${networkSliceEditValue}`);
-        // You might want to trigger a refresh of the data here
-        handleNetworkSliceEditClose();
-      } else {
-        const error = await response.json();
-        console.error('Failed to update config:', error);
-        alert(`Failed to update: ${error.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error updating config:', error);
-      alert('Error updating configuration');
+    const result = await nodeInfo.editConfigWithRefresh(networkSliceEditDialog.field, networkSliceEditValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
+      handleNetworkSliceEditClose();
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 

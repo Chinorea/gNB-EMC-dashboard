@@ -21,7 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from '../theme';
 
-export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
+export default function CellIdentityCard({ data, isLoading, nodeStatus, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
@@ -54,36 +54,19 @@ export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
   const handleCellIdentityEditClose = () => {
     setCellIdentityEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setCellIdentityEditValue('');
-  };
+  };  const handleCellIdentityEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
 
-  const handleCellIdentityEditSave = async () => {
-    try {
-      // Get the node IP from the current URL or pass it as a prop
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      
-      const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          field: cellIdentityEditDialog.field,
-          value: cellIdentityEditValue
-        })
-      });
-
-      if (response.ok) {
-        console.log(`Successfully updated ${cellIdentityEditDialog.field} to ${cellIdentityEditValue}`);
-        // You might want to trigger a refresh of the data here
-        handleCellIdentityEditClose();
-      } else {
-        const error = await response.json();
-        console.error('Failed to update config:', error);
-        alert(`Failed to update: ${error.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error updating config:', error);
-      alert('Error updating configuration');
+    const result = await nodeInfo.editConfigWithRefresh(cellIdentityEditDialog.field, cellIdentityEditValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
+      handleCellIdentityEditClose();
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 

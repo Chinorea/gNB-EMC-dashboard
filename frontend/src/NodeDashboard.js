@@ -268,13 +268,13 @@ export default function NodeDashboard({
                 </Box>              )}
 
               {/* Node ID and Frequency Overview Cards Side by Side */}
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+              <Grid container spacing={2}>                <Grid item xs={12} sm={6}>
                   <NodeIdCard
                     nodeId={coreData?.gnbId}
                     isLoading={loading}
                     nodeStatus={nodeStatus}
                     data={cardDataForAttrs}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -282,6 +282,7 @@ export default function NodeDashboard({
                     data={cardDataForAttrs}
                     isLoading={loading}
                     nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
                   />
                 </Grid>
               </Grid>              <IpAddressesCard
@@ -289,13 +290,14 @@ export default function NodeDashboard({
                 isLoading={loading}
                 nodeStatus={nodeStatus}
                 secondaryIp={manetIp}
-              />              {/* Cell Identity and Network Slice Cards Side by Side */}
-              <Grid container spacing={2} sx={{ width: '100%', display: 'flex', flexDirection: 'row' }}>
-                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
+                nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+              />{/* Cell Identity and Network Slice Cards Side by Side */}
+              <Grid container spacing={2} sx={{ width: '100%', display: 'flex', flexDirection: 'row' }}>                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
                   <CellIdentityCard
                     data={cardDataForAttrs}
                     isLoading={loading}
                     nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
                   />
                 </Grid>
                 <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
@@ -303,6 +305,7 @@ export default function NodeDashboard({
                     data={cardDataForAttrs}
                     isLoading={loading}
                     nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
                   />
                 </Grid>
               </Grid>

@@ -21,7 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors } from '../theme';
 
-export default function IpAddressesCard({ data, isLoading, nodeStatus, secondaryIp }) {
+export default function IpAddressesCard({ data, isLoading, nodeStatus, secondaryIp, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
@@ -54,77 +54,36 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
     setIpEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setIpEditValue('');
   };  const handleIpEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
+
     try {
-      // Get the node IP from the current URL or pass it as a prop
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      
       // If editing gNB IP, we need to update both n3_local_ip and n2_local_ip
       if (ipEditDialog.field === 'n3_local_ip') {
-        // Update both N3 and N2 local IP addresses
-        const updatePromises = [
-          fetch(`http://${nodeIp}:5000/api/config`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              field: 'n3_local_ip',
-              value: ipEditValue
-            })
-          }),
-          fetch(`http://${nodeIp}:5000/api/config`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              field: 'n2_local_ip',
-              value: ipEditValue
-            })
-          })
-        ];
-
-        const responses = await Promise.all(updatePromises);
+        // Update both N3 and N2 local IP addresses using editConfigWithRefresh
+        const result1 = await nodeInfo.editConfigWithRefresh('n3_local_ip', ipEditValue);
+        const result2 = await nodeInfo.editConfigWithRefresh('n2_local_ip', ipEditValue);
         
-        // Check if both requests were successful
-        const allSuccessful = responses.every(response => response.ok);
-        
-        if (allSuccessful) {
+        if (result1.success && result2.success) {
           console.log(`Successfully updated both n3_local_ip and n2_local_ip to ${ipEditValue}`);
           handleIpEditClose();
         } else {
-          const errors = await Promise.all(
-            responses.map(async (response, index) => {
-              if (!response.ok) {
-                const error = await response.json();
-                return `${index === 0 ? 'n3_local_ip' : 'n2_local_ip'}: ${error.error || 'Unknown error'}`;
-              }
-              return null;
-            })
-          );
-          const failedUpdates = errors.filter(error => error !== null);
-          alert(`Failed to update: ${failedUpdates.join(', ')}`);
+          const errors = [];
+          if (!result1.success) errors.push(`n3_local_ip: ${result1.error || 'Unknown error'}`);
+          if (!result2.success) errors.push(`n2_local_ip: ${result2.error || 'Unknown error'}`);
+          alert(`Failed to update: ${errors.join(', ')}`);
         }
       } else {
         // For other IP fields, update normally
-        const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            field: ipEditDialog.field,
-            value: ipEditValue
-          })
-        });
-
-        if (response.ok) {
+        const result = await nodeInfo.editConfigWithRefresh(ipEditDialog.field, ipEditValue);
+        
+        if (result.success) {
           console.log(`Successfully updated ${ipEditDialog.field} to ${ipEditValue}`);
           handleIpEditClose();
         } else {
-          const error = await response.json();
-          console.error('Failed to update config:', error);
-          alert(`Failed to update: ${error.error || 'Unknown error'}`);
+          alert(`Failed to update: ${result.error || 'Unknown error'}`);
         }
       }
     } catch (error) {
