@@ -237,10 +237,9 @@ export default function CellIdentityCard({ data, isLoading, nodeStatus }) {
                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                    {data.cell_id || 'N/A'}
                  </Typography>
-                </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleCellIdentityEditClick('cell_id', data.cell_id, 'Cell ID'); }}
+                    onClick={e => { e.stopPropagation(); handleCellIdentityEditClick('cellLocalId', data.cell_id, 'Cell ID'); }}
                     size="small"
                   >
                     <EditIcon />

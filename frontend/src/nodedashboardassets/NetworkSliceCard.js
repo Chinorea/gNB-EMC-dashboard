@@ -202,9 +202,8 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
                    {data.NRTAC || 'N/A'}
                  </Typography>
                 </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('NRTAC', data.NRTAC, 'NRTAC'); }}
+                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('nrTAC', data.NRTAC, 'NRTAC'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -220,9 +219,8 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
                    {data.SST || 'N/A'}
                  </Typography>
                 </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('SST', data.SST, 'SST'); }}
+                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('sst', data.SST, 'SST'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -238,9 +236,8 @@ export default function NetworkSliceCard({ data, isLoading, nodeStatus }) {
                    {data.SD || 'N/A'}
                  </Typography>
                 </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('SD', data.SD, 'SD'); }}
+                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleNetworkSliceEditClick('sd', data.SD, 'SD'); }}
                     size="small"
                   >
                     <EditIcon />

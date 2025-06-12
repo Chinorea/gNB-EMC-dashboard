@@ -194,10 +194,9 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
                   </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => {
+                  <IconButton                    onClick={e => {
                       e.stopPropagation();
-                      handleEditClick('dlFreq', data.frequency_down_link, 'Center Frequency (KHz)');
+                      handleEditClick('dl_centre_freq', data.frequency_down_link, 'Center Frequency (KHz)');
                     }}
                     size="small"
                   >
@@ -217,10 +216,9 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
                   </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => {
+                  <IconButton                    onClick={e => {
                       e.stopPropagation();
-                      handleEditClick('maxTx', data.tx_power, 'TX Power');
+                      handleEditClick('txMaxPower', data.tx_power, 'TX Power');
                     }}
                     size="small"
                   >

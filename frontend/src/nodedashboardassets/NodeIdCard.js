@@ -188,10 +188,9 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {String(nodeId)}
                   </Typography>
-                </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
+                    onClick={e => { e.stopPropagation(); handleEditClick('gNBId', nodeId, 'Node ID'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -208,10 +207,9 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {data?.gnb_id_length || 'N/A'}
                   </Typography>
-                </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleEditClick('gnbIdLength', data?.gnb_id_length, 'GNB ID Length'); }}
+                    onClick={e => { e.stopPropagation(); handleEditClick('gNBIdLength', data?.gnb_id_length, 'GNB ID Length'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -228,10 +226,9 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data }) {
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {data?.nr_band || 'N/A'}
                   </Typography>
-                </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
-                    onClick={e => { e.stopPropagation(); handleEditClick('nrBand', data?.nr_band, 'NR Band'); }}
+                    onClick={e => { e.stopPropagation(); handleEditClick('band', data?.nr_band, 'NR Band'); }}
                     size="small"
                   >
                     <EditIcon />
