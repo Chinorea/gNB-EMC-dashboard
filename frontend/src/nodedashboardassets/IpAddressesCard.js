@@ -53,31 +53,79 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
   const handleIpEditClose = () => {
     setIpEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setIpEditValue('');
-  };
-  const handleIpEditSave = async () => {
+  };  const handleIpEditSave = async () => {
     try {
       // Get the node IP from the current URL or pass it as a prop
       const nodeIp = window.location.pathname.split('/node/')[1];
       
-      const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          field: ipEditDialog.field,
-          value: ipEditValue
-        })
-      });
+      // If editing gNB IP, we need to update both n3_local_ip and n2_local_ip
+      if (ipEditDialog.field === 'n3_local_ip') {
+        // Update both N3 and N2 local IP addresses
+        const updatePromises = [
+          fetch(`http://${nodeIp}:5000/api/config`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              field: 'n3_local_ip',
+              value: ipEditValue
+            })
+          }),
+          fetch(`http://${nodeIp}:5000/api/config`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              field: 'n2_local_ip',
+              value: ipEditValue
+            })
+          })
+        ];
 
-      if (response.ok) {
-        console.log(`Successfully updated ${ipEditDialog.field} to ${ipEditValue}`);
-        // You might want to trigger a refresh of the data here
-        handleIpEditClose();
+        const responses = await Promise.all(updatePromises);
+        
+        // Check if both requests were successful
+        const allSuccessful = responses.every(response => response.ok);
+        
+        if (allSuccessful) {
+          console.log(`Successfully updated both n3_local_ip and n2_local_ip to ${ipEditValue}`);
+          handleIpEditClose();
+        } else {
+          const errors = await Promise.all(
+            responses.map(async (response, index) => {
+              if (!response.ok) {
+                const error = await response.json();
+                return `${index === 0 ? 'n3_local_ip' : 'n2_local_ip'}: ${error.error || 'Unknown error'}`;
+              }
+              return null;
+            })
+          );
+          const failedUpdates = errors.filter(error => error !== null);
+          alert(`Failed to update: ${failedUpdates.join(', ')}`);
+        }
       } else {
-        const error = await response.json();
-        console.error('Failed to update config:', error);
-        alert(`Failed to update: ${error.error || 'Unknown error'}`);
+        // For other IP fields, update normally
+        const response = await fetch(`http://${nodeIp}:5000/api/config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            field: ipEditDialog.field,
+            value: ipEditValue
+          })
+        });
+
+        if (response.ok) {
+          console.log(`Successfully updated ${ipEditDialog.field} to ${ipEditValue}`);
+          handleIpEditClose();
+        } else {
+          const error = await response.json();
+          console.error('Failed to update config:', error);
+          alert(`Failed to update: ${error.error || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('Error updating config:', error);
@@ -212,9 +260,8 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                    {data.ip_address_gnb}
                  </Typography>
-                </Box>                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('gnbIP', data.ip_address_gnb, 'gNB IP'); }}
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleIpEditClick('n3_local_ip', data.ip_address_gnb, 'gNB IP'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -230,9 +277,8 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                    {data.ip_address_ngc}
                  </Typography>
                 </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('ngcIp', data.ip_address_ngc, 'NgC IP'); }}
+                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleIpEditClick('n2_remote_ip', data.ip_address_ngc, 'NgC IP'); }}
                     size="small"
                   >
                     <EditIcon />
@@ -248,9 +294,8 @@ export default function IpAddressesCard({ data, isLoading, nodeStatus, secondary
                    {data.ip_address_ngu}
                  </Typography>
                 </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => { e.stopPropagation(); handleIpEditClick('nguIp', data.ip_address_ngu, 'NgU IP'); }}
+                {nodeStatus === 'OFF' && !isLoading && (                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleIpEditClick('n3_remote_ip', data.ip_address_ngu, 'NgU IP'); }}
                     size="small"
                   >
                     <EditIcon />
