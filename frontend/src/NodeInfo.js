@@ -237,16 +237,7 @@ class NodeInfo {
     this.isInitializing = true;
     if (this._globalSetState) {
       this._globalSetState(prev => [...prev]);
-    }
-
-    const API_URL = `http://${this.ip}:5000/api/setup_script`;
-
-    const finalizeToggle = () => {
-      this.isInitializing = false;
-      if (this._globalSetState) {
-        this._globalSetState(prev => [...prev]);
-      }
-    };
+    }    const API_URL = `http://${this.ip}:5000/api/setup_script`;
 
     try {
       const response = await fetch(API_URL, {
@@ -269,18 +260,16 @@ class NodeInfo {
 
         if ((response.status === 500 || response.status === 504) && this._setRebootAlertNodeIp) {
           this._setRebootAlertNodeIp(this.ip);
-        }
-      }
-      // For all cases (response.ok or not), introduce the delay before finalizing.
-      setTimeout(finalizeToggle, 15000);
+        }      }
+
+      // Set isInitializing to false - regular polling will handle status refresh and UI update
+      this.isInitializing = false;
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
-      // Also delay in case of a catch block error.
-      setTimeout(finalizeToggle, 15000);
+      
+      // Set isInitializing to false - regular polling will handle status refresh and UI update      this.isInitializing = false;
     }
-    // The lines that were previously here to set isInitializing = false and update _globalSetState
-    // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
   async checkManetConnection(timeout = 4000) {
     if (!this.manet.ip) {
