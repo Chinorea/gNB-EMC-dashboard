@@ -29,7 +29,7 @@ const formatGhz = (khz) => {
   return (num / 1e6).toFixed(2);
 };
 
-export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
+export default function FrequencyOverviewCard({ data, isLoading, nodeStatus, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
@@ -67,27 +67,19 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
   const handleEditClose = () => {
     setEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setEditValue('');
-  };
+  };  const handleEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
 
-  const handleEditSave = async () => {
-    try {
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          field: editDialog.field,
-          value: editValue
-        })
-      });
-      if (response.ok) {
-        handleEditClose();
-      } else {
-        const err = await response.json();
-        alert(`Failed to update: ${err.error || 'Unknown error'}`);
-      }
-    } catch {
-      alert('Error updating configuration');
+    const result = await nodeInfo.editConfigWithRefresh(editDialog.field, editValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
+      handleEditClose();
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 

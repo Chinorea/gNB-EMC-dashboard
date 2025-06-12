@@ -267,10 +267,44 @@ class NodeInfo {
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
-      
-      // Set isInitializing to false - regular polling will handle status refresh and UI update      this.isInitializing = false;
+        // Set isInitializing to false - regular polling will handle status refresh and UI update      this.isInitializing = false;
     }
   }
+
+  // Method to edit configuration and immediately refresh attributes for UI feedback
+  async editConfigWithRefresh(field, value) {
+    try {
+      const response = await fetch(`http://${this.ip}:5000/api/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          field: field,
+          value: value
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      // Immediately refresh attributes to get updated values for UI
+      await this.refreshAttributesFromServer();
+      
+      // Trigger a UI update by calling the global state setter
+      if (this._globalSetState) {
+        this._globalSetState(prev => [...prev]); // Force re-render
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error(`[NodeInfo ${this.ip}] Error in editConfigWithRefresh:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async checkManetConnection(timeout = 4000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
