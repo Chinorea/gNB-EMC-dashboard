@@ -168,17 +168,16 @@ export default function NodeDashboard({
       ip_address_gnb: ipData?.ipAddressGnb,
       ip_address_ngc: ipData?.ipAddressNgc,
       ip_address_ngu: ipData?.ipAddressNgu,
-      
-      // New fields from rawAttributes for the new cards
+        // New fields from rawAttributes for the new cards
       gnb_id_length: rawAttributes?.gnb_id_length,
       nr_band: rawAttributes?.nr_band,
       scs: rawAttributes?.scs,
       MCC: rawAttributes?.MCC,
       MNC: rawAttributes?.MNC,
       cell_id: rawAttributes?.cell_id,
-      NRTAC: rawAttributes?.NRTAC,
-      SST: rawAttributes?.SST,
-      SD: rawAttributes?.SD,
+      NRTAC: rawAttributes?.nr_tac,  // Map lowercase backend to uppercase frontend
+      SST: rawAttributes?.sst,       // Map lowercase backend to uppercase frontend
+      SD: rawAttributes?.sd,         // Map lowercase backend to uppercase frontend
       profile: rawAttributes?.profile,
       
       ...rawAttributes // Spread rawAttributes for any missing direct mappings or if it contains everything
