@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from '@mui/material/styles';
-import { getThemeColors } from './theme';
+import { getThemeColors, lightColors, darkColors } from './theme';
 import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
 import { Satellite, Map as MapIcon, HighQuality } from '@mui/icons-material';
+import MapSideBar from './mapassets/MapSideBar';
 // extract images from Leaflet's default icon set path
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
@@ -26,10 +27,34 @@ function MapView({
   const colors = getThemeColors(theme);
   const mapEl = useRef(null);
   const map   = useRef(null);
-  const layer = useRef(null);
-  const tileLayer = useRef(null);
+  const layer = useRef(null);  const tileLayer = useRef(null);
   const [isSatellite, setIsSatellite] = useState(false);
-  const [satelliteProvider, setSatelliteProvider] = useState('esri');  // Helper function to get tile URL based on current settings
+  const [satelliteProvider, setSatelliteProvider] = useState('googleHybrid');
+    // Sidebar state management
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+
+  // Function to handle node click from sidebar
+  const handleNodeClick = (node) => {
+    if (!map.current || !node.latitude || !node.longitude) return;
+    
+    const lat = parseFloat(node.latitude);
+    const lng = parseFloat(node.longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) return;
+    
+    // Center the map on the selected node
+    map.current.setView([lat, lng], 18, {
+      animate: true,
+      duration: 1
+    });
+    
+    // Set selected node for highlighting
+    setSelectedNodeId(node.id);
+  };
+
+  // Helper function to get tile URL based on current settings
   const getTileUrl = (isDark, satelliteMode, provider = 'esri') => {
     if (satelliteMode) {
       const satelliteProviders = {
@@ -116,28 +141,74 @@ function MapView({
     const hue = pct * 120;                       // 0=red, 120=green
     return `hsl(${hue},100%,50%)`;
   }
-
+  
   useEffect(() => {
     if (!map.current) return;
 
     // clear old layer
     if (layer.current) {
       map.current.removeLayer(layer.current);
-    }
+    }    // Helper function to get status-based colors
+    // Uses inverted theme colors: light colors in dark mode, dark colors in light mode
+    const getStatusColors = (nodeStatus) => {
+      const isDarkMode = theme.palette.mode === 'dark';
+      
+      // Use inverted theme colors for better map contrast
+      const sourceColors = isDarkMode ? lightColors : darkColors;
+      
+      if (!nodeStatus) {
+        // Use inverted disconnected color
+        const statusColor = sourceColors.nodeStatus.disconnected;
+        return {
+          color: statusColor,
+          fillColor: statusColor
+        };
+      }
 
-    const group = L.layerGroup();
-    markers.forEach(marker => {
+      let statusColor;
+      switch (nodeStatus) {
+        case 'RUNNING':
+          statusColor = sourceColors.nodeStatus.running;
+          break;
+        case 'INITIALIZING':
+          statusColor = sourceColors.nodeStatus.initializing;
+          break;
+        case 'OFF':
+          statusColor = sourceColors.nodeStatus.off;
+          break;
+        case 'DISCONNECTED':
+          statusColor = sourceColors.nodeStatus.disconnected;
+          break;
+        case 'UNREACHABLE':
+          statusColor = sourceColors.nodeStatus.unreachable;
+          break;
+        default:
+          statusColor = sourceColors.nodeStatus.disconnected;
+      }
+
+      return {
+        color: statusColor,
+        fillColor: statusColor
+      };
+    };
+
+    const group = L.layerGroup();    markers.forEach(marker => {
       const lat = parseFloat(marker.latitude)  || 0;
       const lng = parseFloat(marker.longitude) || 0;
-      const { latitude, longitude, ...rest } = marker;
-      const label = "Id: " + String(marker.id || marker.label || '');
+      const { latitude, longitude, nodeStatus, ...rest } = marker;
+      const label = String(marker.label);
       const popupHtml = Object
         .entries(rest)
         .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
-        .join('<br>');      const circle = L.circle([lat, lng], {
+        .join('<br>');
+
+      // Get status-based colors
+      const statusColors = getStatusColors(nodeStatus);
+
+      const circle = L.circle([lat, lng], {
         radius:      10,
-        color:       colors.map.color,
-        fillColor:   colors.map.fillColor,
+        color:       statusColors.color,
+        fillColor:   statusColors.fillColor,
         fillOpacity: 0.6,
         weight:      2
       }).addTo(group)
@@ -183,19 +254,28 @@ function MapView({
   }, [markers, linkQualityMatrix]);
 
   //console.log("MapView rendered, markers:", markers);
+  
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
         ref={mapEl}
         style={{ width: '100%', height: '100%' }}
       />
-        {/* Satellite View Toggle */}
+        {/* MapSideBar */}
+      <MapSideBar
+        nodes={markers}
+        onNodeClick={handleNodeClick}
+        selectedNodeId={selectedNodeId}
+        isVisible={isSidebarVisible}
+        onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
+        onCollapseChange={setIsSidebarCollapsed}
+      />        {/* Satellite View Toggle - positioned relative to sidebar state */}
       <Paper
         elevation={3}
         style={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: 20,
+          right: isSidebarVisible ? (isSidebarCollapsed ? 100 : 360) : 20, // Adjust based on sidebar visibility and collapse state
           zIndex: 1000,
           backgroundColor: colors.background.paper,
           padding: '8px',

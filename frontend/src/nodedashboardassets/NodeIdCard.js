@@ -21,7 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import { getThemeColors } from '../theme';
 
-export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
+export default function NodeIdCard({ nodeId, isLoading, nodeStatus, data, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,25 +56,19 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
   const handleEditClose = () => {
     setEditDialog({ open: false, field: '', label: '' });
     setEditValue('');
-  };
-  const handleEditSave = async () => {
-    try {
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      const res = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          field: editDialog.field,
-          value: editValue
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        alert(`Failed to update: ${err.error || 'Unknown error'}`);
-      }
+  };  const handleEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
+
+    const result = await nodeInfo.editConfigWithRefresh(editDialog.field, editValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
       handleEditClose();
-    } catch {
-      alert('Error updating configuration');
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 
@@ -98,28 +92,56 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
             backgroundColor: colors.background.paper,
             cursor: 'pointer'
           }}
-        >
-          <CardContent sx={{
-            textAlign: 'center',
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center'
-          }}>
+        >          <CardContent sx={{ textAlign: 'center', py: 1 }}>
             <Typography
               color="textSecondary"
               gutterBottom
               variant="subtitle2"
-              sx={{ fontSize: '1.2rem', mb: 1 }}
+              sx={{ fontSize: '1.2rem' }}
             >
               Node ID (Configuration)
             </Typography>
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 'bold', fontSize: '1.5rem', wordBreak: 'break-word' }}
-            >
-              {String(nodeId)}
-            </Typography>
+            <Grid container spacing={1} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  Node ID
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', wordBreak: 'break-word' }}>
+                  {String(nodeId)}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  GNB ID Length
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                  {data?.gnb_id_length || 'N/A'}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography
+                  color="textSecondary"
+                  gutterBottom
+                  variant="subtitle2"
+                  sx={{ fontSize: '1.0rem' }}
+                >
+                  NR Band
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                  {data?.nr_band || 'N/A'}
+                </Typography>
+              </Grid>
+            </Grid>
           </CardContent>
         </Card>
       </Grid>
@@ -150,24 +172,63 @@ export default function NodeIdCard({ nodeId, isLoading, nodeStatus }) {
                 Do note that it takes a few seconds for the changes to take effect after pressing "Save". 
                 Configurations cannot be changed when the node is broadcasting.
               </Typography>
-            </Box>
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography color="textSecondary" variant="subtitle2">
-                  Node ID
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {String(nodeId)}
-                </Typography>
+            </Box>            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Node ID */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    Node ID
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {String(nodeId)}
+                  </Typography>
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('gNBId', nodeId, 'Node ID'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
               </Box>
-              {nodeStatus === 'OFF' && !isLoading && (
-                <IconButton
-                  onClick={e => { e.stopPropagation(); handleEditClick('gnbId', nodeId, 'Node ID'); }}
-                  size="small"
-                >
-                  <EditIcon />
-                </IconButton>
-              )}
+              
+              {/* GNB ID Length */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    GNB ID Length
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {data?.gnb_id_length || 'N/A'}
+                  </Typography>
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('gNBIdLength', data?.gnb_id_length, 'GNB ID Length'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </Box>
+              
+              {/* NR Band */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    NR Band
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {data?.nr_band || 'N/A'}
+                  </Typography>
+                </Box>                {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton
+                    onClick={e => { e.stopPropagation(); handleEditClick('band', data?.nr_band, 'NR Band'); }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </Box>
             </Box>
           </Box>
         </Fade>

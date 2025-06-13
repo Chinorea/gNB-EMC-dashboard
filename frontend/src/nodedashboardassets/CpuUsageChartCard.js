@@ -26,32 +26,23 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
     return { name: pt.name, value: rounded };
   });
   // --- End of moved smoothing logic ---
-
   return (
-    <Grid item xs={12} sm={6} md={6} sx={{ display: 'flex', width: '25%' }}>      <Card
-        elevation={3}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          minHeight: 250,
-          transition: 'transform 0.1s ease-in-out',
-          backgroundColor: colors.background.paper,
-          '&:hover': {
-            transform: 'scale(1.01)',
-            boxShadow: 6,
-            backgroundColor: colors.background.hover
-          },
-        }}
-      >
-        <CardContent>
-          <Typography
-            color="textSecondary"
-            variant="subtitle2"
-            sx={{ mb: 2, textAlign: 'center' }}
-          >
-            CPU Statistics
-          </Typography>
+    <Card
+      elevation={3}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        width: '100%',
+        transition: 'transform 0.1s ease-in-out',
+        backgroundColor: colors.background.paper,
+        '&:hover': {
+          transform: 'scale(1.01)',
+          boxShadow: 6,
+          backgroundColor: colors.background.hover
+        },
+      }}
+    >        <CardContent>
           <Grid
             container
             spacing={2}
@@ -81,7 +72,7 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
             CPU Usage (Last 100 Seconds)
           </Typography>
 
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={222}>
             {/* Use the internally calculated smoothCpu */}            <AreaChart data={smoothCpu}> 
               <defs>
                 <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
@@ -100,7 +91,7 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
               <YAxis domain={[0, 100]} unit="%" />
               <Tooltip
                 formatter={(value) => [`${value}%`, 'Usage']}
-                labelFormatter={(val) => `${2*(100 - val)}s ago`}
+                labelFormatter={(val) => `${5*(100 - val)}s ago`}
               />
               <Area
                 type="basis"
@@ -111,9 +102,7 @@ export default function CpuUsageChartCard({ data, isLoading }) { // Removed smoo
                 fillOpacity={0.6}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
+          </ResponsiveContainer>        </CardContent>
       </Card>
-    </Grid>
   );
 }

@@ -113,23 +113,25 @@ code {
   scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
 }
 
-/* Custom Leaflet map styles for theme consistency */
+/* Custom Leaflet map styles for theme consistency - SWAPPED for contrast */
 .leaflet-tooltip-custom {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid #ccc !important;
-  color: #333 !important;
+  /* Default to dark tooltips for light mode */
+  background-color: var(--tooltip-bg-color, rgba(33, 33, 33, 0.95)) !important;
+  border: 1px solid var(--tooltip-border-color, #555) !important;
+  color: var(--tooltip-text-color, #e6e6e6) !important;
   font-family: 'DM Sans', sans-serif !important;
   font-size: 12px !important;
   font-weight: 500 !important;
   border-radius: 4px !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+  box-shadow: var(--tooltip-shadow, 0 2px 4px rgba(255,255,255,0.1)) !important;
 }
 
-/* Dark mode tooltip styles */
+/* Dark mode tooltip styles - Light tooltips in dark mode for contrast */
 [data-theme="dark"] .leaflet-tooltip-custom {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  border: 1px solid #555 !important;
-  color: #e6e6e6 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #ccc !important;
+  color: #333 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
 }
 
 /* Custom popup styles */

@@ -29,7 +29,7 @@ const formatGhz = (khz) => {
   return (num / 1e6).toFixed(2);
 };
 
-export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
+export default function FrequencyOverviewCard({ data, isLoading, nodeStatus, nodeInfo }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   
@@ -67,27 +67,19 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
   const handleEditClose = () => {
     setEditDialog({ open: false, field: '', currentValue: '', label: '' });
     setEditValue('');
-  };
+  };  const handleEditSave = async () => {
+    if (!nodeInfo) {
+      alert('NodeInfo instance not available');
+      return;
+    }
 
-  const handleEditSave = async () => {
-    try {
-      const nodeIp = window.location.pathname.split('/node/')[1];
-      const response = await fetch(`http://${nodeIp}:5000/api/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          field: editDialog.field,
-          value: editValue
-        })
-      });
-      if (response.ok) {
-        handleEditClose();
-      } else {
-        const err = await response.json();
-        alert(`Failed to update: ${err.error || 'Unknown error'}`);
-      }
-    } catch {
-      alert('Error updating configuration');
+    const result = await nodeInfo.editConfigWithRefresh(editDialog.field, editValue);
+    
+    if (result.success) {
+      console.log('Configuration updated successfully!');
+      handleEditClose();
+    } else {
+      alert(`Failed to update: ${result.error || 'Unknown error'}`);
     }
   };
 
@@ -113,42 +105,21 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
             cursor: 'pointer'
           }}
         >
-          <CardContent sx={{ textAlign: 'center', py: 1 }}>
-            <Typography
+          <CardContent sx={{ textAlign: 'center', py: 1 }}>            <Typography
               color="textSecondary"
               gutterBottom
               variant="subtitle2"
               sx={{ fontSize: '1.2rem' }}
             >
-              Frequency Overview (Configuration)
+              Frequency Overview
             </Typography>
-            <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }}>
+            <Grid container spacing={1} columnSpacing={4} sx={{ mt: 1 }} justifyContent="center" alignItems="flex-start">
               <Grid item xs={4}>
                 <Typography color="textSecondary" gutterBottom variant="subtitle2" sx={{ fontSize: '1.0rem' }}>
-                  Downlink
+                  Center Frequency
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
                   {formatGhz(data.frequency_down_link)} GHz
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{ fontWeight: 'bold', fontSize: '1.3rem', mt: 0.5 }}
-                >
-                  {data.bandwidth_down_link} MHz
-                </Typography>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography color="textSecondary" gutterBottom variant="subtitle2" sx={{ fontSize: '1.0rem' }}>
-                  Uplink
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  {formatGhz(data.frequency_up_link)} GHz
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{ fontWeight: 'bold', fontSize: '1.3rem', mt: 0.5 }}
-                >
-                  {data.bandwidth_up_link} MHz
                 </Typography>
               </Grid>
               <Grid item xs={4}>
@@ -162,6 +133,14 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
                   {data.tx_power}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography color="textSecondary" gutterBottom variant="subtitle2" sx={{ fontSize: '1.0rem' }}>
+                  SCS
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                  {data.scs || 'N/A'}
                 </Typography>
               </Grid>
             </Grid>
@@ -195,26 +174,21 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
               >
                 Do note that it takes a few seconds for the changes to take effect after pressing "Save". Configurations cannot be changed when the node is broadcasting.
               </Typography>
-            </Box>
-            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* Downlink */}
+            </Box>            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Center Frequency */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                   <Typography color="textSecondary" variant="subtitle2">
-                    Downlink (kHz)
+                    Center Frequency (kHz)
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {data.frequency_down_link} KHz
                   </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.1rem', mt: 0.5 }}>
-                    {data.bandwidth_down_link} MHz
-                  </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => {
+                  <IconButton                    onClick={e => {
                       e.stopPropagation();
-                      handleEditClick('dlFreq', data.frequency_down_link, 'Downlink Frequency (KHz)');
+                      handleEditClick('dl_centre_freq', data.frequency_down_link, 'Center Frequency (KHz)');
                     }}
                     size="small"
                   >
@@ -222,31 +196,7 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
                   </IconButton>
                 )}
               </Box>
-              {/* Uplink */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography color="textSecondary" variant="subtitle2">
-                    Uplink (kHz)
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                    {data.frequency_up_link} KHz
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.1rem', mt: 0.5 }}>
-                    {data.bandwidth_up_link} MHz
-                  </Typography>
-                </Box>
-                {nodeStatus === 'OFF' && !isLoading && (
-                  <IconButton
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleEditClick('ulFreq', data.frequency_up_link, 'Uplink Frequency (KHz)');
-                    }}
-                    size="small"
-                  >
-                    <EditIcon />
-                  </IconButton>
-                )}
-              </Box>
+              
               {/* TX Power */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
@@ -258,10 +208,32 @@ export default function FrequencyOverviewCard({ data, isLoading, nodeStatus }) {
                   </Typography>
                 </Box>
                 {nodeStatus === 'OFF' && !isLoading && (
+                  <IconButton                    onClick={e => {
+                      e.stopPropagation();
+                      handleEditClick('txMaxPower', data.tx_power, 'TX Power');
+                    }}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                )}
+              </Box>
+              
+              {/* SCS */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography color="textSecondary" variant="subtitle2">
+                    SCS
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {data.scs || 'N/A'}
+                  </Typography>
+                </Box>
+                {nodeStatus === 'OFF' && !isLoading && (
                   <IconButton
                     onClick={e => {
                       e.stopPropagation();
-                      handleEditClick('maxTx', data.tx_power, 'TX Power');
+                      handleEditClick('scs', data.scs, 'SCS');
                     }}
                     size="small"
                   >
