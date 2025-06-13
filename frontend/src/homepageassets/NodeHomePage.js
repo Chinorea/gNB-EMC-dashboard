@@ -48,7 +48,7 @@ function NodeIdBox({ nodeId, nodeStatus, isLoading, handleEditClick }) {
   );
 }
 
-export default function NodeHomePage({ allNodeData, setAllNodeData }) {
+export default function NodeHomePage({ allNodeData, setAllNodeData, onMapDataRefresh }) {
   const navigate = useNavigate();
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -70,6 +70,11 @@ export default function NodeHomePage({ allNodeData, setAllNodeData }) {
   };
 
   const saveEditDialog = () => {
+    const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
+    const newManetIp = editSecondary;
+    const oldNodeName = allNodeData.find(node => node.ip === editTarget)?.nodeName;
+    const newNodeName = editName;
+    
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
       if (inst) {
@@ -78,10 +83,26 @@ export default function NodeHomePage({ allNodeData, setAllNodeData }) {
         inst.manet.ip = editSecondary;
         // Assuming 'Not Configured' is a suitable default if manet.ip is cleared
         inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured'; 
+        
+        // Immediately clear selfManetInfo if changing to invalid/empty MANET IP
+        if (!editSecondary || editSecondary.trim() === '') {
+          inst.manet.selfManetInfo = null;
+        } else if (inst.manet.selfManetInfo) {
+          // Update the selfManetInfo label immediately if it exists and IP is valid
+          inst.manet.selfManetInfo.label = editName != '' ? editName : inst.ip;
+        }
       }
       return [...prev]; // Create a new array to trigger re-render
     });
     setEditOpen(false);
+    
+    // Always trigger map data refresh for any MANET IP or node name change
+    if (onMapDataRefresh && (oldManetIp !== newManetIp || oldNodeName !== newNodeName)) {
+      // Use a small delay to ensure the state update has been processed
+      setTimeout(() => {
+        onMapDataRefresh();
+      }, 10);
+    }
   };
 
   const coreConnectionMap = {
@@ -210,7 +231,7 @@ export default function NodeHomePage({ allNodeData, setAllNodeData }) {
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               // Directly call the toggleScript method on the nodeInfo instance
-                              nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'setupv2');                            }}
+                              nodeInfo.toggleScript(underlyingNodeStatus === 'RUNNING' ? 'stop' : 'start');                            }}
                             disabled={nodeInfo.isInitializing} // Changed from isToggleLoading
                             sx={{
                               position: 'absolute',

@@ -16,11 +16,12 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Typography,
-  ListItemSecondaryAction
+  Typography
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
+import HomeIcon from '@mui/icons-material/Home';
+import MapIcon from '@mui/icons-material/Map';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
@@ -33,6 +34,7 @@ function Sidebar({
   allNodeData, // This will be an array of NodeInfo instances
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
+  onMapDataRefresh, // New prop to trigger map data refresh
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
@@ -76,11 +78,28 @@ function Sidebar({
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
       setIp('');
+      
+      // Trigger map data refresh when a node is added
+      if (onMapDataRefresh) {
+        onMapDataRefresh();
+      }
     }
   };
 
   const removeNode = (ipToRemove) => {
-    setAllNodeData(prevInstances => prevInstances.filter(instance => instance.ip !== ipToRemove));
+    setAllNodeData(prevInstances => {
+      const filteredInstances = prevInstances.filter(instance => instance.ip !== ipToRemove);
+      
+      // Immediately trigger map refresh with the filtered node list to avoid ref timing issues
+      if (onMapDataRefresh) {
+        // Pass the filtered instances directly to avoid ref timing issues
+        setTimeout(() => {
+          onMapDataRefresh({ nodeRemoved: true, updatedNodeList: filteredInstances });
+        }, 0);
+      }
+      
+      return filteredInstances;
+    });
   };
 
   const openEdit = (nodeIp) => {
@@ -95,6 +114,11 @@ function Sidebar({
   };
 
   const saveEdit = () => {
+    const oldManetIp = allNodeData.find(node => node.ip === editTarget)?.manet?.ip;
+    const newManetIp = editSecondary;
+    const oldNodeName = allNodeData.find(node => node.ip === editTarget)?.nodeName;
+    const newNodeName = editName;
+    
     setAllNodeData(prev => {
       const inst = prev.find(node => node.ip === editTarget);
       if (inst) {
@@ -102,10 +126,26 @@ function Sidebar({
         inst.nodeName = editName;
         inst.manet.ip = editSecondary;
         inst.manet.connectionStatus = editSecondary ? 'Not Configured' : 'Not Configured';
+        
+        // Immediately clear selfManetInfo if changing to invalid/empty MANET IP
+        if (!editSecondary || editSecondary.trim() === '') {
+          inst.manet.selfManetInfo = null;
+        } else if (inst.manet.selfManetInfo) {
+          // Update the selfManetInfo label immediately if it exists and IP is valid
+          inst.manet.selfManetInfo.label = editName != '' ? editName : inst.ip;
+        }
       }
       return [...prev];
     });
     setEditOpen(false);
+    
+    // Always trigger map data refresh for any MANET IP or node name change
+    if (onMapDataRefresh && (oldManetIp !== newManetIp || oldNodeName !== newNodeName)) {
+      // Use a small delay to ensure the state update has been processed
+      setTimeout(() => {
+        onMapDataRefresh();
+      }, 10);
+    }
   };
 
   return (
@@ -167,45 +207,50 @@ function Sidebar({
             onClick={addNode}
           >
             Add
-          </Button>
-
-          <Divider sx={{ my: 2 }} />
-
-          <List subheader={<ListSubheader sx={{ backgroundColor: 'transparent' }}>Navigation</ListSubheader>}>
-            <ListItemButton component={RouterLink} to="/">
+          </Button>          <Divider sx={{ my: 2 }} />          <List subheader={
+            <ListSubheader sx={{ 
+              backgroundColor: 'transparent',
+              fontSize: '1.0rem',
+              fontWeight: 'bold'
+            }}>
+              Navigation
+            </ListSubheader>
+          }>            <ListItemButton component={RouterLink} to="/">
+              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
+                <HomeIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
+              </ListItemIcon>
               <ListItemText
                 primary="Home"
-                primaryTypographyProps={{ fontWeight: 'bold' }}
+                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
             <ListItemButton component={RouterLink} to="/map">
+              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
+                <MapIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
+              </ListItemIcon>
               <ListItemText
                 primary="Map"
-                primaryTypographyProps={{ fontWeight: 'bold' }}
+                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
           </List>
-        </Box>
-
-        {/* Dynamically sized Nodes section with isolated scrolling */}
+        </Box>        {/* Dynamically sized Nodes section with isolated scrolling */}
         <Box 
           sx={{ 
             flex: 1, // Take remaining vertical space
             overflow: 'auto', // Only this section scrolls
+            p: 2, // Same padding as the fixed header section
             ...scrollbarStyle // Apply custom scrollbar only to this section
-          }}
-        >
-          <List 
+          }}          ><List 
             subheader={
               <ListSubheader 
                 sx={{ 
-                  backgroundColor: theme.palette.mode === 'dark' 
-                    ? theme.palette.background.paper 
-                    : theme.palette.background.default,
+                  backgroundColor: 'transparent',
                   position: 'sticky', 
                   top: 0, 
                   zIndex: 1,
-                  pl: 4
+                  fontSize: '1.0rem',
+                  fontWeight: 'bold'
                 }}
               >
                 Nodes
@@ -232,22 +277,29 @@ function Sidebar({
                   break;
                 default:
                   bg = colors.nodeStatus.disconnected;
-              }
-
-              return (
+              }              return (
                 <ListItem
                   key={nodeInstance.ip} // Use instance.ip as key
                   disablePadding
                   sx={{
                     width: '100%',
                     backgroundColor: bg,
+                    display: 'flex',
                   }}
-                >
-                  <ListItemIcon sx={{ pl: 1 }}>
-                    <IconButton onClick={() => openEdit(nodeInstance.ip)} size="small">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemIcon>
+                >                  <ListItemButton
+                    onClick={() => openEdit(nodeInstance.ip)}
+                    sx={{ 
+                      minWidth: '40px', 
+                      maxWidth: '40px',
+                      minHeight: '40px',
+                      maxHeight: '40px',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      padding: '4px'
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </ListItemButton>
                   <ListItemButton
                     component={RouterLink}
                     to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
@@ -288,11 +340,20 @@ function Sidebar({
                       }}
                     />
                   </ListItemButton>
-                  <ListItemSecondaryAction>
-                    <IconButton onClick={() => removeNode(nodeInstance.ip)} size="small">
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
+                  <ListItemButton
+                    onClick={() => removeNode(nodeInstance.ip)}
+                    sx={{ 
+                      minWidth: '40px', 
+                      maxWidth: '40px',
+                      minHeight: '40px',
+                      maxHeight: '40px',
+                      justifyContent: 'center',
+                      borderRadius: '50%',
+                      padding: '4px'
+                    }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </ListItemButton>
                 </ListItem>
               );
             })}

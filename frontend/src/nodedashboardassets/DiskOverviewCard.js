@@ -34,11 +34,12 @@ export default function DiskOverviewCard({ data, isLoading }) {
             sx={{ fontSize: '1.1rem' }}
           >
             Disk Overview
-          </Typography>
-          <Grid
+          </Typography>          <Grid
             container
             spacing={0.5}
             columnSpacing={2}
+            justifyContent="center"
+            alignItems="flex-start"
             sx={{
               mt: 3.3,
             }}

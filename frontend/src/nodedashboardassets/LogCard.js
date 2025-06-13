@@ -38,16 +38,17 @@ export default function LogCard({ ip }) {
         setError(err.message);
       });
   };
-
   return (
-    <Grid item xs={12} md={6} sx={{ display: 'flex', width: '40%' }}>      <Card
+    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>      <Card
         elevation={3}
         sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
           flex: 1, 
           height: '100%', 
-          transition: 'transform 0.1s ease-in-out', 
+          maxWidth: '1200px',
+          minWidth: '600px',
+          transition: 'transform 0.1s ease-in-out',
           backgroundColor: colors.background.paper,
           '&:hover': { 
             transform: 'scale(1.01)', 
@@ -59,9 +60,8 @@ export default function LogCard({ ip }) {
       >
         <CardContent
           sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', p: 2, width: '100%' }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        >          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
               <Typography color="textSecondary" variant="subtitle2" sx={{ fontSize: '1.1rem' }}>
                 Logs
               </Typography>
@@ -69,19 +69,26 @@ export default function LogCard({ ip }) {
                 <Button
                   variant={logType === 'du' ? 'contained' : 'outlined'}
                   onClick={() => setLogType('du')}
+                  sx={{ minWidth: '50px' }}
                 >DU</Button>
                 <Button
                   variant={logType === 'cu' ? 'contained' : 'outlined'}
                   onClick={() => setLogType('cu')}
+                  sx={{ minWidth: '50px' }}
                 >CU</Button>
                 <Button
                   variant={logType === 'setup' ? 'contained' : 'outlined'}
                   onClick={() => setLogType('setup')}
+                  sx={{ minWidth: '60px' }}
                 >Setup</Button>
               </ButtonGroup>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" onClick={() => window.open(`http://${ip}:5000/api/download/${logType}_log`, '_blank')}>
+            <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+              <Button 
+                size="small" 
+                onClick={() => window.open(`http://${ip}:5000/api/download/${logType}_log`, '_blank')}
+                sx={{ minWidth: '120px' }}
+              >
                 Download {logType.toUpperCase()}
               </Button>
               <IconButton size="small" onClick={fetchLogs}>

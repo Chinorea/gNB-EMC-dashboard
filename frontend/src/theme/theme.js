@@ -50,16 +50,15 @@ const lightColors = {
     appBarInitializing: '#805c19',
     appBarOff: '#612a1f',
     appBarUnreachable: '#2d2e2e',
-  },
-  coreConnection: {
-    connected: '#e9f2eb',
-    connectedHover: '#e1ede4',
+  },  coreConnection: {
+    connected: '#e1ede4',
+    connectedHover: '#e9f2eb',
     connectedText: '#324a38',
-    disconnected: '#fae1e3',
-    disconnectedHover: '#f8d7da',
+    disconnected: '#f8d7da',
+    disconnectedHover: '#fae1e3',
     disconnectedText: '#dc3545',
-    unstable: '#fff7db',
-    unstableHover: '#fff3cd',
+    unstable: '#fff3cd',
+    unstableHover: '#fff7db',
     unstableText: '#856404',
   },
   charts: {
@@ -133,8 +132,7 @@ const darkColors = {
     appBarInitializing: '#594012',
     appBarOff: '#40150d',
     appBarUnreachable: '#2d2e2e',
-  },
-  coreConnection: {
+  },  coreConnection: {
     connected: '#234020',
     connectedHover: '#3a5936',
     connectedText: '#dbe6da',
@@ -254,3 +252,6 @@ export const createAppTheme = (mode) => {
 
 // Helper function to get theme colors in components
 export const getThemeColors = (theme) => theme.palette.custom;
+
+// Export raw color objects for cases where both light and dark colors are needed
+export { lightColors, darkColors };
