@@ -15,6 +15,8 @@ import CpuUsageChartCard from './nodedashboardassets/CpuUsageChartCard';
 import RamUsageChartCard from './nodedashboardassets/RamUsageChartCard';
 import FrequencyOverviewCard from './nodedashboardassets/FrequencyOverviewCard';
 import IpAddressesCard from './nodedashboardassets/IpAddressesCard';
+import CellIdentityCard from './nodedashboardassets/CellIdentityCard';
+import NetworkSliceCard from './nodedashboardassets/NetworkSliceCard';
 import DiskOverviewCard from './nodedashboardassets/DiskOverviewCard';
 import LogCard from './nodedashboardassets/LogCard';
 import TopBar from './nodedashboardassets/TopBar';
@@ -133,8 +135,7 @@ export default function NodeDashboard({
     UP:        'Connected',
     DOWN:      'Disconnected',
     UNSTABLE:  'Unstable',
-  };
-  // Prepare data for child components, using properties from nodeInfo.attributes categories
+  };  // Prepare data for child components, using properties from nodeInfo.attributes categories
   const cardDataForAttrs = { 
       // From coreData
       gnb_id: coreData?.gnbId,
@@ -167,6 +168,17 @@ export default function NodeDashboard({
       ip_address_gnb: ipData?.ipAddressGnb,
       ip_address_ngc: ipData?.ipAddressNgc,
       ip_address_ngu: ipData?.ipAddressNgu,
+        // New fields from rawAttributes for the new cards
+      gnb_id_length: rawAttributes?.gnb_id_length,
+      nr_band: rawAttributes?.nr_band,
+      scs: rawAttributes?.scs,
+      MCC: rawAttributes?.MCC,
+      MNC: rawAttributes?.MNC,
+      cell_id: rawAttributes?.cell_id,
+      NRTAC: rawAttributes?.nr_tac,  // Map lowercase backend to uppercase frontend
+      SST: rawAttributes?.sst,       // Map lowercase backend to uppercase frontend
+      SD: rawAttributes?.sd,         // Map lowercase backend to uppercase frontend
+      profile: rawAttributes?.profile,
       
       ...rawAttributes // Spread rawAttributes for any missing direct mappings or if it contains everything
   };
@@ -213,8 +225,7 @@ export default function NodeDashboard({
           justifyContent="center"
           alignItems="stretch"
         >          {/* Left Box - Node Info & Frequency */}
-          <Grid item xs={12} md={6} lg={6}>
-            <Box
+          <Grid item xs={12} md={6} lg={6}>            <Box
               sx={{
                 border: `1px solid ${colors.border.main}`,
                 borderRadius: 2,
@@ -226,28 +237,78 @@ export default function NodeDashboard({
                 gap: 2,
                 boxShadow: 3,
               }}
-            >              <Typography
+            ><Typography
                 color="textSecondary"
                 variant="subtitle2"
-                sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
+                sx={{ fontSize: '1.2rem', mb: 0, textAlign: 'center' }}
               >
                 Node Configuration
-              </Typography>              <NodeIdCard
-                nodeId={coreData?.gnbId}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-              />              <FrequencyOverviewCard
-                data={cardDataForAttrs}
-                isLoading={loading}
-                nodeStatus={nodeStatus}
-              />
+              </Typography>              {/* Profile Display */}              {cardDataForAttrs.profile && (
+                <Box sx={{ 
+                  mb: 0, 
+                  p: 0.5, 
+                  backgroundColor: colors.background.light,
+                  borderRadius: 1,
+                  border: `1px solid ${colors.border.light}`,
+                  textAlign: 'center'
+                }}>
+                  <Typography
+                    color="textSecondary"
+                    variant="subtitle2"
+                    sx={{ fontSize: '1.0rem', mb: 0 }}
+                  >
+                    Active Profile
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}
+                  >
+                    {cardDataForAttrs.profile}
+                  </Typography>
+                </Box>              )}
 
-              <IpAddressesCard
+              {/* Node ID and Frequency Overview Cards Side by Side */}
+              <Grid container spacing={2}>                <Grid item xs={12} sm={6}>
+                  <NodeIdCard
+                    nodeId={coreData?.gnbId}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                    data={cardDataForAttrs}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FrequencyOverviewCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+                  />
+                </Grid>
+              </Grid>              <IpAddressesCard
                 data={cardDataForAttrs}
                 isLoading={loading}
                 nodeStatus={nodeStatus}
                 secondaryIp={manetIp}
-              />
+                nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+              />{/* Cell Identity and Network Slice Cards Side by Side */}
+              <Grid container spacing={2} sx={{ width: '100%', display: 'flex', flexDirection: 'row' }}>                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
+                  <CellIdentityCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+                  />
+                </Grid>
+                <Grid item xs={6} sx={{ display: 'flex', flex: 1 }}>
+                  <NetworkSliceCard
+                    data={cardDataForAttrs}
+                    isLoading={loading}
+                    nodeStatus={nodeStatus}
+                    nodeInfo={nodeInfo} // Add nodeInfo prop for immediate edit feedback
+                  />
+                </Grid>
+              </Grid>
             </Box>
           </Grid>          {/* Right Box - Usage Charts */}
           <Grid item xs={12} md={6} lg={6}>
@@ -270,12 +331,22 @@ export default function NodeDashboard({
                 sx={{ fontSize: '1.2rem', mb: 1, textAlign: 'center' }}
               >
                 System Usage
-              </Typography>              <Box sx={{ width: '100%', flexGrow: 1 }}>
-                <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-              </Box>
-              <Box sx={{ width: '100%', flexGrow: 1 }}>
-                <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
-              </Box>
+              </Typography>
+
+              {/* CPU and RAM Charts Side by Side */}
+              <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+                <Grid item xs={12} sm={6} sx={{ display: 'flex' }}>
+                  <Box sx={{ width: '100%', flexGrow: 1 }}>
+                    <CpuUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ display: 'flex' }}>
+                  <Box sx={{ width: '100%', flexGrow: 1 }}>
+                    <RamUsageChartCard data={cardDataForAttrs} isLoading={loading} />
+                  </Box>
+                </Grid>
+              </Grid>
+
               <Box sx={{ width: '100%', flexGrow: 1 }}>
                 <DiskOverviewCard data={cardDataForAttrs} isLoading={loading} />
               </Box>

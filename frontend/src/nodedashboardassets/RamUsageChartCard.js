@@ -72,7 +72,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
           <Typography color="textSecondary" gutterBottom variant="subtitle2">
             RAM Usage (Last 100 Seconds)
           </Typography>
-          <ResponsiveContainer width="100%" height={150}>
+          <ResponsiveContainer width="100%" height={222}>
             {/* Use the internally calculated smoothRam */}
             <AreaChart data={smoothRam}>
               <defs>                <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
@@ -91,7 +91,7 @@ export default function RamUsageChartCard({ data, isLoading }) { // Removed smoo
               <YAxis domain={[0, 100]} unit="%" />
               <Tooltip
                 formatter={(value) => [`${value}%`, 'Usage']}
-                labelFormatter={(val) => `${2*(100 - val)}s ago`}
+                labelFormatter={(val) => `${5*(100 - val)}s ago`}
               />
               <Area
                 type="basis"
