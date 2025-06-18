@@ -20,13 +20,14 @@
    4.3. [Node control (start/stop)](#node-control-startstop)  
    4.4. [Real-time data updates](#real-time-data-updates)  
    4.5. [Persistent node configuration](#persistent-node-configuration)  
-5. [Design considerations](#design-considerations)  
-6. [Appendix: Requirements](#appendix-requirements)  
-   6.1. [Product scope](#product-scope)  
-   6.2. [User stories](#user-stories)  
-   6.3. [Use cases](#use-cases)  
-   6.4. [Non-Functional Requirements](#non-functional-requirements)  
-   6.5. [Glossary](#glossary)  
+5. [API Documentation](#api-documentation)  
+6. [Design considerations](#design-considerations)  
+7. [Appendix: Requirements](#appendix-requirements)  
+   7.1. [Product scope](#product-scope)  
+   7.2. [User stories](#user-stories)  
+   7.3. [Use cases](#use-cases)  
+   7.4. [Non-Functional Requirements](#non-functional-requirements)  
+   7.5. [Glossary](#glossary)  
 
 ---
 
@@ -279,6 +280,279 @@ A classic client–server model:
 - **Mui**: https://mui.com/  
 - **Flask**: https://flask.palletsprojects.com/  
 - **Recharts**: https://recharts.org/
+
+---
+
+## API Documentation
+
+The backend Flask service provides REST API endpoints for monitoring and controlling gNB nodes. This API enables external applications and services to integrate with the gNB Dashboard functionality.
+
+### Base URL
+```
+http://<gnb-board-ip>:5000/api
+```
+
+### Endpoints
+
+#### GET /api/board-info
+Get current board information and configuration details.
+
+**Response:**
+```json
+{
+  "board_type": "string",
+  "config_path": "string",
+  "log_directory": "string",
+  "available_files": ["string"],
+  "timeouts": {
+    "raptor_status": "number",
+    "setup_max_wait": "number"
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X GET http://192.168.1.100:5000/api/board-info
+```
+
+#### GET /api/attributes
+Get comprehensive system attributes and real-time metrics.
+
+**Response:**
+```json
+{
+  "gnb_id": "string",
+  "gnb_id_length": "string",
+  "nr_band": "string",
+  "scs": "string", 
+  "tx_power": "string",
+  "frequency_down_link": "string",
+  "ip_address_gnb": "string",
+  "ip_address_ngc": "string",
+  "ip_address_ngu": "string",
+  "MCC": "string",
+  "MNC": "string",
+  "cell_id": "string",
+  "nr_tac": "string",
+  "sst": "string",
+  "sd": "string",
+  "profile": "string",
+  "cpu_usage": "number",
+  "cpu_usage_history": ["number"],
+  "cpu_temp": "number",
+  "ram_usage": "number",
+  "ram_usage_history": ["number"],
+  "ram_total": "number",
+  "drive_total": "number",
+  "drive_used": "number",
+  "drive_free": "number",
+  "board_date": "string",
+  "board_time": "string",
+  "core_connection": "string"
+}
+```
+
+**Example:**
+```bash
+curl -X GET http://192.168.1.100:5000/api/attributes
+```
+
+#### GET /api/node_status
+Get current operational status of the gNB node.
+
+**Response:**
+```json
+{
+  "node_status": "OFF|INITIALISING|RUNNING"
+}
+```
+
+**Example:**
+```bash
+curl -X GET http://192.168.1.100:5000/api/node_status
+```
+
+#### POST /api/setup_script
+Execute node control commands for managing gNB operations.
+
+**⏱️ Expected Execution Times:**
+- **Stop/Status commands**: 5-10 seconds
+- **Start commands**: ~2 minutes (up to 120 seconds timeout)
+
+**Request Body:**
+```json
+{
+  "action": "start|stop|status|setupv2"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "action": "string",
+  "status": "ok|completed", 
+  "output": "string",
+  "log_file": "string",
+  "exit_code": 0
+}
+```
+
+**Response (Error):**
+```json
+{
+  "action": "string",
+  "error": "string",
+  "details": "string",
+  "output": "string", 
+  "exit_code": -1
+}
+```
+
+**Examples:**
+```bash
+# Start the gNB node (takes ~2 minutes)
+curl -X POST http://192.168.1.100:5000/api/setup_script \
+  -H "Content-Type: application/json" \
+  -d '{"action": "start"}'
+
+# Stop the gNB node (takes 5-10 seconds)
+curl -X POST http://192.168.1.100:5000/api/setup_script \
+  -H "Content-Type: application/json" \
+  -d '{"action": "stop"}'
+
+# Check node status (takes 5-10 seconds)
+curl -X POST http://192.168.1.100:5000/api/setup_script \
+  -H "Content-Type: application/json" \
+  -d '{"action": "status"}'
+```
+
+**Important Notes:**
+- Start operations monitor for "CELL_IS_UP" indicator before completing
+- Long-running operations may timeout after 120 seconds
+- Log files are created for all operations and can be downloaded via `/api/download/`
+
+#### POST /api/config
+Update gNB configuration parameters dynamically.
+
+**Request Body:**
+```json
+{
+  "field": "string",
+  "value": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success|error",
+  "message": "string"
+}
+```
+
+**Example:**
+```bash
+# Update gNB IP configuration
+curl -X POST http://192.168.1.100:5000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"field": "gnbIP", "value": "192.168.1.50"}'
+
+# Update gNB ID Length
+curl -X POST http://192.168.1.100:5000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"field": "gNBIdLength", "value": "28"}'
+```
+
+#### GET /api/download/<file_key>
+Download board-specific files and logs.
+
+**Parameters:**
+- `file_key`: String identifier for the file to download
+
+**Response:** File download or error message
+
+**Example:**
+```bash
+curl -X GET http://192.168.1.100:5000/api/download/log_file \
+  -o downloaded_log.txt
+```
+
+### Error Handling
+
+All endpoints return appropriate HTTP status codes:
+- `200`: Success - Request completed successfully
+- `400`: Bad Request - Invalid request format or parameters
+- `500`: Internal Server Error - Server-side processing error
+- `504`: Gateway Timeout - Operation timed out
+
+Error responses include descriptive messages in JSON format:
+```json
+{
+  "error": "Description of the error",
+  "details": "Additional error context",
+  "status": "error"
+}
+```
+
+### Rate Limiting
+
+The API is designed for dashboard polling and control operations:
+- Attribute monitoring: Recommended polling interval of 1-3 seconds
+- Status checks: Recommended polling interval of 3-5 seconds
+- Control operations: Should be user-initiated, not automated
+
+### Integration Examples
+
+#### Python Integration
+```python
+import requests
+import json
+
+# Monitor node attributes
+response = requests.get('http://192.168.1.100:5000/api/attributes')
+if response.status_code == 200:
+    data = response.json()
+    print(f"CPU Usage: {data['cpu_usage']}%")
+    print(f"RAM Usage: {data['ram_usage']}%")
+
+# Start node
+payload = {"action": "start"}
+response = requests.post(
+    'http://192.168.1.100:5000/api/setup_script',
+    headers={'Content-Type': 'application/json'},
+    data=json.dumps(payload)
+)
+```
+
+#### JavaScript Integration
+```javascript
+// Fetch node status
+async function getNodeStatus() {
+  try {
+    const response = await fetch('http://192.168.1.100:5000/api/node_status');
+    const data = await response.json();
+    console.log('Node Status:', data.node_status);
+  } catch (error) {
+    console.error('Error fetching status:', error);
+  }
+}
+
+// Update configuration
+async function updateConfig(field, value) {
+  try {
+    const response = await fetch('http://192.168.1.100:5000/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field, value })
+    });
+    const result = await response.json();
+    console.log('Config update:', result);
+  } catch (error) {
+    console.error('Error updating config:', error);
+  }
+}
+```
 
 ---
 
