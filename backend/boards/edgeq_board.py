@@ -5,14 +5,14 @@ import pexpect
 import datetime
 from typing import Dict, Any, List
 from .base_board import BaseBoard
-from logic.attributes.CpuUsage import CpuUsage
-from logic.attributes.SocTemp import SocTemp
-from logic.attributes.RamUsage import RamUsage
-from logic.attributes.DriveSpace import DriveSpace
-from logic.attributes.BoardDateTime import BoardDateTime
-from logic.attributes.RaptorStatus import RaptorStatus
-from logic.attributes.CoreAttr import CoreAttr
-from logic.attributes.RadioAttr import RadioAttr
+from logic.shared_attributes.BoardDateTime import BoardDateTime
+from logic.shared_attributes.DriveSpace import DriveSpace
+from logic.edgeq_attributes.EdgeQCpuUsage import EdgeQCpuUsage
+from logic.edgeq_attributes.EdgeQSocTemp import EdgeQSocTemp
+from logic.edgeq_attributes.EdgeQRamUsage import EdgeQRamUsage
+from logic.edgeq_attributes.EdgeQRaptorStatus import EdgeQRaptorStatus
+from logic.edgeq_attributes.EdgeQCoreAttr import EdgeQCoreAttr
+from logic.edgeq_attributes.EdgeQRadioAttr import EdgeQRadioAttr
 from logic.setupLogManger import LogManager
 
 class EdgeQBoard(BaseBoard):
@@ -51,14 +51,14 @@ class EdgeQBoard(BaseBoard):
         raptor_log_path = self.config["raptor_log_path"]
         
         return {
-            'cpu_usage': CpuUsage(),
-            'cpu_temp': SocTemp(),
-            'ram_usage': RamUsage(),
+            'cpu_usage': EdgeQCpuUsage(),
+            'cpu_temp': EdgeQSocTemp(),
+            'ram_usage': EdgeQRamUsage(),
             'drive_space': DriveSpace(),
             'board_date_time': BoardDateTime(),
-            'raptor_status': RaptorStatus(raptor_log_path),
-            'radio': RadioAttr(config_path),
-            'core': CoreAttr(config_path)
+            'raptor_status': EdgeQRaptorStatus(raptor_log_path),
+            'radio': EdgeQRadioAttr(config_path),
+            'core': EdgeQCoreAttr(config_path)
         }
     
     def get_setup_commands(self) -> Dict[str, List[str]]:
