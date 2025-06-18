@@ -7,9 +7,34 @@ class LogManager:
     _instance = None
     _lock = threading.Lock()
     _initialized = False
-    _LOG_DIR = "/webdashboard/logdump"  # Fixed path
     _LOG_FILE = "setup_log.txt"
     _file_handler = None
+    _board_config_manager = None  # Reference to the board config manager
+
+    @classmethod
+    def set_config_manager(cls, config_manager):
+        """
+        Set the board config manager as the single source of truth for log directory.
+        This should be called once during application initialization.
+        """
+        with cls._lock:
+            cls._board_config_manager = config_manager
+            # Reset initialization to force re-initialization with new config
+            if cls._initialized:
+                cls._initialized = False
+                cls._file_handler = None
+
+    @classmethod
+    def get_log_directory(cls):
+        """
+        Get log directory from board config manager (single source of truth).
+        Falls back to hardcoded path if config manager not available.
+        """
+        if cls._board_config_manager:
+            return cls._board_config_manager.get_config_value('log_directory')
+        else:
+            # Fallback for legacy usage or if config manager not set
+            return "/opt/webdashboard/logdump"
 
     @classmethod
     def get_logger(cls, name='setup_script'):
@@ -44,25 +69,28 @@ class LogManager:
 
     @classmethod
     def _initialize_logging(cls):
-        """Initialize shared logging configuration"""
+        """Initialize shared logging configuration using board config as single source of truth"""
         if cls._initialized:
             return
 
         # Set root logger level
         logging.getLogger().setLevel(logging.DEBUG)
 
+        # Get log directory from single source of truth
+        log_dir = cls.get_log_directory()
+
         # Ensure log directory exists
-        if not os.path.exists(cls._LOG_DIR):
+        if not os.path.exists(log_dir):
             try:
-                os.makedirs(cls._LOG_DIR)
+                os.makedirs(log_dir)
             except PermissionError:
-                # Fallback to local logs directory if /logdump is not writable
-                cls._LOG_DIR = "logs"
-                if not os.path.exists(cls._LOG_DIR):
-                    os.makedirs(cls._LOG_DIR)
+                # Fallback to local logs directory if configured path is not writable
+                log_dir = "logs"
+                if not os.path.exists(log_dir):
+                    os.makedirs(log_dir)
 
         # Setup shared file handler with immediate flushing
-        log_file = os.path.join(cls._LOG_DIR, cls._LOG_FILE)
+        log_file = os.path.join(log_dir, cls._LOG_FILE)
         cls._file_handler = RealTimeRotatingFileHandler(
             log_file,
             maxBytes=10*1024*1024,  # 10MB

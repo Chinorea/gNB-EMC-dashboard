@@ -8,279 +8,80 @@ import threading
 import os
 import datetime
 import re
-import json # ADDED: Import json module
+import json
 
 # Import fcntl for non-blocking I/O
 import fcntl
 
-# Configuration constants
-CONFIG_FILE_PATH = "/opt/ste/active/commissioning/configs/gnb_webdashboard.json"
+# Import board factory and config manager
+from board_factory import BoardFactory
+from config_manager import BoardConfigManager
+from logic.attributes.Network import Network
 
-from logic.attributes.CpuUsage           import CpuUsage
-from logic.attributes.SocTemp            import SocTemp
-from logic.attributes.RamUsage           import RamUsage
-from logic.attributes.DriveSpace         import DriveSpace
-from logic.attributes.BoardDateTime      import BoardDateTime
-from logic.attributes.RaptorStatus       import RaptorStatus
-from logic.attributes.Network            import Network
-from logic.attributes.CoreAttr           import CoreAttr
-from logic.attributes.RadioAttr          import RadioAttr
+# Initialize board based on command line args or auto-detection (defaults to EdgeQ)
+board_type = BoardFactory.parse_board_from_args()
+current_board = BoardFactory.create_board(board_type)
+config_manager = BoardConfigManager(current_board)
 
-def ensure_config_file_exists():
-    """
-    Ensure the gNB config file exists. If it doesn't, automatically create it
-    by running the gnb_commission script with automated responses.
-    """
-    logger = LogManager.get_logger('config_creation') # Moved logger init up
+# Set up LogManager with board config as single source of truth
+from logic.setupLogManger import LogManager
+LogManager.set_config_manager(config_manager)
 
-    if os.path.exists(CONFIG_FILE_PATH):
-        logger.info(f"Config file {CONFIG_FILE_PATH} found.") # MODIFIED
-        return True
-    
-    logger.info(f"Config file {CONFIG_FILE_PATH} not found. Generating...") # MODIFIED
-    
-    try:
-        # Check if gnb_commission script exists in /opt/ste/bin/
-        gnb_commission_path = "/opt/ste/bin/gnb_commission"
-        if not os.path.exists(gnb_commission_path):
-            logger.error(f"gnb_commission script not found at {gnb_commission_path}")
-            return False
-        
-        # Check if configs directory exists (don't create it)
-        config_dir = os.path.dirname(CONFIG_FILE_PATH)
-        if not os.path.exists(config_dir):
-            logger.error(f"Config directory {config_dir} does not exist")
-            return False
-        else:
-            logger.debug(f"Config directory {config_dir} found") # MODIFIED from info to debug
-        
-        # Run gnb_commission with -g flag and automated responses
-        logger.debug("Starting gnb_commission process with -g flag...") # MODIFIED from info to debug
-        proc = pexpect.spawn("gnb_commission -g", timeout=120)
-        
-        # Log gnb_commission output to a file
-        try:
-            log_file_path = f"/tmp/gnb_commission_output_{int(time.time())}.log"
-            proc.logfile_read = open(log_file_path, "wb")
-            logger.debug(f"gnb_commission output will be logged to {log_file_path}")
-        except Exception as log_e:
-            logger.warning(f"Could not open log file for gnb_commission: {log_e}. Output will not be saved to file.")
-            proc.logfile_read = None # Ensure it's None if opening failed
+print(f"Initializing {current_board.get_board_name()} board...")
+print(f"Board type: {board_type if board_type else 'auto-detected'}")
 
-        step_count = 0
-        max_steps = 50  # Safety limit to prevent infinite loops
-        automation_started = False  # Flag to track when to start automation
-        
-        while step_count < max_steps:
-            try:
-                step_count += 1
-                logger.debug(f"Step {step_count}: Waiting for prompt...")
-                
-                if not automation_started:
-                    # Look for "Downlink Bandwidth MHz" to start automation
-                    index = proc.expect([
-                        r"(?i).*downlink bandwidth mhz.*",  # Look for Downlink Bandwidth MHz
-                        r".*:.*",  # Any other prompt with colon
-                        pexpect.TIMEOUT,
-                        pexpect.EOF
-                    ], timeout=10)
-                else:
-                    # After automation started, look for Service Differentiator to stop
-                    index = proc.expect([
-                        r"(?i).*service differentiator.*",  # Look for Service Differentiator (last prompt)
-                        r".*:.*",  # Any other prompt with colon
-                        pexpect.TIMEOUT,
-                        pexpect.EOF
-                    ], timeout=10)
-                
-                # Log what we received (at debug level)
-                if hasattr(proc, 'before') and proc.before:
-                    output_text = proc.before.decode('utf-8', errors='ignore')
-                    logger.debug(f"Script output: {repr(output_text)}") # MODIFIED from info to debug
-                if hasattr(proc, 'after') and proc.after:
-                    match_text = proc.after.decode('utf-8', errors='ignore')
-                    logger.debug(f"Matched pattern: {repr(match_text)}") # MODIFIED from info to debug
-                
-                if not automation_started:
-                    if index == 0:  # Found "Downlink Bandwidth MHz"
-                        logger.debug(f"Found 'Downlink Bandwidth MHz' at step {step_count}, starting automation...") # MODIFIED from info to debug
-                        automation_started = True
-                        proc.sendline('')  # Press Enter for this prompt
-                        time.sleep(0.1)
-                        continue
-                    elif index == 1:  # Other colon prompt before automation starts - IGNORE
-                        logger.debug("Found colon prompt before automation start, IGNORING (not responding)...")
-                        continue
-                    elif index == 2:  # Timeout
-                        logger.debug("Timeout before automation start, continuing...")
-                        continue
-                    else:  # EOF
-                        logger.debug("Process ended with EOF before automation started") # MODIFIED from info to debug
-                        break
-                else:
-                    # Automation has started
-                    if index == 0:  # Found "Service Differentiator" (last prompt)
-                        logger.debug(f"Found 'Service Differentiator' at step {step_count}, this is the last prompt...") # MODIFIED from info to debug
-                        proc.sendline('')  # Press Enter for this final prompt
-                        time.sleep(0.1)
-                        
-                        logger.debug("Service Differentiator complete. Looking for filename prompt to customize...") # MODIFIED from info to debug
-                        
-                        try:
-                            filename_index = proc.expect([
-                                r".*filename.*",  # Look for filename prompt
-                                pexpect.TIMEOUT,
-                                pexpect.EOF
-                            ], timeout=15)
-                            
-                            if filename_index == 0:  # Found filename prompt
-                                logger.debug("Found filename prompt, customizing filename...") # MODIFIED from info to debug
-                                time.sleep(0.1)
-                                logger.debug("Sending Ctrl+U to clear preset filename...") # MODIFIED from info to debug
-                                proc.send('\x15')  # Ctrl+U
-                                time.sleep(0.2)
-                                logger.debug("Typing custom filename: gnb_webdashboard.json") # MODIFIED from info to debug
-                                proc.send('gnb_webdashboard.json')
-                                time.sleep(0.1)
-                                logger.debug("Pressing Enter to confirm filename...") # MODIFIED from info to debug
-                                proc.sendline('')
-                                time.sleep(0.1)
-                                logger.debug("Filename customization complete!") # MODIFIED from info to debug
-                            else: # Timeout or EOF
-                                logger.warning("No filename prompt found or timeout/EOF occurred during filename customization")
-                                
-                        except (pexpect.TIMEOUT, pexpect.EOF) as e:
-                            logger.warning(f"Exception while looking for filename prompt: {e}")
-                        
-                        logger.debug("Ignoring any further prompts and waiting for process to end...") # MODIFIED from info to debug
-                        
-                        try:
-                            while True: # Loop to consume any remaining output until EOF
-                                final_index = proc.expect([
-                                    r".*:.*",  # Any colon prompt - but we'll ignore it
-                                    pexpect.TIMEOUT,
-                                    pexpect.EOF
-                                ], timeout=10)
-                                
-                                if final_index == 0:  # Colon prompt after Service Differentiator - IGNORE
-                                    logger.debug("Found colon prompt after filename handling, IGNORING...")
-                                    if hasattr(proc, 'before') and proc.before: # Log ignored output at debug
-                                        logger.debug(f"Ignored output: {proc.before.decode('utf-8', errors='ignore')}")
-                                    continue
-                                elif final_index == 1:  # Timeout
-                                    logger.debug("Timeout after filename handling, continuing to wait for EOF...")
-                                    continue
-                                else:  # EOF
-                                    logger.debug("gnb_commission process completed (EOF) after filename handling") # MODIFIED from info to debug
-                                    if hasattr(proc, 'before') and proc.before:
-                                        final_output = proc.before.decode('utf-8', errors='ignore')
-                                        logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
-                                    break 
-                        except pexpect.EOF:
-                            logger.debug("Process ended with EOF after filename handling (expected)") # MODIFIED from info to debug
-                        except pexpect.TIMEOUT:
-                            logger.warning("Final timeout after filename handling, process might not have exited cleanly.")
-                        break # Exit the main while loop
-                        
-                    elif index == 1:  # Other colon prompt during automation
-                        logger.debug(f"Found colon prompt during automation at step {step_count}, pressing Enter...") # MODIFIED from info to debug
-                        proc.sendline('')
-                        time.sleep(0.1)
-                        continue
-                        
-                    elif index == 2:  # Timeout during automation
-                        logger.debug("Timeout during automation, continuing...")
-                        continue
-                    else:  # EOF during automation
-                        logger.debug("Process ended with EOF during automation") # MODIFIED from info to debug
-                        if hasattr(proc, 'before') and proc.before:
-                            final_output = proc.before.decode('utf-8', errors='ignore')
-                            logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
-                        break
-                    
-            except pexpect.TIMEOUT:
-                logger.debug("Timeout exception in main automation loop, continuing...")
-                continue
-            except pexpect.EOF:
-                logger.debug("Process ended with EOF exception in main automation loop") # MODIFIED from info to debug
-                if hasattr(proc, 'before') and proc.before:
-                    final_output = proc.before.decode('utf-8', errors='ignore')
-                    logger.debug(f"Final script output before EOF: {repr(final_output)}") # MODIFIED from info to debug
-                break
-        
-        if step_count >= max_steps:
-            logger.warning(f"Reached maximum steps ({max_steps}) without completing automation.")
-        
-        try:
-            proc.close()
-            # Close the log file if it was opened
-            if proc.logfile_read and not proc.logfile_read.closed:
-                proc.logfile_read.close()
-        except Exception as close_e:
-            logger.warning(f"Error closing pexpect process or log file: {close_e}")
-        
-        # Check if the config file was created
-        if os.path.exists(CONFIG_FILE_PATH):
-            logger.info(f"Successfully generated config file: {CONFIG_FILE_PATH}") # MODIFIED
-            
-            # Add the profile field to the newly created config file
-            try:
-                with open(CONFIG_FILE_PATH, 'r') as f:
-                    config_data = json.load(f)
-                
-                if 'profile' not in config_data:
-                    config_data['profile'] = "40MHz_MET_2x2"
-                    with open(CONFIG_FILE_PATH, 'w') as f:
-                        json.dump(config_data, f, indent=4)
-                    logger.info("Added profile field to config file: 40MHz_MET_2x2")
-                else:
-                    logger.info("Profile field already exists in config file")
-            except Exception as e:
-                logger.error(f"Failed to add profile field to config file: {str(e)}")
-            return True
-        else:
-            logger.error(f"Failed to generate config file: {CONFIG_FILE_PATH}") # MODIFIED
-            # Removed listing files in config_dir for brevity
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error during config file generation: {str(e)}") # MODIFIED
-        # Ensure logfile is closed if open on exception
-        if 'proc' in locals() and hasattr(proc, 'logfile_read') and proc.logfile_read and not proc.logfile_read.closed:
-            try:
-                proc.logfile_read.close()
-            except Exception as log_close_e:
-                logger.warning(f"Could not close gnb_commission log file on error: {log_close_e}")
-        return False
-
-# Initialize attributes
-cpu_usage           = CpuUsage()
-cpu_temp            = SocTemp()
-ram_usage           = RamUsage()
-drive_space         = DriveSpace()
-board_date_time     = BoardDateTime()
-raptor_status       = RaptorStatus("/logdump/du_log.txt")
-
-# Initialize config file check and radio/core attributes at startup
+# Initialize config file check using board-specific logic
 print("Checking for gNB config file at startup...")
-if not ensure_config_file_exists():
+if not current_board.ensure_config_exists():
     raise Exception("Failed to create or access config file during startup")
 
-# Initialize radio and core attributes now that config file exists
-print("Initializing radio and core attributes...")
-radio = RadioAttr(CONFIG_FILE_PATH)
-core = CoreAttr(CONFIG_FILE_PATH)
-print("Flask application initialization complete.")
+# Initialize board-specific attributes
+print("Initializing board attributes...")
+attributes = current_board.create_attributes()
 
-raptor_status_timeout = 3
+# Extract commonly used attributes for easier access
+radio = attributes['radio']
+core = attributes['core']
+cpu_usage = attributes['cpu_usage']
+cpu_temp = attributes['cpu_temp']
+ram_usage = attributes['ram_usage']
+drive_space = attributes['drive_space']
+board_date_time = attributes['board_date_time']
+raptor_status = attributes['raptor_status']
 
+# Get board-specific configuration values
+raptor_status_timeout = config_manager.get_config_value('timeouts.raptor_status', 3)
+CMD_LOG_DIR = config_manager.get_config_value('log_directory')  # Remove incorrect fallback
+
+# Ensure log directory exists
+if not os.path.exists(CMD_LOG_DIR):
+    try:
+        os.makedirs(CMD_LOG_DIR)
+    except:
+        # Fallback to local logs directory if not writable
+        CMD_LOG_DIR = "logs"
+        if not os.path.exists(CMD_LOG_DIR):
+            os.makedirs(CMD_LOG_DIR)
+
+print(f"Using log directory: {CMD_LOG_DIR}")
+print(f"Flask application initialization complete for {current_board.get_board_name()}.")
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+@app.route("/api/board-info", methods=["GET"])
+def get_board_info():
+    """Get current board information and configuration"""
+    return jsonify({
+        "board_type": current_board.get_board_name(),
+        "config_path": current_board.get_config_file_path(),
+        "log_directory": config_manager.get_config_value('log_directory'),
+        "available_files": list(current_board.get_file_paths().keys()),
+        "timeouts": config_manager.get_config_value('timeouts')
+    })
+
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
-    
     try:
         # refresh all attributes first
         for attr in (core, radio, cpu_usage, cpu_temp, ram_usage,
@@ -337,34 +138,19 @@ def get_raptor_status():
         "node_status": raptor_status.raptorStatus.name
     }), 200
 
-# Map of allowed "actions" to the real commands
-ACTIONS = {
-    "setupv2": ["gnb_ctl", "start"],
-    "start": ["/opt/ste/bin/gnb_ctl", "-c", CONFIG_FILE_PATH, "start"],
-    "stop": ["gnb_ctl", "stop"],
-    "status": ["gnb_ctl", "status"]
-}
-
-# Define a log directory for command outputs
-CMD_LOG_DIR = "/webdashboard/logdump"
-if not os.path.exists(CMD_LOG_DIR):
-    try:
-        os.makedirs(CMD_LOG_DIR)
-    except:
-        # Fallback to local logs directory if not writable
-        CMD_LOG_DIR = "logs"
-        if not os.path.exists(CMD_LOG_DIR):
-            os.makedirs(CMD_LOG_DIR)
-
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
-    MAX_WAIT = 120  # seconds
+    # Use board-specific configuration
+    MAX_WAIT = config_manager.get_config_value('timeouts.setup_max_wait', 120)
     data = request.get_json(force=True, silent=True) or {}
     action = data.get("action")
     logger = LogManager.get_logger('setup_script')
 
+    # Get board-specific commands
+    ACTIONS = current_board.get_setup_commands()
+    
     if action not in ACTIONS:
-        return jsonify({"error": f"Unknown action '{action}'"}), 400
+        return jsonify({"error": f"Unknown action '{action}' for {current_board.get_board_name()}"}), 400
 
     cmd = ACTIONS[action]
     logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
@@ -541,29 +327,25 @@ def setup_script():
             "exit_code": -2
         }), 500
 
-# map a URL‐friendly key to the real filesystem path
-FILE_PATHS = {
-    "cu_log":     "/logdump/cu_log.txt",
-    "du_log":     "/logdump/du_log.txt",
-    "setup_log": "/webdashboard/logdump/setup_log.txt",
-}
-
 @app.route("/api/download/<file_key>", methods=["GET"])
 def download_file(file_key):
-    """
-    Download one of the pre-registered files.
-    e.g. /api/download/cu_log  or  /api/download/du_log
-    """
+    """Download board-specific files"""
+    # Get board-specific file paths
+    FILE_PATHS = current_board.get_file_paths()
+    
     file_path = FILE_PATHS.get(file_key)
-    # 1) key must exist
     if file_path is None:
-        return jsonify({"error": f"Unknown file key '{file_key}'"}), 404
+        available_files = list(FILE_PATHS.keys())
+        return jsonify({
+            "error": f"Unknown file key '{file_key}' for {current_board.get_board_name()}",
+            "available_files": available_files
+        }), 404
 
-    # 2) file must exist on disk
+    # file must exist on disk
     if not os.path.isfile(file_path):
         return jsonify({"error": f"File not found on server: {file_path}"}), 404
 
-    # 3) send it as an attachment (will trigger Save‐As in the browser)
+    # send it as an attachment (will trigger Save-As in the browser)
     return send_file(
         file_path,
         as_attachment=True,
