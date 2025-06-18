@@ -152,7 +152,7 @@ class NodeInfo {
     this.attributes.ipData.ipAddressNgu = attrsData.ip_address_ngu;
   }
 
-  async refreshAttributesFromServer(timeout = 800) {
+  async refreshAttributesFromServer(timeout = 4000) {
     const controller = new AbortController();
     const signal = controller.signal;
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
@@ -237,16 +237,7 @@ class NodeInfo {
     this.isInitializing = true;
     if (this._globalSetState) {
       this._globalSetState(prev => [...prev]);
-    }
-
-    const API_URL = `http://${this.ip}:5000/api/setup_script`;
-
-    const finalizeToggle = () => {
-      this.isInitializing = false;
-      if (this._globalSetState) {
-        this._globalSetState(prev => [...prev]);
-      }
-    };
+    }    const API_URL = `http://${this.ip}:5000/api/setup_script`;
 
     try {
       const response = await fetch(API_URL, {
@@ -269,21 +260,52 @@ class NodeInfo {
 
         if ((response.status === 500 || response.status === 504) && this._setRebootAlertNodeIp) {
           this._setRebootAlertNodeIp(this.ip);
-        }
-      }
-      // For all cases (response.ok or not), introduce the delay before finalizing.
-      setTimeout(finalizeToggle, 10000);
+        }      }
+
+      // Set isInitializing to false - regular polling will handle status refresh and UI update
+      this.isInitializing = false;
 
     } catch (error) { // Network error or other error during fetch
       console.error(`[NodeInfo ${this.ip}] Network error or other error during fetch for toggle script. Error:`, error);
-      // Also delay in case of a catch block error.
-      setTimeout(finalizeToggle, 10000);
+        // Set isInitializing to false - regular polling will handle status refresh and UI update      this.isInitializing = false;
     }
-    // The lines that were previously here to set isInitializing = false and update _globalSetState
-    // are now handled by the finalizeToggle function, called with a delay in all paths.
   }
 
-  async checkManetConnection(timeout = 800) {
+  // Method to edit configuration and immediately refresh attributes for UI feedback
+  async editConfigWithRefresh(field, value) {
+    try {
+      const response = await fetch(`http://${this.ip}:5000/api/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          field: field,
+          value: value
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      // Immediately refresh attributes to get updated values for UI
+      await this.refreshAttributesFromServer();
+      
+      // Trigger a UI update by calling the global state setter
+      if (this._globalSetState) {
+        this._globalSetState(prev => [...prev]); // Force re-render
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error(`[NodeInfo ${this.ip}] Error in editConfigWithRefresh:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkManetConnection(timeout = 4000) {
     if (!this.manet.ip) {
       this.manet.connectionStatus = 'Not Configured';
       return;
@@ -294,7 +316,7 @@ class NodeInfo {
     const fetchTimeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      await fetch(`http://${this.manet.ip}`, { method: 'HEAD', mode: 'no-cors', signal }); // Corrected
+      await fetch(`http://${this.manet.ip}/status`, { method: 'GET', mode: 'no-cors', signal });
       clearTimeout(fetchTimeoutId);
       this.manet.connectionStatus = 'Connected';
     } catch (error) {
