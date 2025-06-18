@@ -64,6 +64,7 @@
 2. Install Python dependencies:  
    ```bash
    pip install flask flask-cors
+   python -m pip install *.whl --no-index --find-links . --no-deps
    ```  
 3. Run Flask API:  
    ```bash
