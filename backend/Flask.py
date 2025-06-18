@@ -16,7 +16,7 @@ import fcntl
 # Import board factory and config manager
 from board_factory import BoardFactory
 from config_manager import BoardConfigManager
-from logic.attributes.Network import Network
+from logic.shared_attributes.Network import Network
 
 # Initialize board based on command line args or auto-detection (defaults to EdgeQ)
 board_type = BoardFactory.parse_board_from_args()
