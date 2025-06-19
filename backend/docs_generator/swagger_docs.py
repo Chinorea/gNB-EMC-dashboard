@@ -364,6 +364,28 @@ curl -X POST {self.backend_url}/api/setup_script \\
             
 **Actual Backend:** {self.backend_url}/api/config
 
+**Valid Configuration Fields:**
+
+| Field Name | Type | Category | Description | Example Value |
+|------------|------|----------|-------------|---------------|
+| `gNBId` | string | Radio | gNodeB identifier | "001" |
+| `gNBIdLength` | string | Radio | Length specification for gNodeB ID | "24" |
+| `band` | string | Radio | 5G NR frequency band | "n78" |
+| `scs` | string | Radio | Subcarrier spacing configuration | "30kHz" |
+| `txMaxPower` | string | Radio | Maximum transmission power in dBm | "23.0" |
+| `dl_centre_freq` | string | Radio | Downlink center frequency in Hz | "3500000000" |
+| `gnbIP` | string | Core | gNodeB IP address | "192.168.1.50" |
+| `n3_local_ip` | string | Core | N3 interface local IP address | "192.168.1.51" |
+| `n2_local_ip` | string | Core | N2 interface local IP address | "192.168.1.52" |
+| `n3_remote_ip` | string | Core | N3 interface remote IP address | "192.168.1.11" |
+| `n2_remote_ip` | string | Core | N2 interface remote IP address | "192.168.1.10" |
+| `MCC` | string | Core | Mobile Country Code | "001" |
+| `MNC` | string | Core | Mobile Network Code | "01" |
+| `cellId` | string | Core | Cell identifier | "1" |
+| `nrTAC` | string | Core | 5G NR Tracking Area Code | "1" |
+| `sst` | string | Core | Network slice service type | "1" |
+| `sd` | string | Core | Network slice differentiator | "000001" |
+
 **Usage Examples:**
 ```bash
 # Update gNB IP
@@ -375,7 +397,23 @@ curl -X POST {self.backend_url}/api/config \\
 curl -X POST {self.backend_url}/api/config \\
   -H "Content-Type: application/json" \\
   -d '{{"field": "gNBIdLength", "value": "28"}}'
-```''',
+
+# Update NR Band
+curl -X POST {self.backend_url}/api/config \\
+  -H "Content-Type: application/json" \\
+  -d '{{"field": "band", "value": "n77"}}'
+
+# Update TX Power
+curl -X POST {self.backend_url}/api/config \\
+  -H "Content-Type: application/json" \\
+  -d '{{"field": "txMaxPower", "value": "25.0"}}'
+```
+
+**Important Notes:**
+- Changes take effect immediately upon successful update
+- Invalid field names will return an error response
+- Some fields may require node restart to fully apply changes
+- Field validation is performed before applying changes''',
             'parameters': [
                 {
                     'name': 'body',
@@ -388,11 +426,12 @@ curl -X POST {self.backend_url}/api/config \\
                             'field': {
                                 'type': 'string',
                                 'description': 'Configuration field to update',
+                                'enum': ['gNBId', 'gNBIdLength', 'band', 'scs', 'txMaxPower', 'dl_centre_freq', 'gnbIP', 'n3_local_ip', 'n2_local_ip', 'MCC', 'MNC', 'cellId', 'nrTAC', 'sst', 'sd'],
                                 'example': 'gnbIP'
                             },
                             'value': {
                                 'type': 'string',
-                                'description': 'New value for the configuration field',
+                                'description': 'New value for the configuration parameter',
                                 'example': '192.168.1.50'
                             }
                         }
@@ -416,7 +455,7 @@ curl -X POST {self.backend_url}/api/config \\
                         'type': 'object',
                         'properties': {
                             'status': {'type': 'string', 'example': 'error'},
-                            'message': {'type': 'string', 'example': 'Invalid field name'}
+                            'message': {'type': 'string', 'example': 'Invalid field name or value'}
                         }
                     }
                 }
@@ -443,7 +482,7 @@ curl -X GET {self.backend_url}/api/download/gnb_config -o gnb_config.txt
 curl -X GET {self.backend_url}/api/download/log_file -o log_file.txt
 ```
 
-**Available file keys:** gnb_config, log_file''',
+**Available file keys:** cu_log, du_log, setup_log''',
             'parameters': [
                 {
                     'name': 'file_key',
@@ -468,7 +507,7 @@ curl -X GET {self.backend_url}/api/download/log_file -o log_file.txt
                         'type': 'object',
                         'properties': {
                             'error': {'type': 'string', 'example': 'Unknown file key'},
-                            'available_files': {'type': 'array', 'items': {'type': 'string'}, 'example': ['gnb_config', 'log_file']}
+                            'available_files': {'type': 'array', 'items': {'type': 'string'}, 'example': ['cu_log', 'du_log', 'setup_log']}
                         }
                     }
                 }

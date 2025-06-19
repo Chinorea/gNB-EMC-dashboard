@@ -36,7 +36,7 @@ python swagger_docs.py 192.168.1.50 5000 9000
 ## Configuration
 
 ### Default Settings
-- **Backend IP**: 192.168.1.100
+- **Backend IP**: 192.168.2.28
 - **Backend Port**: 5000
 - **Local Documentation Port**: 8080
 
@@ -72,7 +72,7 @@ Once started, the documentation is available at:
 4. **Execute** - Click "Execute" to send request to your backend
 5. **View Response** - See the actual response from your backend
 
-**⚠️ Important: All API testing sends real HTTP requests to your backend server at the configured IP address (e.g., 192.168.2.100:5000). You will see actual responses, errors, or network failures from your real Flask backend.**
+**⚠️ Important: All API testing sends real HTTP requests to your backend server at the configured IP address (e.g., 192.168.2.28:5000). You will see actual responses, errors, or network failures from your real Flask backend.**
 
 ### What You'll See When Testing:
 - **✅ Backend Online & Working**: Real data from your gNB node
@@ -84,6 +84,7 @@ Once started, the documentation is available at:
 - Your local computer must have network access to your backend IP
 - Same connectivity requirements as using curl or Postman
 - Firewall/security settings may need to allow connections
+- Backend must be up and running to test API endpoint calls
 
 ### Copying Commands
 Each endpoint shows curl commands that you can copy and run in your terminal, automatically configured with your backend IP.
@@ -100,7 +101,7 @@ docs_generator/
 
 ## Dependencies
 
-Required Python packages (automatically installed):
+Required Python packages:
 - `flask` - Web framework for the documentation server
 - `flasgger` - Swagger/OpenAPI integration for Flask
 
@@ -123,8 +124,6 @@ Required Python packages (automatically installed):
 - `GET /api/download/<file_key>` - Download configuration files and logs
 
 ## Troubleshooting
-
-### Common Issues
 
 **Port Already in Use**
 ```bash

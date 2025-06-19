@@ -287,6 +287,24 @@ A classic client–server model:
 
 The backend Flask service provides REST API endpoints for monitoring and controlling gNB nodes. This API enables external applications and services to integrate with the gNB Dashboard functionality.
 
+### Interactive Swagger Documentation (Flasgger)
+
+For comprehensive interactive API documentation with "Try it out" functionality, see the **Flasgger Documentation System**:
+
+📖 **[Complete Setup Guide](../backend/docs_generator/README.md)**
+
+**Quick Start:**
+1. Navigate to `backend/docs_generator/`
+2. Double-click `start_docs.bat` (Windows) or run `python swagger_docs.py`
+3. Access interactive documentation at: http://localhost:8080/docs/
+
+**Features:**
+- ✅ Interactive "Try it out" testing
+- ✅ Real backend integration
+- ✅ Professional Swagger UI
+- ✅ Copy-paste curl commands
+- ✅ Complete request/response schemas
+
 ### Base URL
 ```
 http://<gnb-board-ip>:5000/api
@@ -297,19 +315,17 @@ http://<gnb-board-ip>:5000/api
 #### GET /api/board-info
 Get current board information and configuration details.
 
-**Response:**
-```json
-{
-  "board_type": "string",
-  "config_path": "string",
-  "log_directory": "string",
-  "available_files": ["string"],
-  "timeouts": {
-    "raptor_status": "number",
-    "setup_max_wait": "number"
-  }
-}
-```
+**Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Board Type | `board_type` | string | Type of board hardware (e.g., "EdgeQ") |
+| Config Path | `config_path` | string | Absolute path to configuration file on board |
+| Log Directory | `log_directory` | string | Directory where system logs are stored |
+| Available Files | `available_files` | array[string] | List of downloadable file keys |
+| Timeouts | `timeouts` | object | Configuration timeout values |
+| Raptor Status Timeout | `timeouts.raptor_status` | number | Timeout for status checks in seconds |
+| Setup Max Wait | `timeouts.setup_max_wait` | number | Maximum wait time for setup operations |
 
 **Example:**
 ```bash
@@ -319,39 +335,38 @@ curl -X GET http://192.168.1.100:5000/api/board-info
 #### GET /api/attributes
 Get comprehensive system attributes and real-time metrics.
 
-**Response:**
-```json
-{
-  "gnb_id": "string",
-  "gnb_id_length": "string",
-  "nr_band": "string",
-  "scs": "string", 
-  "tx_power": "string",
-  "frequency_down_link": "string",
-  "ip_address_gnb": "string",
-  "ip_address_ngc": "string",
-  "ip_address_ngu": "string",
-  "MCC": "string",
-  "MNC": "string",
-  "cell_id": "string",
-  "nr_tac": "string",
-  "sst": "string",
-  "sd": "string",
-  "profile": "string",
-  "cpu_usage": "number",
-  "cpu_usage_history": ["number"],
-  "cpu_temp": "number",
-  "ram_usage": "number",
-  "ram_usage_history": ["number"],
-  "ram_total": "number",
-  "drive_total": "number",
-  "drive_used": "number",
-  "drive_free": "number",
-  "board_date": "string",
-  "board_time": "string",
-  "core_connection": "string"
-}
-```
+**Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| gNB ID | `gnb_id` | string | Unique identifier for the gNodeB |
+| gNB ID Length | `gnb_id_length` | string | Length specification for gNodeB identifier |
+| NR Band | `nr_band` | string | 5G NR frequency band (e.g., "n78") |
+| Subcarrier Spacing | `scs` | string | Subcarrier spacing configuration |
+| TX Power | `tx_power` | string | Transmission power level in dBm |
+| Downlink Frequency | `frequency_down_link` | string | Downlink center frequency in Hz |
+| gNB IP Address | `ip_address_gnb` | string | IP address of the gNodeB interface |
+| NGC IP Address | `ip_address_ngc` | string | Next Generation Core IP address |
+| NGU IP Address | `ip_address_ngu` | string | NG User plane interface IP address |
+| Mobile Country Code | `MCC` | string | Mobile Country Code for network identification |
+| Mobile Network Code | `MNC` | string | Mobile Network Code for operator identification |
+| Cell ID | `cell_id` | string | Unique cell identifier within the network |
+| NR TAC | `nr_tac` | string | 5G NR Tracking Area Code |
+| Slice Service Type | `sst` | string | Network slice service type identifier |
+| Slice Differentiator | `sd` | string | Network slice differentiator value |
+| Profile | `profile` | string | Active configuration profile name |
+| CPU Usage | `cpu_usage` | number | Current CPU utilization percentage (0-100) |
+| CPU Usage History | `cpu_usage_history` | array[number] | Historical CPU usage data points |
+| CPU Temperature | `cpu_temp` | number | Current CPU temperature in Celsius |
+| RAM Usage | `ram_usage` | number | Current RAM utilization percentage (0-100) |
+| RAM Usage History | `ram_usage_history` | array[number] | Historical RAM usage data points |
+| RAM Total | `ram_total` | number | Total system RAM in megabytes |
+| Drive Total | `drive_total` | number | Total disk space in gigabytes |
+| Drive Used | `drive_used` | number | Used disk space in gigabytes |
+| Drive Free | `drive_free` | number | Available disk space in gigabytes |
+| Board Date | `board_date` | string | Current system date on the board |
+| Board Time | `board_time` | string | Current system time on the board |
+| Core Connection | `core_connection` | string | Status of connection to core network |
 
 **Example:**
 ```bash
@@ -361,12 +376,11 @@ curl -X GET http://192.168.1.100:5000/api/attributes
 #### GET /api/node_status
 Get current operational status of the gNB node.
 
-**Response:**
-```json
-{
-  "node_status": "OFF|INITIALISING|RUNNING"
-}
-```
+**Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Node Status | `node_status` | string | Current operational state: `OFF`, `INITIALISING`, or `RUNNING` |
 
 **Example:**
 ```bash
@@ -380,34 +394,31 @@ Execute node control commands for managing gNB operations.
 - **Stop/Status commands**: 5-10 seconds
 - **Start commands**: ~2 minutes (up to 120 seconds timeout)
 
-**Request Body:**
-```json
-{
-  "action": "start|stop|status|setupv2"
-}
-```
+**Request Body Schema:**
 
-**Response (Success):**
-```json
-{
-  "action": "string",
-  "status": "ok|completed", 
-  "output": "string",
-  "log_file": "string",
-  "exit_code": 0
-}
-```
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Action | `action` | string | Command to execute: "start", "stop", "status", or "setupv2" |
 
-**Response (Error):**
-```json
-{
-  "action": "string",
-  "error": "string",
-  "details": "string",
-  "output": "string", 
-  "exit_code": -1
-}
-```
+**Response Schema (Success):**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Action | `action` | string | Echo of the executed action command |
+| Status | `status` | string | Result status: "ok" for successful start/setup, "completed" for stop/status |
+| Output | `output` | string | Command execution output and logs from log file |
+| Log File | `log_file` | string | Path to the generated log file |
+| Exit Code | `exit_code` | number | Process exit code (0 = success) |
+
+**Response Schema (Error):**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Action | `action` | string | Echo of the attempted action command |
+| Error | `error` | string | Error type: "timeout", "process_terminated_unexpectedly", etc. |
+| Details | `details` | string | Detailed error description and context |
+| Output | `output` | string | Partial command output before failure |
+| Exit Code | `exit_code` | number | Process exit code (-1 for timeouts, actual code for process failures) |
 
 **Examples:**
 ```bash
@@ -420,38 +431,55 @@ curl -X POST http://192.168.1.100:5000/api/setup_script \
 curl -X POST http://192.168.1.100:5000/api/setup_script \
   -H "Content-Type: application/json" \
   -d '{"action": "stop"}'
-
-# Check node status (takes 5-10 seconds)
-curl -X POST http://192.168.1.100:5000/api/setup_script \
-  -H "Content-Type: application/json" \
-  -d '{"action": "status"}'
 ```
 
 **Important Notes:**
 - Start operations monitor for "CELL_IS_UP" indicator before completing
 - Long-running operations may timeout after 120 seconds
 - Log files are created for all operations and can be downloaded via `/api/download/`
+- Start operations will timeout and result in a fail when running it the second time. A physical hardreset is required for subsequent starts.
+- Start operations will automatically end if start
 
 #### POST /api/config
 Update gNB configuration parameters dynamically.
 
-**Request Body:**
-```json
-{
-  "field": "string",
-  "value": "string"
-}
-```
+**Request Body Schema:**
 
-**Response:**
-```json
-{
-  "status": "success|error",
-  "message": "string"
-}
-```
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Field | `field` | string | Configuration parameter name to update (see valid fields below) |
+| Value | `value` | string | New value for the configuration parameter |
 
-**Example:**
+**Valid Configuration Fields:**
+
+| Field Name | Type | Category | Description | Example Value |
+|------------|------|----------|-------------|---------------|
+| `gNBId` | string | Radio | gNodeB identifier | "001" |
+| `gNBIdLength` | string | Radio | Length specification for gNodeB ID | "24" |
+| `band` | string | Radio | 5G NR frequency band | "n78" |
+| `scs` | string | Radio | Subcarrier spacing configuration | "30kHz" |
+| `txMaxPower` | string | Radio | Maximum transmission power in dBm | "23.0" |
+| `dl_centre_freq` | string | Radio | Downlink center frequency in Hz | "3500000000" |
+| `gnbIP` | string | Core | gNodeB IP address | "192.168.1.50" |
+| `n3_local_ip` | string | Core | N3 interface local IP address | "192.168.1.51" |
+| `n2_local_ip` | string | Core | N2 interface local IP address | "192.168.1.52" |
+| `n3_remote_ip` | string | Core | N3 interface local IP address | "192.168.1.10" |
+| `n2_remote_ip` | string | Core | N2 interface local IP address | "192.168.1.11" |
+| `MCC` | string | Core | Mobile Country Code | "001" |
+| `MNC` | string | Core | Mobile Network Code | "01" |
+| `cellId` | string | Core | Cell identifier | "1" |
+| `nrTAC` | string | Core | 5G NR Tracking Area Code | "1" |
+| `sst` | string | Core | Network slice service type | "1" |
+| `sd` | string | Core | Network slice differentiator | "000001" |
+
+**Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Status | `status` | string | Operation result: "success" or "error" |
+| Message | `message` | string | Descriptive message about the operation result |
+
+**Examples:**
 ```bash
 # Update gNB IP configuration
 curl -X POST http://192.168.1.100:5000/api/config \
@@ -462,7 +490,18 @@ curl -X POST http://192.168.1.100:5000/api/config \
 curl -X POST http://192.168.1.100:5000/api/config \
   -H "Content-Type: application/json" \
   -d '{"field": "gNBIdLength", "value": "28"}'
+
+# Update NR Band
+curl -X POST http://192.168.1.100:5000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"field": "band", "value": "n77"}'
 ```
+
+**Important Notes:**
+- Changes take effect immediately upon successful update
+- Invalid field names will return an error response
+- Fields will require node restart to fully apply changes
+- Field validation is performed before applying changes
 
 #### GET /api/download/<file_key>
 Download board-specific files and logs.
@@ -470,7 +509,14 @@ Download board-specific files and logs.
 **Parameters:**
 - `file_key`: String identifier for the file to download
 
-**Response:** File download or error message
+**Response:** File download (binary content) or error message
+
+**Error Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Error | `error` | string | Error description for invalid file keys |
+| Available Files | `available_files` | array[string] | List of valid file keys that can be downloaded |
 
 **Example:**
 ```bash
@@ -486,14 +532,13 @@ All endpoints return appropriate HTTP status codes:
 - `500`: Internal Server Error - Server-side processing error
 - `504`: Gateway Timeout - Operation timed out
 
-Error responses include descriptive messages in JSON format:
-```json
-{
-  "error": "Description of the error",
-  "details": "Additional error context",
-  "status": "error"
-}
-```
+**Standard Error Response Schema:**
+
+| Name | JSON Attribute | Type | Remarks |
+|------|----------------|------|---------|
+| Error | `error` | string | Brief error description |
+| Details | `details` | string | Additional error context and troubleshooting information |
+| Status | `status` | string | Always "error" for error responses |
 
 ### Rate Limiting
 
