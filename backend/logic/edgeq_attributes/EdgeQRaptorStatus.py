@@ -1,6 +1,6 @@
 import pexpect
 from logic.shared_attributes.Attribute import Attribute
-from logic.shared_attributes.RaptorStatusType import RaptorStatusType
+from .RaptorStatusType import RaptorStatusType  # ✅ Updated to local edgeq_attributes import
 import subprocess
 import re
 import os
