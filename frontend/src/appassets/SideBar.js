@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
 import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
+import NetworkCheckIcon from '@mui/icons-material/NetworkCheck'; // Add ARP Scanner icon
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
@@ -230,6 +231,15 @@ function Sidebar({
               </ListItemIcon>
               <ListItemText
                 primary="Map"
+                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
+              />
+            </ListItemButton>
+            <ListItemButton component={RouterLink} to="/arp-scanner">
+              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
+                <NetworkCheckIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="ARP Scanner"
                 primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
