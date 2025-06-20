@@ -46,30 +46,64 @@ export default function NetworkScanning() {
     try {
       setPublisherStatus('starting');
       
+      const publisherConfig = {
+        serviceName: 'gNB-EMC-Dashboard-Scanner',
+        serviceType: '_gnb-scanner._tcp',
+        port: 3001,  // FIXED: Changed from 3000 to 3001 to match actual service port
+        txtRecord: {
+          version: '1.0',
+          capabilities: 'network-scanning,node-discovery',
+          scan_mode: 'active'
+        }
+      };
+      
+      // Enhanced logging for debugging
+      console.log('=== mDNS Publisher Configuration ===');
+      console.log('Service Name:', publisherConfig.serviceName);
+      console.log('Service Type:', publisherConfig.serviceType);
+      console.log('Port:', publisherConfig.port);
+      console.log('Expected mDNS name:', `${publisherConfig.serviceName}.${publisherConfig.serviceType}.local.`);
+      console.log('TXT Record:', publisherConfig.txtRecord);
+      console.log('Sending request to:', 'http://localhost:3001/api/mdns/start-publisher');
+      console.log('====================================');
+      
       const response = await fetch('http://localhost:3001/api/mdns/start-publisher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serviceName: 'gNB-EMC-Dashboard-Scanner',
-          serviceType: '_gnb-scanner._tcp',
-          port: 3000,
-          txtRecord: {
-            version: '1.0',
-            capabilities: 'network-scanning,node-discovery',
-            scan_mode: 'active'
-          }
-        })
+        body: JSON.stringify(publisherConfig)
       });
 
+      // Enhanced response logging
+      console.log('=== mDNS Publisher Response ===');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        console.log('✅ mDNS Publisher API call successful');
+        
         setIsPublishing(true);
         setPublisherStatus('running');
-        console.log('mDNS Publisher started successfully');
+        console.log('🎯 Frontend status updated to "running"');
+        console.log('🔍 Check your mDNS service console for "service published successfully" message');
+        console.log('🧪 Run test_mdns_discovery.py again to verify visibility');
       } else {
-        throw new Error('Failed to start publisher');
+        const errorText = await response.text();
+        console.error('❌ Publisher start failed:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+      console.log('==============================');
+      
     } catch (error) {
-      console.error('Failed to start mDNS publisher:', error);
+      console.error('=== mDNS Publisher Error ===');
+      console.error('Error details:', error.message);
+      console.error('Possible causes:');
+      console.error('1. mDNS service not running on localhost:3001');
+      console.error('2. Network connectivity issue');
+      console.error('3. Service configuration problem');
+      console.error('============================');
+      
       setPublisherStatus('error');
       setSimulationMode(true); // Fall back to simulation mode
     }

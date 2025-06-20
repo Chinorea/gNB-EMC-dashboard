@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const WebSocket = require('ws');
-const bonjour = require('bonjour')();
+const mdns = require('multicast-dns')();
 const http = require('http');
+const os = require('os');
 
 const app = express();
 const PORT = 3001;
@@ -21,6 +22,20 @@ const wss = new WebSocket.Server({ server });
 let activeServices = new Map();
 let registeredNodes = new Map();
 let publisherActive = false;
+let mdnsService = null;
+
+// Get local IP address
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
 // Broadcast to all WebSocket clients
 function broadcastToClients(data) {
@@ -47,43 +62,141 @@ wss.on('connection', (ws) => {
   });
 });
 
-// API Routes
-
 // Start mDNS Publisher
 app.post('/api/mdns/start-publisher', (req, res) => {
   try {
     const { serviceName, serviceType, port, txtRecord } = req.body;
     
     if (publisherActive) {
+      console.log('⚠️  Publisher start request ignored - already running');
       return res.status(400).json({ error: 'Publisher already running' });
     }
     
-    console.log('Starting mDNS publisher...');
+    console.log('=== mDNS Publisher Debug Info (Windows Compatible) ===');
+    console.log('📥 Received publisher start request');
     console.log('Service Name:', serviceName);
     console.log('Service Type:', serviceType);
     console.log('Port:', port);
     console.log('TXT Record:', txtRecord);
+    console.log('Full service identifier:', `${serviceName}.${serviceType}.local.`);
+    console.log('Network interfaces available:');
     
-    // Publish the service using Bonjour
-    const service = bonjour.publish({
-      name: serviceName,
-      type: serviceType,
-      port: port,
-      txt: txtRecord
+    // Get network interfaces for debugging
+    const interfaces = os.networkInterfaces();
+    Object.keys(interfaces).forEach(name => {
+      interfaces[name].forEach(iface => {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          console.log(`  - ${name}: ${iface.address}`);
+        }
+      });
+    });
+    console.log('Local IP for mDNS:', getLocalIP());
+    console.log('==================================================');
+    
+    console.log('🚀 Starting multicast-dns service publication...');
+    
+    // Create mDNS service record
+    const serviceRecord = {
+      name: `${serviceName}.${serviceType}.local`,
+      type: 'SRV',
+      class: 'IN',
+      ttl: 120,
+      data: {
+        port: port,
+        target: `${os.hostname()}.local`
+      }
+    };
+    
+    const txtRecordData = {
+      name: `${serviceName}.${serviceType}.local`,
+      type: 'TXT',
+      class: 'IN',
+      ttl: 120,
+      data: Object.entries(txtRecord || {}).map(([key, value]) => `${key}=${value}`)
+    };
+    
+    const aRecord = {
+      name: `${os.hostname()}.local`,
+      type: 'A',
+      class: 'IN',
+      ttl: 120,
+      data: getLocalIP()
+    };
+    
+    // Store service info
+    const serviceInfo = {
+      serviceName,
+      serviceType,
+      port,
+      txtRecord,
+      records: [serviceRecord, txtRecordData, aRecord]
+    };
+    
+    // Handle mDNS queries
+    mdns.on('query', (query) => {
+      const responses = [];
+      
+      // Check if query is for our service
+      query.questions.forEach(question => {
+        if (question.name === `${serviceName}.${serviceType}.local` || 
+            question.name === serviceType + '.local' ||
+            question.type === 'PTR' && question.name === serviceType + '.local') {
+          
+          console.log(`📡 mDNS Query received for: ${question.name} (type: ${question.type})`);
+          
+          if (question.type === 'PTR') {
+            // PTR query - respond with service name
+            responses.push({
+              name: serviceType + '.local',
+              type: 'PTR',
+              class: 'IN',
+              ttl: 120,
+              data: `${serviceName}.${serviceType}.local`
+            });
+          }
+          
+          // Always include SRV, TXT, and A records
+          responses.push(...serviceInfo.records);
+        }
+      });
+      
+      if (responses.length > 0) {
+        console.log(`📤 Sending mDNS response with ${responses.length} records`);
+        mdns.respond(responses);
+      }
     });
     
-    service.on('up', () => {
-      console.log(`✅ mDNS service "${serviceName}" published successfully`);
-      console.log(`   Service Type: ${serviceType}`);
-      console.log(`   Port: ${port}`);
-      console.log(`   Broadcasting on network for gNB nodes to discover...`);
-    });
+    // Announce the service
+    const announceRecords = [
+      // PTR record for service type
+      {
+        name: serviceType + '.local',
+        type: 'PTR',
+        class: 'IN',
+        ttl: 120,
+        data: `${serviceName}.${serviceType}.local`
+      },
+      ...serviceInfo.records
+    ];
     
-    service.on('error', (err) => {
-      console.error('❌ mDNS service error:', err);
-    });
+    console.log('📢 Announcing mDNS service...');
+    mdns.response(announceRecords);
     
-    activeServices.set('dashboard', service);
+    // Re-announce periodically
+    const announceInterval = setInterval(() => {
+      if (publisherActive) {
+        console.log('🔄 Re-announcing mDNS service...');
+        mdns.response(announceRecords);
+      } else {
+        clearInterval(announceInterval);
+      }
+    }, 60000); // Every 60 seconds
+    
+    activeServices.set('dashboard', { 
+      ...serviceInfo, 
+      announceInterval,
+      announceRecords 
+    });
     publisherActive = true;
     
     // Broadcast status to WebSocket clients
@@ -94,16 +207,33 @@ app.post('/api/mdns/start-publisher', (req, res) => {
       port
     });
     
+    console.log('✅ mDNS SERVICE PUBLISHED SUCCESSFULLY (Windows Compatible)!');
+    console.log(`📡 Service: "${serviceName}"`);
+    console.log(`🔗 Type: ${serviceType}`);
+    console.log(`🚪 Port: ${port}`);
+    console.log(`📍 Full name: ${serviceName}.${serviceType}.local.`);
+    console.log(`🖥️  Hostname: ${os.hostname()}.local`);
+    console.log(`🌐 IP Address: ${getLocalIP()}`);
+    console.log('🧪 Test with: python enhanced_mdns_test.py');
+    console.log('==========================================');
+    
+    console.log('📤 Sending success response to frontend');
     res.json({ 
       success: true, 
-      message: 'mDNS publisher started successfully',
+      message: 'mDNS publisher started successfully (Windows Compatible)',
       serviceName,
       serviceType,
-      port 
+      port,
+      hostname: os.hostname(),
+      ipAddress: getLocalIP(),
+      expectedDiscoveryName: `${serviceName}.${serviceType}.local.`
     });
     
   } catch (error) {
-    console.error('Error starting mDNS publisher:', error);
+    console.error('💥 CRITICAL ERROR starting mDNS publisher:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('=======================================');
     res.status(500).json({ error: 'Failed to start mDNS publisher' });
   }
 });
@@ -115,11 +245,13 @@ app.post('/api/mdns/stop-publisher', (req, res) => {
       return res.status(400).json({ error: 'Publisher not running' });
     }
     
-    console.log('Stopping mDNS publisher...');
+    console.log('🛑 Stopping mDNS publisher...');
     
-    // Unpublish all services
+    // Stop announcements
     activeServices.forEach((service, key) => {
-      service.stop();
+      if (service.announceInterval) {
+        clearInterval(service.announceInterval);
+      }
       console.log(`🛑 Stopped mDNS service: ${key}`);
     });
     
@@ -142,32 +274,6 @@ app.post('/api/mdns/stop-publisher', (req, res) => {
   } catch (error) {
     console.error('Error stopping mDNS publisher:', error);
     res.status(500).json({ error: 'Failed to stop mDNS publisher' });
-  }
-});
-
-// Trigger manual scan
-app.post('/api/mdns/trigger-scan', (req, res) => {
-  try {
-    if (!publisherActive) {
-      return res.status(400).json({ error: 'Publisher not running' });
-    }
-    
-    console.log('🔍 Manual scan triggered - broadcasting mDNS query...');
-    
-    // Broadcast scan trigger to WebSocket clients
-    broadcastToClients({
-      type: 'scan-triggered',
-      timestamp: new Date().toISOString()
-    });
-    
-    res.json({ 
-      success: true, 
-      message: 'Manual scan triggered' 
-    });
-    
-  } catch (error) {
-    console.error('Error triggering scan:', error);
-    res.status(500).json({ error: 'Failed to trigger scan' });
   }
 });
 
@@ -207,6 +313,39 @@ app.post('/api/gnb/register', (req, res) => {
   } catch (error) {
     console.error('Error registering gNB node:', error);
     res.status(500).json({ error: 'Failed to register node' });
+  }
+});
+
+// Trigger manual scan
+app.post('/api/mdns/trigger-scan', (req, res) => {
+  try {
+    if (!publisherActive) {
+      return res.status(400).json({ error: 'Publisher not running' });
+    }
+    
+    console.log('🔍 Manual scan triggered - re-announcing service...');
+    
+    // Re-announce our service
+    const service = activeServices.get('dashboard');
+    if (service && service.announceRecords) {
+      mdns.response(service.announceRecords);
+      console.log('📢 Service re-announced via mDNS');
+    }
+    
+    // Broadcast scan trigger to WebSocket clients
+    broadcastToClients({
+      type: 'scan-triggered',
+      timestamp: new Date().toISOString()
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Manual scan triggered' 
+    });
+    
+  } catch (error) {
+    console.error('Error triggering scan:', error);
+    res.status(500).json({ error: 'Failed to trigger scan' });
   }
 });
 
@@ -254,7 +393,9 @@ app.get('/api/mdns/status', (req, res) => {
     publisherActive,
     activeServices: Array.from(activeServices.keys()),
     registeredNodesCount: registeredNodes.size,
-    registeredNodes: Array.from(registeredNodes.values())
+    registeredNodes: Array.from(registeredNodes.values()),
+    hostname: os.hostname(),
+    ipAddress: getLocalIP()
   });
 });
 
@@ -270,8 +411,10 @@ app.get('/api/gnb/nodes', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
-    service: 'gNB mDNS Service',
-    timestamp: new Date().toISOString()
+    service: 'gNB mDNS Service (Windows Compatible)',
+    timestamp: new Date().toISOString(),
+    hostname: os.hostname(),
+    ipAddress: getLocalIP()
   });
 });
 
@@ -287,9 +430,17 @@ process.on('SIGINT', () => {
   
   // Stop all mDNS services
   activeServices.forEach((service, key) => {
-    service.stop();
+    if (service.announceInterval) {
+      clearInterval(service.announceInterval);
+    }
     console.log(`   Stopped service: ${key}`);
   });
+  
+  // Close mDNS
+  if (mdns) {
+    mdns.destroy();
+    console.log('   mDNS service closed');
+  }
   
   // Close WebSocket server
   wss.close(() => {
@@ -306,9 +457,11 @@ process.on('SIGINT', () => {
 
 // Start the server
 server.listen(PORT, () => {
-  console.log('🚀 gNB mDNS Service started');
+  console.log('🚀 gNB mDNS Service started (Windows Compatible)');
   console.log(`   Server: http://localhost:${PORT}`);
   console.log(`   WebSocket: ws://localhost:${PORT}`);
+  console.log(`   Hostname: ${os.hostname()}.local`);
+  console.log(`   IP Address: ${getLocalIP()}`);
   console.log('   Ready to publish mDNS services for gNB discovery');
   console.log('');
   console.log('Available endpoints:');
