@@ -7,6 +7,7 @@ import { ThemeContextProvider } from './theme/ThemeContext';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
+import NetworkScanning from './NetworkScanning';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM, { getBatteryPercentage } from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
@@ -380,6 +381,10 @@ export default function App() {
                 element={<MapView 
                   markers={mapMarkers} 
                   linkQualityMatrix={lqm} />}
+              />
+              <Route
+                path="/network-scanning"
+                element={<NetworkScanning />}
               />
             </Routes>
           </Box>
