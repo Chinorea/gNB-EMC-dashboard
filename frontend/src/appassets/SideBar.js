@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Drawer,
   Box,
@@ -23,10 +23,12 @@ import {
   CardContent
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
 import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import ComputerIcon from '@mui/icons-material/Computer';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -57,10 +59,16 @@ function Sidebar({
   const [isNetworkScanning, setIsNetworkScanning] = useState(false);
   const [showAutoNodes, setShowAutoNodes] = useState(false);
   const [subnet, setSubnet] = useState(() => {
-    // Load subnet preference from localStorage, default to 192.168.2
-    return localStorage.getItem('networkScanSubnet') || '192.168.2';
+    const savedSubnet = localStorage.getItem('networkSubnet');
+    return savedSubnet || '192.168.2';
   });
   const [scanner] = useState(() => new NetworkScanner());
+
+  // Handle subnet change and persist to localStorage
+  const handleSubnetChange = (newSubnet) => {
+    setSubnet(newSubnet);
+    localStorage.setItem('networkSubnet', newSubnet);
+  };
 
   // Custom scrollbar styling
   const scrollbarStyle = {
@@ -83,13 +91,8 @@ function Sidebar({
     scrollbarWidth: 'thin',
     scrollbarColor: theme.palette.mode === 'dark' 
       ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)' 
-      : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',  };
-
-  // Save subnet preference to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('networkScanSubnet', subnet);
-  }, [subnet]);
-
+      : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',
+  };
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
       // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
@@ -106,12 +109,11 @@ function Sidebar({
       }
     }
   };
-
   // Add auto-discovered node to manual nodes list
   const addAutoDiscoveredNode = (autoNode) => {
     if (!allNodeData.some(node => node.ip === autoNode.ip)) {
       const newNodeInstance = new NodeInfo(autoNode.ip, setAllNodeData, setRebootAlertNodeIp);
-      newNodeInstance.nodeName = autoNode.hostname || 'Auto-discovered Node';
+      newNodeInstance.nodeName = '';
       newNodeInstance.manet.ip = '';
       newNodeInstance.manet.connectionStatus = 'Not Configured';
       setAllNodeData(prev => [...prev, newNodeInstance]);
@@ -119,7 +121,8 @@ function Sidebar({
       if (onMapDataRefresh) {
         onMapDataRefresh();
       }
-    }  };
+    }
+  };
   
   // Start network scan
   const startNetworkScan = async () => {
@@ -337,85 +340,88 @@ function Sidebar({
               flexDirection: 'column',
               overflow: 'hidden',
               flex: 1
-            }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Scanned Nodes ({autoDiscoveredNodes.length})
+            }}>              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Scanned Nodes ({autoDiscoveredNodes.filter(node => !allNodeData.some(n => n.ip === node.ip)).length})
               </Typography>
-              
-              {/* Network Scanner Controls */}
-              <TextField
-                fullWidth
-                label="Subnet (e.g., 192.168.2)"
-                value={subnet}
-                size="small"
-                onChange={e => setSubnet(e.target.value)}
-                sx={{ mb: 1 }}
-                placeholder="192.168.1"
-              />
-              <Button
-                variant="outlined"
-                fullWidth
-                size="small"
-                startIcon={<NetworkCheckIcon />}
-                onClick={startNetworkScan}
-                disabled={isNetworkScanning}
-                sx={{ mb: 2 }}
-              >
-                {isNetworkScanning ? 'Scanning...' : `Scan ${subnet}.x`}
-              </Button>
-
-              <Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
+                {/* Network Scanner Controls */}              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Subnet (e.g., 192.168.2)"
+                  value={subnet}
+                  size="small"                  onChange={e => handleSubnetChange(e.target.value)}
+                  placeholder="192.168.2"InputLabelProps={{
+                    sx: { fontSize: '1.1rem' }
+                  }}
+                />
+                <IconButton
+                  onClick={startNetworkScan}
+                  disabled={isNetworkScanning}
+                  sx={{ 
+                    minWidth: '40px',
+                    height: '40px',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: theme.palette.divider
+                  }}
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </Box><Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
                 {autoDiscoveredNodes.length > 0 ? (
                   <List dense sx={{ p: 0 }}>
-                    {autoDiscoveredNodes.map((node, index) => (
+                    {autoDiscoveredNodes
+                      .filter(node => !allNodeData.some(n => n.ip === node.ip))
+                      .map((node, index) => (
                       <ListItem
                         key={node.ip || index}
-                        sx={{
-                          backgroundColor: colors.nodeStatus.running,
+                        disablePadding                        sx={{
+                          width: '100%',
+                          backgroundColor: colors.scannedNodes.background,
+                          display: 'flex',
                           mb: 0.5,
-                          borderRadius: 1,
-                          p: 0.5
+                          borderRadius: 1
                         }}
                       >
-                        <ListItemIcon sx={{ minWidth: '24px' }}>
+                        <ListItemButton
+                          sx={{ 
+                            minWidth: '40px', 
+                            maxWidth: '40px',
+                            minHeight: '40px',
+                            maxHeight: '40px',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            padding: '4px'
+                          }}
+                        >
                           <ComputerIcon fontSize="small" color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Typography variant="caption" fontWeight="bold">
-                                {node.hostname || 'Unknown'}
-                              </Typography>
-                              <Chip 
-                                label={node.ip} 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ fontSize: '0.6rem', height: '16px' }}
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="caption" color="text.secondary">
-                              Status: {node.status || 'online'}
-                            </Typography>
-                          }
-                        />
+                        </ListItemButton>
+                        <ListItemButton
+                          onClick={() => addAutoDiscoveredNode(node)}
+                          sx={{ flex: 1 }}
+                        >
+                          <ListItemText
+                            primary={node.ip}
+                            primaryTypographyProps={{
+                              fontWeight: 'bold',
+                              variant: 'body1',
+                              fontSize: '1.0rem'
+                            }}
+                          />
+                        </ListItemButton>
                         <IconButton
                           size="small"
                           onClick={() => addAutoDiscoveredNode(node)}
-                          disabled={allNodeData.some(n => n.ip === node.ip)}
-                          sx={{ ml: 1 }}
+                          sx={{ mr: 1 }}
                         >
-                          <EditIcon fontSize="small" />
+                          <AddIcon fontSize="small" />
                         </IconButton>
                       </ListItem>
                     ))}
-                  </List>
-                ) : (
+                  </List>) : isNetworkScanning ? (
                   <Typography variant="caption" color="text.secondary">
-                    {isNetworkScanning ? 'Scanning for nodes...' : 'No scanned nodes found. Enter a subnet above and click Scan to discover nodes.'}
+                    Scanning for nodes...
                   </Typography>
-                )}
+                ) : null}
               </Box>
             </CardContent>
           </Card>
@@ -429,8 +435,7 @@ function Sidebar({
               flexDirection: 'column',
               overflow: 'hidden',
               flex: 1
-            }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+            }}>              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
                 Saved Nodes ({allNodeData.length})
               </Typography>
               <Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
@@ -541,13 +546,8 @@ function Sidebar({
                           </ListItemButton>
                         </ListItem>
                       );
-                    })}
-                  </List>
-                ) : (
-                  <Typography variant="caption" color="text.secondary">
-                    No saved nodes. Add a node using the IP field above.
-                  </Typography>
-                )}
+                    })}                  </List>
+                ) : null}
               </Box>
             </CardContent>
           </Card>
