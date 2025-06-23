@@ -24,17 +24,57 @@ let registeredNodes = new Map();
 let publisherActive = false;
 let mdnsService = null;
 
-// Get local IP address
-function getLocalIP() {
+// Get all available network interfaces
+function getAllNetworkInterfaces() {
   const interfaces = os.networkInterfaces();
+  const availableInterfaces = [];
+  
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+        availableInterfaces.push({
+          name: name,
+          address: iface.address,
+          description: `${name} (${iface.address})`
+        });
       }
     }
   }
-  return '127.0.0.1';
+  
+  return availableInterfaces;
+}
+
+// Get all IP addresses for multi-interface publishing
+function getAllLocalIPs() {
+  const interfaces = getAllNetworkInterfaces();
+  if (interfaces.length === 0) {
+    return ['127.0.0.1'];
+  }
+  return interfaces.map(iface => iface.address);
+}
+
+// Get primary IP for display (prioritize subnet 2)
+function getPrimaryIP() {
+  const interfaces = getAllNetworkInterfaces();
+  
+  if (interfaces.length === 0) {
+    return '127.0.0.1';
+  }
+  
+  // Prioritize subnet 2
+  const subnet2 = interfaces.find(iface => iface.address.startsWith('192.168.2.'));
+  if (subnet2) {
+    return subnet2.address;
+  }
+  
+  // Fallback to first interface
+  return interfaces[0].address;
+}
+
+// Interactive interface selection
+// Get local IP address (returns primary IP for display)
+function getLocalIP() {
+  return getPrimaryIP();
 }
 
 // Broadcast to all WebSocket clients
@@ -89,8 +129,12 @@ app.post('/api/mdns/start-publisher', (req, res) => {
           console.log(`  - ${name}: ${iface.address}`);
         }
       });
+    });    console.log('🌐 Publishing on all available interfaces:');
+    const allIPs = getAllLocalIPs();
+    allIPs.forEach(ip => {
+      console.log(`   - ${ip}`);
     });
-    console.log('Local IP for mDNS:', getLocalIP());
+    console.log('Primary IP for display:', getLocalIP());
     console.log('==================================================');
     
     console.log('🚀 Starting multicast-dns service publication...');
@@ -115,13 +159,14 @@ app.post('/api/mdns/start-publisher', (req, res) => {
       data: Object.entries(txtRecord || {}).map(([key, value]) => `${key}=${value}`)
     };
     
-    const aRecord = {
+    // Create A records for ALL network interfaces
+    const aRecords = getAllLocalIPs().map(ip => ({
       name: `${os.hostname()}.local`,
       type: 'A',
       class: 'IN',
       ttl: 120,
-      data: getLocalIP()
-    };
+      data: ip
+    }));
     
     // Store service info
     const serviceInfo = {
@@ -129,7 +174,7 @@ app.post('/api/mdns/start-publisher', (req, res) => {
       serviceType,
       port,
       txtRecord,
-      records: [serviceRecord, txtRecordData, aRecord]
+      records: [serviceRecord, txtRecordData, ...aRecords]
     };
     
     // Handle mDNS queries
@@ -206,26 +251,28 @@ app.post('/api/mdns/start-publisher', (req, res) => {
       serviceType,
       port
     });
-    
-    console.log('✅ mDNS SERVICE PUBLISHED SUCCESSFULLY (Windows Compatible)!');
+      console.log('✅ mDNS SERVICE PUBLISHED SUCCESSFULLY (Multi-Interface)!');
     console.log(`📡 Service: "${serviceName}"`);
     console.log(`🔗 Type: ${serviceType}`);
     console.log(`🚪 Port: ${port}`);
     console.log(`📍 Full name: ${serviceName}.${serviceType}.local.`);
     console.log(`🖥️  Hostname: ${os.hostname()}.local`);
-    console.log(`🌐 IP Address: ${getLocalIP()}`);
+    console.log(`🌐 Published on interfaces:`);
+    getAllLocalIPs().forEach(ip => {
+      console.log(`   - ${ip}`);
+    });
     console.log('🧪 Test with: python enhanced_mdns_test.py');
     console.log('==========================================');
-    
-    console.log('📤 Sending success response to frontend');
+      console.log('📤 Sending success response to frontend');
     res.json({ 
       success: true, 
-      message: 'mDNS publisher started successfully (Windows Compatible)',
+      message: 'mDNS publisher started successfully (Multi-Interface)',
       serviceName,
       serviceType,
       port,
       hostname: os.hostname(),
       ipAddress: getLocalIP(),
+      allInterfaces: getAllLocalIPs(),
       expectedDiscoveryName: `${serviceName}.${serviceType}.local.`
     });
     
@@ -455,22 +502,67 @@ process.on('SIGINT', () => {
   });
 });
 
-// Start the server
-server.listen(PORT, () => {
-  console.log('🚀 gNB mDNS Service started (Windows Compatible)');
-  console.log(`   Server: http://localhost:${PORT}`);
-  console.log(`   WebSocket: ws://localhost:${PORT}`);
-  console.log(`   Hostname: ${os.hostname()}.local`);
-  console.log(`   IP Address: ${getLocalIP()}`);
-  console.log('   Ready to publish mDNS services for gNB discovery');
+// Enhanced debugging for mDNS UDP traffic
+function debugMDNSTraffic() {
+  console.log('🔍 mDNS UDP Traffic Debugging:');
+  console.log('   Multicast Address: 224.0.0.251');
+  console.log('   Port: 5353');
+  console.log('   Protocol: UDP');
   console.log('');
-  console.log('Available endpoints:');
-  console.log('   POST /api/mdns/start-publisher - Start mDNS publisher');
-  console.log('   POST /api/mdns/stop-publisher  - Stop mDNS publisher');
-  console.log('   POST /api/mdns/trigger-scan    - Trigger manual scan');
-  console.log('   POST /api/gnb/register         - gNB node registration');
-  console.log('   POST /api/gnb/heartbeat        - gNB node heartbeat');
-  console.log('   GET  /api/mdns/status          - Get service status');
-  console.log('   GET  /api/gnb/nodes            - Get registered nodes');
-  console.log('   GET  /health                   - Health check');
-});
+  
+  // Monitor mDNS events
+  mdns.on('response', (response) => {
+    console.log('📥 mDNS Response received:', {
+      answers: response.answers?.length || 0,
+      authorities: response.authorities?.length || 0,
+      additionals: response.additionals?.length || 0
+    });
+  });
+  
+  mdns.on('query', (query) => {
+    console.log('📨 mDNS Query received:', {
+      questions: query.questions?.length || 0,
+      from: 'remote client'
+    });
+  });
+}
+
+// Start the server with multi-interface support
+async function startServer() {
+  console.log('🚀 Starting gNB mDNS Service (Multi-Interface)');
+  
+  // Show all available interfaces
+  const interfaces = getAllNetworkInterfaces();
+  console.log('🌐 Available network interfaces:');
+  interfaces.forEach(iface => {
+    console.log(`   - ${iface.description}`);
+  });
+  console.log(`📍 Primary interface: ${getPrimaryIP()}`);
+  console.log('');
+  
+  // Initialize mDNS debugging
+  debugMDNSTraffic();
+  
+  server.listen(PORT, () => {
+    console.log('✅ gNB mDNS Service started successfully!');
+    console.log(`   Server: http://localhost:${PORT}`);
+    console.log(`   WebSocket: ws://localhost:${PORT}`);
+    console.log(`   Hostname: ${os.hostname()}.local`);
+    console.log(`   Primary IP: ${getLocalIP()}`);
+    console.log('   📡 Will publish on ALL interfaces when service starts');
+    console.log('   Ready to publish mDNS services for gNB discovery');
+    console.log('');
+    console.log('Available endpoints:');
+    console.log('   POST /api/mdns/start-publisher - Start mDNS publisher');
+    console.log('   POST /api/mdns/stop-publisher  - Stop mDNS publisher');
+    console.log('   POST /api/mdns/trigger-scan    - Trigger manual scan');
+    console.log('   POST /api/gnb/register         - gNB node registration');
+    console.log('   POST /api/gnb/heartbeat        - gNB node heartbeat');
+    console.log('   GET  /api/mdns/status          - Get service status');
+    console.log('   GET  /api/gnb/nodes            - Get registered nodes');
+    console.log('   GET  /health                   - Health check');
+  });
+}
+
+// Start the server
+startServer().catch(console.error);
