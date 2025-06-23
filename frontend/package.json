@@ -22,7 +22,8 @@
     "react-scripts": "5.0.1",
     "recharts": "^2.15.3",
     "web-vitals": "^2.1.4"
-  },  "scripts": {
+  },
+  "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -52,11 +53,12 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },  "devDependencies": {
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
     "electron": "^36.4.0",
     "electron-builder": "^26.0.12",
     "electron-is-dev": "^3.0.1",
-    "concurrently": "^8.2.2",
     "wait-on": "^8.0.0"
   },
   "build": {
@@ -64,24 +66,30 @@
     "productName": "gNB Dashboard",
     "directories": {
       "output": "dist"
-    },    "files": [
+    },
+    "files": [
       "build/**/*",
       "public/electron.js"
     ],
     "mac": {
       "icon": "build/favicon.ico",
       "category": "public.app-category.utilities"
-    },    "win": {
+    },
+    "win": {
       "icon": "build/favicon.ico",
       "executableName": "gnb-dashboard",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -90,7 +98,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
