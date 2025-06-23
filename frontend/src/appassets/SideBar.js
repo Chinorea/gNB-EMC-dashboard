@@ -51,11 +51,11 @@ function Sidebar({
   const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
   const [editSecondary, setEditSecondary] = useState('');
   const [editName, setEditName] = useState('');
-  
-  // Network scanner states
+    // Network scanner states
   const [autoDiscoveredNodes, setAutoDiscoveredNodes] = useState([]);
   const [isNetworkScanning, setIsNetworkScanning] = useState(false);
   const [showAutoNodes, setShowAutoNodes] = useState(false);
+  const [subnet, setSubnet] = useState('192.168.1'); // Default subnet
   const [scanner] = useState(() => new NetworkScanner());
 
   // Custom scrollbar styling
@@ -112,7 +112,6 @@ function Sidebar({
       }
     }
   };
-
   // Start network scan
   const startNetworkScan = async () => {
     if (isNetworkScanning) return;
@@ -121,7 +120,8 @@ function Sidebar({
     setAutoDiscoveredNodes([]);
     
     try {
-      const results = await scanner.scanAllSubnets(
+      const results = await scanner.scanUserSubnet(
+        subnet,
         null, // progress callback
         (node) => {
           // Node found callback
@@ -294,13 +294,20 @@ function Sidebar({
             </ListItemButton>
           </List>
 
-          <Divider sx={{ my: 2 }} />
-
-          {/* Network Scanner Section */}
+          <Divider sx={{ my: 2 }} />          {/* Network Scanner Section */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               Network Scanner
             </Typography>
+            <TextField
+              fullWidth
+              label="Subnet (e.g., 192.168.1)"
+              value={subnet}
+              size="small"
+              onChange={e => setSubnet(e.target.value)}
+              sx={{ mb: 1 }}
+              placeholder="192.168.1"
+            />
             <Button
               variant="outlined"
               fullWidth
@@ -310,7 +317,7 @@ function Sidebar({
               disabled={isNetworkScanning}
               sx={{ mb: 1 }}
             >
-              {isNetworkScanning ? 'Scanning...' : 'Scan Network'}
+              {isNetworkScanning ? 'Scanning...' : `Scan ${subnet}.x`}
             </Button>
             
             {autoDiscoveredNodes.length > 0 && (
