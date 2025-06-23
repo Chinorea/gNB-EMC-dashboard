@@ -140,8 +140,7 @@ class GnbMdnsSubscriber:
             logger.warning(f"⚠️  Dashboard service lost: {name}")
             self.parent.dashboard_service = None
             self.parent.stop_registration()
-        
-        def update_service(self, zc, type_, name):
+          def update_service(self, zc, type_, name):
             """Called when a service is updated"""
             logger.info(f"🔄 Dashboard service updated: {name}")
     
