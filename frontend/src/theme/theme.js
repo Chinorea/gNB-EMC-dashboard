@@ -69,8 +69,7 @@ const lightColors = {
   },  map: {
     color: '#1976d2',        // Strong blue border for markers
     fillColor: '#42a5f5',    // Lighter blue fill for markers
-  },
-  manetConnection: {
+  },  manetConnection: {
     connected: '#e1ede4',
     connectedHover: '#e9f2eb',
     connectedText: '#324a38',
@@ -80,6 +79,9 @@ const lightColors = {
     pinging: '#fff3cd',
     pingingHover: '#fff7db',
     pingingText: '#856404',
+  },
+  scannedNodes: {
+    background: '#e8f7fc',    // Light pastel baby blue
   }
 };
 
@@ -151,8 +153,7 @@ const darkColors = {
   },  map: {
     color: '#90caf9',        // Light blue border for dark mode visibility
     fillColor: '#64b5f6',    // Slightly darker blue fill for contrast
-  },
-  manetConnection: {
+  },  manetConnection: {
     connected: '#234020',
     connectedHover: '#3a5936',
     connectedText: '#dbe6da',
@@ -162,6 +163,9 @@ const darkColors = {
     pinging: '#594012',
     pingingHover: '#735b2e',
     pingingText: '#e6ddcf',
+  },
+  scannedNodes: {
+    background: '#182e34',    // Dark blue-grey for dark mode
   }
 };
 
