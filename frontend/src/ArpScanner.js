@@ -51,9 +51,14 @@ const ArpScanner = () => {
   const [scanMethod, setScanMethod] = useState('http');
   const [scanSpeed, setScanSpeed] = useState('balanced'); // Add scan speed option
 
-  // Optimized device checking with parallel port scanning and shorter timeouts
-  const checkDevice = async (ip, method = 'http') => {
-    const timeoutMs = scanSpeed === 'fast' ? 500 : scanSpeed === 'balanced' ? 1000 : 2000;
+  // Optimized device checking with multiple parallel methods and better coverage
+  const checkDevice = async (ip, method = 'auto') => {
+    const timeoutMs = scanSpeed === 'fast' ? 800 : scanSpeed === 'balanced' ? 1500 : 2500;
+    
+    if (method === 'auto') {
+      // Try multiple methods in parallel for better detection
+      return await checkAllMethodsParallel(ip, timeoutMs);
+    }
     
     switch (method) {
       case 'http':
@@ -64,16 +69,51 @@ const ArpScanner = () => {
         return await checkFetchOptimized(ip, timeoutMs);
       case 'ping':
         return await checkPingOptimized(ip, timeoutMs);
+      case 'hardware':
+        return await checkHardwareServices(ip, timeoutMs);
       default:
-        return await checkHTTPOptimized(ip, timeoutMs);
+        return await checkAllMethodsParallel(ip, timeoutMs);
     }
   };
 
-  // Optimized HTTP method - parallel port checking
+  // New method: Try all detection methods in parallel for maximum coverage
+  const checkAllMethodsParallel = async (ip, timeoutMs) => {
+    try {
+      // Run the most reliable detection methods including hardware detection
+      const methods = [
+        checkHTTPOptimized(ip, timeoutMs),
+        checkWebSocketOptimized(ip, timeoutMs),
+        checkFetchOptimized(ip, timeoutMs),
+        checkHardwareServices(ip, timeoutMs)
+        // Still excluding: checkPingOptimized, checkImagePing, checkDNSLookup, checkXMLHttpRequest
+        // These were causing false positives
+      ];
+
+      // Wait for the first successful result or all to complete
+      const results = await Promise.allSettled(methods);
+      
+      // Return the first successful result
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value !== null) {
+          return result.value;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Enhanced HTTP method with more ports and better detection
   const checkHTTPOptimized = async (ip, timeoutMs) => {
-    const commonPorts = scanSpeed === 'fast' ? [80, 8080, 443] : [80, 8080, 443, 22, 53, 5000];
+    // Expanded port list including common device ports
+    const commonPorts = scanSpeed === 'fast' 
+      ? [80, 443, 8080, 22, 53] 
+      : scanSpeed === 'balanced'
+      ? [80, 443, 8080, 22, 53, 23, 21, 25, 110, 143, 993, 995, 5000, 8000, 9000]
+      : [80, 443, 8080, 22, 53, 23, 21, 25, 110, 143, 993, 995, 5000, 8000, 9000, 3389, 5432, 3306, 1433, 27017, 6379, 9200];
     
-    // Check all ports in parallel instead of sequentially
     const portPromises = commonPorts.map(async (port) => {
       try {
         const controller = new AbortController();
@@ -85,7 +125,8 @@ const ArpScanner = () => {
           method: 'HEAD',
           mode: 'no-cors',
           signal: controller.signal,
-          cache: 'no-cache'
+          cache: 'no-cache',
+          credentials: 'omit'
         });
         
         clearTimeout(timeoutId);
@@ -104,7 +145,6 @@ const ArpScanner = () => {
       }
     });
 
-    // Wait for all ports and return the first successful response
     const results = await Promise.allSettled(portPromises);
     const successfulResult = results.find(result => 
       result.status === 'fulfilled' && result.value !== null
@@ -113,11 +153,11 @@ const ArpScanner = () => {
     return successfulResult ? successfulResult.value : null;
   };
 
-  // Optimized WebSocket method
+  // Enhanced WebSocket method with more ports
   const checkWebSocketOptimized = async (ip, timeoutMs) => {
-    const commonPorts = scanSpeed === 'fast' ? [80, 8080] : [80, 8080, 3000, 8000];
+    const wsPorts = scanSpeed === 'fast' ? [80, 8080] : [80, 8080, 3000, 8000, 4000, 5000, 9000];
     
-    const portPromises = commonPorts.map(async (port) => {
+    const portPromises = wsPorts.map(async (port) => {
       try {
         const startTime = Date.now();
         
@@ -161,9 +201,11 @@ const ArpScanner = () => {
     return successfulResult ? successfulResult.value : null;
   };
 
-  // Optimized Fetch method
+  // Enhanced Fetch method with more endpoints
   const checkFetchOptimized = async (ip, timeoutMs) => {
-    const endpoints = scanSpeed === 'fast' ? ['', '/api'] : ['', '/api', '/status', '/health', '/favicon.ico'];
+    const endpoints = scanSpeed === 'fast' 
+      ? ['', '/api', '/favicon.ico'] 
+      : ['', '/api', '/status', '/health', '/ping', '/favicon.ico', '/robots.txt', '/sitemap.xml', '/admin', '/login', '/index.html', '/index.php'];
     
     const endpointPromises = endpoints.map(async (endpoint) => {
       try {
@@ -177,6 +219,7 @@ const ArpScanner = () => {
           mode: 'no-cors',
           signal: controller.signal,
           cache: 'no-cache',
+          credentials: 'omit',
           headers: { 'Accept': '*/*' }
         });
         
@@ -204,69 +247,308 @@ const ArpScanner = () => {
     return successfulResult ? successfulResult.value : null;
   };
 
-  // New ping-like method using image loading
+  // Enhanced ping method using multiple image types - FIXED to remove false positives
   const checkPingOptimized = async (ip, timeoutMs) => {
-    try {
-      const startTime = Date.now();
-      
-      return new Promise((resolve) => {
-        const img = new Image();
-        const timeoutId = setTimeout(() => {
-          resolve(null);
-        }, timeoutMs);
+    const imageTypes = [
+      '/favicon.ico',
+      '/apple-touch-icon.png',
+      '/logo.png',
+      '/logo.jpg',
+      '/icon.png',
+      '/icon.ico',
+      '/'
+    ];
+
+    const imagePromises = imageTypes.map(async (imagePath) => {
+      try {
+        const startTime = Date.now();
         
-        img.onload = () => {
-          clearTimeout(timeoutId);
-          const responseTime = Date.now() - startTime;
-          resolve({
-            ip,
-            status: 'online',
-            responseTime,
-            method: 'Image Ping',
-            lastSeen: new Date().toLocaleTimeString()
-          });
-        };
-        
-        img.onerror = () => {
-          clearTimeout(timeoutId);
-          // Even on error, if we get a response, the device exists
-          const responseTime = Date.now() - startTime;
-          if (responseTime < timeoutMs * 0.9) { // If we got a quick response (even error)
+        return new Promise((resolve) => {
+          const img = new Image();
+          const timeoutId = setTimeout(() => {
+            resolve(null);
+          }, timeoutMs);
+          
+          img.onload = () => {
+            clearTimeout(timeoutId);
+            const responseTime = Date.now() - startTime;
             resolve({
               ip,
               status: 'online',
               responseTime,
-              method: 'Image Ping (Error)',
+              method: `Image Ping (${imagePath})`,
               lastSeen: new Date().toLocaleTimeString()
             });
-          } else {
+          };
+          
+          img.onerror = () => {
+            clearTimeout(timeoutId);
+            // FIXED: Remove the flawed logic that treated quick errors as device detection
+            // Most onerror events are due to CORS/network issues, not device presence
             resolve(null);
+          };
+          
+          img.src = `http://${ip}${imagePath}?${Date.now()}`;
+        });
+      } catch (error) {
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(imagePromises);
+    const successfulResult = results.find(result => 
+      result.status === 'fulfilled' && result.value !== null
+    );
+    
+    return successfulResult ? successfulResult.value : null;
+  };
+
+  // Fixed IFrame Ping method - more conservative detection
+  const checkImagePing = async (ip, timeoutMs) => {
+    try {
+      const startTime = Date.now();
+      
+      return new Promise((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        
+        const timeoutId = setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
           }
+          resolve(null);
+        }, timeoutMs);
+        
+        iframe.onload = () => {
+          clearTimeout(timeoutId);
+          const responseTime = Date.now() - startTime;
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          resolve({
+            ip,
+            status: 'online',
+            responseTime,
+            method: 'IFrame Ping',
+            lastSeen: new Date().toLocaleTimeString()
+          });
         };
         
-        // Try to load a common image or just trigger a request
-        img.src = `http://${ip}/favicon.ico?${Date.now()}`;
+        iframe.onerror = () => {
+          clearTimeout(timeoutId);
+          const responseTime = Date.now() - startTime;
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          // FIXED: Only consider it a detection if we get a very specific type of error
+          // that indicates the device responded but rejected the request (not network unreachable)
+          // For iframe, onerror usually means network/CORS issues, not device detection
+          resolve(null);
+        };
+        
+        document.body.appendChild(iframe);
+        iframe.src = `http://${ip}/?${Date.now()}`;
       });
     } catch (error) {
       return null;
     }
   };
 
+  // New method: DNS lookup attempt
+  const checkDNSLookup = async (ip, timeoutMs) => {
+    try {
+      const startTime = Date.now();
+      
+      // Try to make a DNS lookup by attempting to load a resource
+      return new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = `http://${ip}`;
+        
+        const timeoutId = setTimeout(() => {
+          document.head.removeChild(link);
+          resolve(null);
+        }, timeoutMs);
+        
+        link.onload = () => {
+          clearTimeout(timeoutId);
+          const responseTime = Date.now() - startTime;
+          document.head.removeChild(link);
+          resolve({
+            ip,
+            status: 'online',
+            responseTime,
+            method: 'DNS Prefetch',
+            lastSeen: new Date().toLocaleTimeString()
+          });
+        };
+        
+        link.onerror = () => {
+          clearTimeout(timeoutId);
+          document.head.removeChild(link);
+          resolve(null);
+        };
+        
+        document.head.appendChild(link);
+      });
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Fixed XMLHttpRequest method - remove false positive logic
+  const checkXMLHttpRequest = async (ip, timeoutMs) => {
+    try {
+      const startTime = Date.now();
+      
+      return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.timeout = timeoutMs;
+        
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            const responseTime = Date.now() - startTime;
+            // Only consider actual HTTP responses (200, 404, etc.) as device detection
+            if (xhr.status > 0) {
+              resolve({
+                ip,
+                status: 'online',
+                responseTime,
+                method: `XHR (${xhr.status})`,
+                lastSeen: new Date().toLocaleTimeString()
+              });
+            } else {
+              resolve(null);
+            }
+          }
+        };
+        
+        xhr.onerror = () => {
+          // FIXED: Remove the flawed logic - network errors usually mean no device
+          resolve(null);
+        };
+        
+        xhr.ontimeout = () => {
+          resolve(null);
+        };
+        
+        xhr.open('GET', `http://${ip}`, true);
+        xhr.send();
+      });
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Enhanced hardware device detection - FIXED to remove false positives
+  const checkHardwareServices = async (ip, timeoutMs) => {
+    // Only check ports that are likely to respond positively to HTTP requests
+    // Removed problematic ports that cause false positives
+    const reliableHardwarePorts = [
+      { port: 80, service: 'HTTP' },          // Web servers
+      { port: 443, service: 'HTTPS' },        // Secure web servers  
+      { port: 8080, service: 'Alt-HTTP' },    // Alternative HTTP
+      { port: 5000, service: 'Dev-Server' },  // Development servers
+      { port: 8000, service: 'Web-Alt' },     // Alternative web
+      { port: 9000, service: 'Management' },  // Management interfaces
+      { port: 631, service: 'IPP' },          // Printer web interface
+    ];
+
+    const portPromises = reliableHardwarePorts.map(async ({ port, service }) => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        const startTime = Date.now();
+        
+        // Only try HTTP connections to ports that actually speak HTTP
+        await fetch(`http://${ip}:${port}`, {
+          method: 'HEAD',
+          mode: 'no-cors',
+          signal: controller.signal,
+          cache: 'no-cache'
+        });
+        
+        clearTimeout(timeoutId);
+        const responseTime = Date.now() - startTime;
+        
+        return {
+          ip,
+          status: 'online',
+          responseTime,
+          method: `${service}:${port}`,
+          lastSeen: new Date().toLocaleTimeString(),
+          port,
+          service
+        };
+      } catch (error) {
+        // FIXED: Remove the false positive logic completely
+        // Don't consider quick errors as device detection
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(portPromises);
+    const successfulResult = results.find(result => 
+      result.status === 'fulfilled' && result.value !== null
+    );
+    
+    return successfulResult ? successfulResult.value : null;
+  };
+
   // Detect device type based on response characteristics
   const detectDeviceType = (device) => {
     if (!device) return 'Unknown';
     
-    const { ip, port, endpoint, method } = device;
+    const { ip, port, endpoint, method, service } = device;
     const lastOctet = parseInt(ip.split('.')[3]);
     
-    // Common device type detection patterns
+    // Hardware service-based detection (from new Hardware Detection method)
+    if (service) {
+      switch (service) {
+        case 'SSH': return 'Linux/Unix Device';
+        case 'Telnet': return 'Network Equipment';
+        case 'DNS': return 'DNS Server/Router';
+        case 'RPC': return 'Windows Computer';
+        case 'NetBIOS': return 'Windows Computer';
+        case 'SMB': return 'Windows File Server';
+        case 'IPP': return 'Network Printer';
+        case 'UPnP': return 'Media Device/Router';
+        case 'mDNS': return 'Apple Device';
+        case 'Chromecast': return 'Google Chromecast';
+        case 'Management': return 'Managed Device';
+        case 'Device': return 'Custom Device';
+      }
+    }
+    
+    // Port-based detection (existing logic enhanced)
+    if (port) {
+      switch (port) {
+        case 22: return 'SSH Server/Linux';
+        case 23: return 'Telnet Device';
+        case 53: return 'DNS Server';
+        case 80: return 'Web Server';
+        case 135: return 'Windows RPC';
+        case 139: return 'Windows NetBIOS';
+        case 443: return 'HTTPS Server';
+        case 445: return 'Windows SMB';
+        case 631: return 'Network Printer';
+        case 1900: return 'UPnP Device';
+        case 5000: return 'Development Server';
+        case 5353: return 'Bonjour/mDNS Device';
+        case 8008:
+        case 8009: return 'Chromecast Device';
+        case 8080: return 'Web Server (Alt)';
+        case 9000: return 'Management Interface';
+      }
+    }
+    
+    // IP-based detection
     if (lastOctet === 1 || lastOctet === 254) return 'Router/Gateway';
-    if (port === 22) return 'Server/Linux';
-    if (port === 80 || port === 8080) return 'Web Server';
-    if (port === 443) return 'HTTPS Server';
-    if (port === 5000) return 'Development Server';
     if (endpoint === '/api') return 'API Server';
-    if (method.includes('WebSocket')) return 'WebSocket Server';
+    if (method && method.includes('WebSocket')) return 'WebSocket Server';
     
     return 'Network Device';
   };
@@ -281,7 +563,7 @@ const ArpScanner = () => {
     return `${mac.substr(0,2)}:${mac.substr(2,2)}:${mac.substr(4,2)}:${mac.substr(6,2)}:${mac.substr(8,2)}:${mac.substr(10,2)}`;
   };
 
-  // Optimized scanning function
+  // Enhanced scanning function with better coverage
   const scanNetwork = useCallback(async () => {
     if (scanning) return;
     
@@ -293,8 +575,8 @@ const ArpScanner = () => {
     setScanStats({ total: totalIPs, responding: 0, scanned: 0 });
     
     const foundDevices = [];
-    // Larger batch sizes for faster scanning
-    const batchSize = scanSpeed === 'fast' ? 20 : scanSpeed === 'balanced' ? 15 : 10;
+    // Smaller batch sizes for more thorough scanning
+    const batchSize = scanSpeed === 'fast' ? 8 : scanSpeed === 'balanced' ? 6 : 4;
     
     for (let i = startIP; i <= endIP; i += batchSize) {
       const batch = [];
@@ -303,7 +585,8 @@ const ArpScanner = () => {
       // Create batch of device check promises
       for (let j = i; j <= endBatch; j++) {
         const ip = `${networkBase}.${j}`;
-        batch.push(checkDevice(ip, scanMethod));
+        // Use 'auto' method for comprehensive detection
+        batch.push(checkDevice(ip, scanMethod === 'auto' ? 'auto' : scanMethod));
       }
       
       try {
@@ -337,9 +620,9 @@ const ArpScanner = () => {
         console.error('Batch scan error:', error);
       }
       
-      // Reduce or eliminate delay between batches
+      // Minimal delay between batches for thorough scanning
       if (scanSpeed !== 'fast') {
-        await new Promise(resolve => setTimeout(resolve, scanSpeed === 'balanced' ? 50 : 100));
+        await new Promise(resolve => setTimeout(resolve, scanSpeed === 'balanced' ? 100 : 200));
       }
     }
     
@@ -438,6 +721,8 @@ const ArpScanner = () => {
                     <MenuItem value="websocket">WebSocket</MenuItem>
                     <MenuItem value="fetch">Fetch Endpoints</MenuItem>
                     <MenuItem value="ping">Image Ping</MenuItem>
+                    <MenuItem value="hardware">Hardware Detection</MenuItem>
+                    <MenuItem value="auto">Auto (All Methods)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
