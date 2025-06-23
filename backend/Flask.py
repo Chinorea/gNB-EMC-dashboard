@@ -9,9 +9,18 @@ import os
 import datetime
 import re
 import json
+import socket
+import platform
 
 # Import fcntl for non-blocking I/O
 import fcntl
+
+# Try to import psutil for system info
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 # Import board factory and config manager
 from board_factory import BoardFactory
@@ -137,6 +146,11 @@ def get_raptor_status():
     return jsonify({
         "node_status": raptor_status.raptorStatus.name
     }), 200
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Minimal health check endpoint for fast network discovery"""
+    return jsonify({"status": "online"})
 
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():

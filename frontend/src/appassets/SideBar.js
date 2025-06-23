@@ -16,17 +16,24 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Typography
+  Typography,
+  Collapse,
+  Chip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ClearIcon from '@mui/icons-material/Clear';
 import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
+import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
+import ComputerIcon from '@mui/icons-material/Computer';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
 import DarkModeToggle from '../theme/DarkModeToggle';
 import { getThemeColors } from '../theme/theme';
+import NetworkScanner from './NetworkScanner';
 
 const drawerWidth = 350;
 
@@ -44,6 +51,12 @@ function Sidebar({
   const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
   const [editSecondary, setEditSecondary] = useState('');
   const [editName, setEditName] = useState('');
+  
+  // Network scanner states
+  const [autoDiscoveredNodes, setAutoDiscoveredNodes] = useState([]);
+  const [isNetworkScanning, setIsNetworkScanning] = useState(false);
+  const [showAutoNodes, setShowAutoNodes] = useState(false);
+  const [scanner] = useState(() => new NetworkScanner());
 
   // Custom scrollbar styling
   const scrollbarStyle = {
@@ -68,7 +81,6 @@ function Sidebar({
       ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)' 
       : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',
   };
-
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
       // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
@@ -83,6 +95,54 @@ function Sidebar({
       if (onMapDataRefresh) {
         onMapDataRefresh();
       }
+    }
+  };
+
+  // Add auto-discovered node to manual nodes list
+  const addAutoDiscoveredNode = (autoNode) => {
+    if (!allNodeData.some(node => node.ip === autoNode.ip)) {
+      const newNodeInstance = new NodeInfo(autoNode.ip, setAllNodeData, setRebootAlertNodeIp);
+      newNodeInstance.nodeName = autoNode.hostname || 'Auto-discovered Node';
+      newNodeInstance.manet.ip = '';
+      newNodeInstance.manet.connectionStatus = 'Not Configured';
+      setAllNodeData(prev => [...prev, newNodeInstance]);
+      
+      if (onMapDataRefresh) {
+        onMapDataRefresh();
+      }
+    }
+  };
+
+  // Start network scan
+  const startNetworkScan = async () => {
+    if (isNetworkScanning) return;
+    
+    setIsNetworkScanning(true);
+    setAutoDiscoveredNodes([]);
+    
+    try {
+      const results = await scanner.scanAllSubnets(
+        null, // progress callback
+        (node) => {
+          // Node found callback
+          setAutoDiscoveredNodes(prev => {
+            const existing = prev.find(n => n.ip === node.ip);
+            if (!existing) {
+              return [...prev, node.data];
+            }
+            return prev;
+          });
+        },
+        (results) => {
+          // Scan complete callback
+          console.log('Network scan completed:', results);
+          setAutoDiscoveredNodes(results.nodes);
+        }
+      );
+    } catch (error) {
+      console.error('Network scan failed:', error);
+    } finally {
+      setIsNetworkScanning(false);
     }
   };
 
@@ -223,8 +283,7 @@ function Sidebar({
                 primary="Home"
                 primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
-            </ListItemButton>
-            <ListItemButton component={RouterLink} to="/map">
+            </ListItemButton>            <ListItemButton component={RouterLink} to="/map">
               <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
                 <MapIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
               </ListItemIcon>
@@ -234,7 +293,88 @@ function Sidebar({
               />
             </ListItemButton>
           </List>
-        </Box>        {/* Dynamically sized Nodes section with isolated scrolling */}
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Network Scanner Section */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+              Network Scanner
+            </Typography>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="small"
+              startIcon={<NetworkCheckIcon />}
+              onClick={startNetworkScan}
+              disabled={isNetworkScanning}
+              sx={{ mb: 1 }}
+            >
+              {isNetworkScanning ? 'Scanning...' : 'Scan Network'}
+            </Button>
+            
+            {autoDiscoveredNodes.length > 0 && (
+              <Button
+                variant="text"
+                fullWidth
+                size="small"
+                startIcon={showAutoNodes ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                onClick={() => setShowAutoNodes(!showAutoNodes)}
+                sx={{ justifyContent: 'flex-start' }}
+              >
+                Auto-discovered ({autoDiscoveredNodes.length})
+              </Button>
+            )}
+            
+            <Collapse in={showAutoNodes}>
+              <List dense sx={{ pl: 1 }}>
+                {autoDiscoveredNodes.map((node, index) => (
+                  <ListItem
+                    key={node.ip || index}
+                    sx={{
+                      backgroundColor: colors.nodeStatus.running,
+                      mb: 0.5,
+                      borderRadius: 1,
+                      p: 0.5
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: '24px' }}>
+                      <ComputerIcon fontSize="small" color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" fontWeight="bold">
+                            {node.hostname || 'Unknown'}
+                          </Typography>
+                          <Chip 
+                            label={node.ip} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ fontSize: '0.6rem', height: '16px' }}
+                          />
+                        </Box>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.secondary">
+                          {node.platform || 'Unknown'} • {node.cpu_count || 'N/A'} CPU
+                        </Typography>
+                      }
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => addAutoDiscoveredNode(node)}
+                      disabled={allNodeData.some(n => n.ip === node.ip)}
+                      sx={{ ml: 1 }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </Box>
+        </Box>{/* Dynamically sized Nodes section with isolated scrolling */}
         <Box 
           sx={{ 
             flex: 1, // Take remaining vertical space
