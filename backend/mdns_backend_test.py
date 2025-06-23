@@ -1,184 +1,279 @@
 #!/usr/bin/env python3
 """
-Enhanced Backend Discovery Test
+Enhanced gNB mDNS Subscriber with Network Discovery
+Discovers multiple dashboards via network scanning + direct registration
 """
-
-import time
 import socket
-from zeroconf import Zeroconf, ServiceBrowser, ServiceListener
+import threading
+import time
 import requests
+import json
+import ipaddress
+import logging
+from concurrent.futures import ThreadPoolExecutor
+import subprocess
 
-class VerboseListener(ServiceListener):
-    def __init__(self):
-        self.services_found = []
-        print("🔍 VerboseListener initialized")
-    
-    def add_service(self, zc, type_, name):
-        print(f"✅ FOUND SERVICE: {name}")
-        print(f"   Type: {type_}")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class MultiDashboardDiscovery:
+    def __init__(self, node_name, flask_port=5000):
+        self.node_name = node_name
+        self.flask_port = flask_port
+        self.discovered_dashboards = {}
+        self.registration_threads = {}
+        self.running = True
+        self.discovery_interval = 60  # Re-scan every 60 seconds
         
+    def get_local_network(self):
+        """Determine local network subnet for scanning"""
         try:
-            info = zc.get_service_info(type_, name)
-            if info:
-                host = socket.inet_ntoa(info.addresses[0])
-                print(f"   Host: {host}:{info.port}")
-                print(f"   Addresses: {[socket.inet_ntoa(addr) for addr in info.addresses]}")
-                if info.properties:
-                    print(f"   Properties: {info.properties}")
-                
-                self.services_found.append({
-                    'name': name,
-                    'host': host,
-                    'port': info.port
-                })
-            else:
-                print(f"   ⚠️ No service info available")
+            # Get default route interface
+            result = subprocess.run(['ip', 'route', 'show', 'default'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                # Extract interface name
+                default_route = result.stdout.strip()
+                if 'dev' in default_route:
+                    interface = default_route.split('dev')[1].split()[0]
+                    
+                    # Get IP and subnet for this interface
+                    ip_result = subprocess.run(['ip', 'addr', 'show', interface], 
+                                             capture_output=True, text=True)
+                    if ip_result.returncode == 0:
+                        for line in ip_result.stdout.split('\n'):
+                            if 'inet ' in line and not '127.0.0.1' in line:
+                                ip_cidr = line.split('inet')[1].split()[0]
+                                return str(ipaddress.IPv4Network(ip_cidr, strict=False))
         except Exception as e:
-            print(f"   ❌ Error getting service info: {e}")
+            logger.warning(f"Could not determine network automatically: {e}")
         
-        print("-" * 50)
-    
-    def remove_service(self, zc, type_, name):
-        print(f"❌ Service removed: {name}")
-    
-    def update_service(self, zc, type_, name):
-        print(f"🔄 Service updated: {name}")
-
-def test_direct_registration():
-    """Test direct registration without mDNS discovery"""
-    print("\n🎯 Testing Direct Registration (Bypass mDNS)")
-    print("=" * 50)
-    
-    dashboard_ip = "192.168.2.104"
-    dashboard_port = 3001
-    
-    try:
-        # Test health endpoint
-        print(f"🔍 Testing dashboard connectivity...")
-        health_response = requests.get(f"http://{dashboard_ip}:{dashboard_port}/health", timeout=5)
-        print(f"   Health check: {health_response.status_code}")
+        # Fallback: try to determine from local IP
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            
+            # Assume /24 subnet
+            network = ipaddress.IPv4Network(f"{local_ip}/24", strict=False)
+            return str(network)
+        except:
+            pass
         
-        # Test direct registration
-        print(f"📝 Testing node registration...")
+        return "192.168.2.0/24"  # Default fallback
+    
+    def scan_for_dashboard(self, ip, port=3001, timeout=2):
+        """Test if a specific IP:port is a gNB dashboard"""
+        try:
+            response = requests.get(f"http://{ip}:{port}/health", timeout=timeout)
+            if response.status_code == 200:
+                data = response.json()
+                if 'gNB' in data.get('service', '') or 'mDNS' in data.get('service', ''):
+                    return {
+                        'ip': ip,
+                        'port': port,
+                        'service': data.get('service', 'Unknown'),
+                        'hostname': data.get('hostname', 'Unknown')
+                    }
+        except:
+            pass
+        return None
+    
+    def network_discovery_scan(self, network_cidr="auto", port=3001, max_workers=50):
+        """Scan network for gNB dashboards"""
+        if network_cidr == "auto":
+            network_cidr = self.get_local_network()
+        
+        logger.info(f"🔍 Scanning network {network_cidr} for gNB dashboards...")
+        
+        network = ipaddress.IPv4Network(network_cidr)
+        discovered = []
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all IP scan tasks
+            futures = {}
+            for ip in network.hosts():
+                if ip != ipaddress.IPv4Address(self.get_local_ip()):  # Skip self
+                    future = executor.submit(self.scan_for_dashboard, str(ip), port)
+                    futures[future] = str(ip)
+            
+            # Collect results
+            completed = 0
+            total = len(futures)
+            for future in futures:
+                result = future.result()
+                completed += 1
+                
+                if completed % 50 == 0:  # Progress indicator
+                    logger.info(f"   Scanned {completed}/{total} addresses...")
+                
+                if result:
+                    discovered.append(result)
+                    logger.info(f"✅ Found dashboard: {result['ip']}:{result['port']} - {result['service']}")
+        
+        logger.info(f"🎯 Network scan complete: Found {len(discovered)} dashboards")
+        return discovered
+    
+    def register_with_dashboard(self, dashboard_info):
+        """Register with a specific dashboard"""
+        dashboard_id = f"{dashboard_info['ip']}:{dashboard_info['port']}"
+        
         registration_data = {
-            'ip': get_backend_ip(),
-            'nodeName': 'Backend-Test-Node',
+            'ip': self.get_local_ip(),
+            'nodeName': self.node_name,
             'nodeType': 'gNB',
-            'capabilities': ['status_reporting', 'network_monitoring', 'battery_reporting'],
-            'batteryLevel': 12.5,
-            'flaskPort': 5000,
-            'timestamp': time.time()
+            'capabilities': [
+                'status_reporting',
+                'network_monitoring',
+                'battery_reporting'
+            ],
+            'batteryLevel': self.get_battery_level(),
+            'flaskPort': self.flask_port,
+            'timestamp': time.time(),
+            'discoveryMethod': 'network_scan'
         }
         
-        register_response = requests.post(
-            f"http://{dashboard_ip}:{dashboard_port}/api/gnb/register",
-            json=registration_data,
-            timeout=10
-        )
-        
-        print(f"   Registration response: {register_response.status_code}")
-        if register_response.status_code == 200:
-            print("✅ Direct registration successful!")
-            print("💡 Check your React frontend - node should appear immediately")
-            return True
-        else:
-            print(f"❌ Registration failed: {register_response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Direct registration test failed: {e}")
-        return False
-
-def get_backend_ip():
-    """Get backend IP address"""
-    try:
-        # Try connecting to dashboard to get local IP
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("192.168.2.104", 3001))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
         try:
-            # Alternative method using hostname
-            import subprocess
-            result = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
-            if result.returncode == 0:
-                ips = result.stdout.strip().split()
-                for ip in ips:
-                    if not ip.startswith('127.') and not ip.startswith('::'):
-                        return ip
-        except Exception:
-            pass
-        return "127.0.0.1"
+            response = requests.post(
+                f"http://{dashboard_info['ip']}:{dashboard_info['port']}/api/gnb/register",
+                json=registration_data,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Registered with {dashboard_id}")
+                return True
+            else:
+                logger.warning(f"⚠️ Registration failed with {dashboard_id}: HTTP {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Registration error with {dashboard_id}: {e}")
+            return False
+    
+    def heartbeat_worker(self, dashboard_info):
+        """Maintain heartbeat with a specific dashboard"""
+        dashboard_id = f"{dashboard_info['ip']}:{dashboard_info['port']}"
+        heartbeat_count = 0
+        
+        while self.running and dashboard_id in self.discovered_dashboards:
+            time.sleep(30)  # 30 second intervals
+            heartbeat_count += 1
+            
+            try:
+                heartbeat_data = {
+                    'ip': self.get_local_ip(),
+                    'timestamp': time.time(),
+                    'batteryLevel': self.get_battery_level(),
+                    'status': 'active',
+                    'heartbeat_count': heartbeat_count
+                }
+                
+                response = requests.post(
+                    f"http://{dashboard_info['ip']}:{dashboard_info['port']}/api/gnb/heartbeat",
+                    json=heartbeat_data,
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    logger.debug(f"💓 Heartbeat to {dashboard_id} - #{heartbeat_count}")
+                else:
+                    logger.warning(f"⚠️ Heartbeat failed to {dashboard_id}: HTTP {response.status_code}")
+                    
+                    # Try re-registration
+                    if response.status_code in [404, 500]:
+                        logger.info(f"🔄 Re-registering with {dashboard_id}")
+                        self.register_with_dashboard(dashboard_info)
+                        
+            except Exception as e:
+                logger.warning(f"❌ Heartbeat error to {dashboard_id}: {e}")
+    
+    def start_multi_dashboard_discovery(self, network_cidr="auto", port=3001):
+        """Start discovery and registration with multiple dashboards"""
+        logger.info(f"🚀 Starting Multi-Dashboard Discovery")
+        logger.info(f"   Node: {self.node_name}")
+        logger.info(f"   Network: {network_cidr}")
+        logger.info(f"   Port: {port}")
+        
+        try:
+            while self.running:
+                # Discover dashboards on network
+                discovered = self.network_discovery_scan(network_cidr, port)
+                
+                # Register with newly discovered dashboards
+                for dashboard in discovered:
+                    dashboard_id = f"{dashboard['ip']}:{dashboard['port']}"
+                    
+                    if dashboard_id not in self.discovered_dashboards:
+                        # New dashboard found
+                        logger.info(f"🆕 New dashboard discovered: {dashboard_id}")
+                        
+                        # Register with it
+                        if self.register_with_dashboard(dashboard):
+                            self.discovered_dashboards[dashboard_id] = dashboard
+                            
+                            # Start heartbeat thread
+                            heartbeat_thread = threading.Thread(
+                                target=self.heartbeat_worker,
+                                args=(dashboard,),
+                                daemon=True
+                            )
+                            heartbeat_thread.start()
+                            self.registration_threads[dashboard_id] = heartbeat_thread
+                
+                # Remove dashboards that are no longer reachable
+                current_dashboard_ids = {f"{d['ip']}:{d['port']}" for d in discovered}
+                for dashboard_id in list(self.discovered_dashboards.keys()):
+                    if dashboard_id not in current_dashboard_ids:
+                        logger.info(f"📤 Dashboard no longer reachable: {dashboard_id}")
+                        del self.discovered_dashboards[dashboard_id]
+                        if dashboard_id in self.registration_threads:
+                            del self.registration_threads[dashboard_id]
+                
+                logger.info(f"📊 Currently registered with {len(self.discovered_dashboards)} dashboards")
+                
+                # Wait before next discovery cycle
+                logger.info(f"⏱️ Waiting {self.discovery_interval} seconds before next scan...")
+                time.sleep(self.discovery_interval)
+                
+        except KeyboardInterrupt:
+            logger.info("⏹️ Discovery stopped by user")
+            self.running = False
+        except Exception as e:
+            logger.error(f"❌ Discovery error: {e}")
+    
+    def get_local_ip(self):
+        """Get local IP address"""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
+    
+    def get_battery_level(self):
+        """Get battery level (mock for now)"""
+        return 12.0 + (time.time() % 10) / 10  # Simulate changing battery
 
 def main():
-    print("🚀 Enhanced Backend Discovery Test")
-    print("Testing if backend can discover mDNS service...")
-    print("=" * 60)
+    import sys
     
-    # Test 1: mDNS Discovery
-    print("📡 Creating Zeroconf instance...")
-    zc = Zeroconf()
+    if len(sys.argv) < 2:
+        print("Usage: python multi_dashboard_discovery.py <node_name> [network_cidr] [port]")
+        print("Example: python multi_dashboard_discovery.py MyGnbNode")
+        print("Example: python multi_dashboard_discovery.py MyGnbNode 192.168.1.0/24")
+        print("Example: python multi_dashboard_discovery.py MyGnbNode auto 3001")
+        sys.exit(1)
     
-    print("👂 Creating listener...")
-    listener = VerboseListener()
+    node_name = sys.argv[1]
+    network_cidr = sys.argv[2] if len(sys.argv) > 2 else "auto"
+    port = int(sys.argv[3]) if len(sys.argv) > 3 else 3001
     
-    print("🔍 Starting service browser for: _gnb-scanner._tcp.local.")
-    browser = ServiceBrowser(zc, '_gnb-scanner._tcp.local.', listener)
-    
-    print("⏱️  Scanning for 15 seconds...")
-    try:
-        for i in range(15):
-            time.sleep(1)
-            if i % 5 == 0 and i > 0:
-                print(f"   ... {15-i} seconds remaining")
-    except KeyboardInterrupt:
-        print("\n⏹️ Test interrupted")
-    
-    print(f"\n📊 mDNS DISCOVERY RESULTS:")
-    print(f"Services found: {len(listener.services_found)}")
-    
-    mdns_success = False
-    if listener.services_found:
-        print("✅ Successfully discovered services:")
-        for service in listener.services_found:
-            print(f"  - {service['name']} at {service['host']}:{service['port']}")
-        print("\n🎉 Backend can discover mDNS service!")
-        mdns_success = True
-    else:
-        print("❌ No services discovered via mDNS")
-        print("\nPossible issues:")
-        print("1. Zeroconf version incompatibility")
-        print("2. Network interface binding issue")
-        print("3. Firewall blocking mDNS multicast")
-        print("4. Python and mDNS service on different networks")
-    
-    print(f"\n🖥️  Backend machine info:")
-    backend_ip = get_backend_ip()
-    print(f"Backend IP: {backend_ip}")
-    print(f"Expected dashboard IP: 192.168.2.104")
-    if backend_ip != "192.168.2.104":
-        print("⚠️  WARNING: Backend and dashboard on different IPs!")
-        print("   This may prevent mDNS discovery")
-    
-    print("\n🧹 Cleaning up mDNS...")
-    zc.close()
-    
-    # Test 2: Direct Registration (if mDNS failed)
-    if not mdns_success:
-        print("\n" + "=" * 60)
-        print("🔄 Since mDNS discovery failed, testing direct registration...")
-        direct_success = test_direct_registration()
-        
-        if direct_success:
-            print("\n✅ RECOMMENDATION: Use direct registration mode")
-            print("   Command: python gnb_mdns_subscriber.py <node_name> direct 192.168.2.104")
-        else:
-            print("\n❌ Both mDNS discovery and direct registration failed")
-            print("   Check network connectivity to dashboard")
-    
-    print("\n✅ Test complete")
+    discovery = MultiDashboardDiscovery(node_name)
+    discovery.start_multi_dashboard_discovery(network_cidr, port)
 
 if __name__ == "__main__":
     main()
