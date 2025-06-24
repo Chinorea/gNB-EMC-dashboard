@@ -9,9 +9,10 @@ import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM, { getBatteryPercentage } from './utils';
-import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
-import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog'; // Added import
+import NodeInfo from './NodeInfo';
+import RebootAlertDialog from './nodedashboardassets/RebootAlertDialog';
 import Sidebar from './appassets/SideBar';
+import NetworkScanner from './appassets/NetworkScanner';
 
 const drawerWidth = 350;
 
@@ -25,9 +26,17 @@ export default function App() {
   const [mapMarkers, setMapMarkers] = useState([]);
   const [lqm, setLQM] = useState([]);
   const lqmRef = useRef(lqm); // Add ref for lqm
-
   // NEW: State to trigger map data refresh
   const [mapDataRefreshTrigger, setMapDataRefreshTrigger] = useState(0);
+
+  // Network scanning state
+  const [autoDiscoveredNodes, setAutoDiscoveredNodes] = useState([]);
+  const [isNetworkScanning, setIsNetworkScanning] = useState(false);
+  const [subnet, setSubnet] = useState(() => {
+    const savedSubnet = localStorage.getItem('networkSubnet');
+    return savedSubnet || '192.168.2';
+  });
+  const [scanner] = useState(() => new NetworkScanner());
 
   // Function to load map data from API with optional node data override
   const loadMapData = useCallback((nodeDataOverride = null) => {
@@ -175,7 +184,6 @@ export default function App() {
       // setLQM(fullLQM);
     };    executeMapDataFlow();
   }, []); // No dependencies needed since buildStaticsLQM is imported function
-
   // Function to manually trigger map data refresh
   const triggerMapDataRefresh = useCallback((options = {}) => {
     // If this is a node removal, immediately clear map markers to prevent lag
@@ -193,7 +201,46 @@ export default function App() {
     }
     
     // For other cases, use the normal trigger mechanism
-    setMapDataRefreshTrigger(prev => prev + 1);  }, [loadMapData]);
+    setMapDataRefreshTrigger(prev => prev + 1);
+  }, [loadMapData]);  // Network scanning function
+  const startNetworkScan = useCallback(async () => {
+    // Check both React state and scanner internal state to prevent overlaps
+    if (isNetworkScanning || scanner.getIsScanning()) return;
+    
+    console.log(`🔍 Initiating network scan for subnet: ${subnet}.x`);
+    setIsNetworkScanning(true);
+    
+    try {
+      const results = await scanner.scanUserSubnet(
+        subnet,
+        null, // progress callback
+        (node) => {
+          // Node found callback
+          setAutoDiscoveredNodes(prev => {
+            const existing = prev.find(n => n.ip === node.ip);
+            if (!existing) {
+              return [...prev, node.data];
+            }
+            return prev;
+          });
+        },
+        (results) => {
+          // Scan complete callback
+          setAutoDiscoveredNodes(results.nodes);
+        }
+      );
+    } catch (error) {
+      console.error('Network scan failed:', error);
+    } finally {
+      setIsNetworkScanning(false);
+    }
+  }, [scanner, subnet]); // Removed isNetworkScanning from dependencies
+
+  // Handle subnet change and persist to localStorage
+  const handleSubnetChange = useCallback((newSubnet) => {
+    setSubnet(newSubnet);
+    localStorage.setItem('networkSubnet', newSubnet);
+  }, []);
 
   // Effect to keep lqmRef in sync with state
   useEffect(() => {
@@ -326,10 +373,27 @@ export default function App() {
         console.error("Error polling MANET connection:", error);
       } finally {
         running = false;
-      }
-    }, 5000);
+      }    }, 5000);
     return () => clearInterval(manetInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array
+  }, [hasLoaded]); // Add hasLoaded to dependency array  // Effect 6: Network scanning every 10 seconds
+  useEffect(() => {
+    if (!hasLoaded) return; // Guard: Only run if initial load is complete
+    
+    // Start initial scan after a small delay to avoid overlaps
+    const initialScanTimeout = setTimeout(() => {
+      startNetworkScan();
+    }, 500);
+    
+    // Set up interval for scanning every 10 seconds
+    const networkScanInterval = setInterval(() => {
+      startNetworkScan();
+    }, 10000);
+    
+    return () => {
+      clearTimeout(initialScanTimeout);
+      clearInterval(networkScanInterval);
+    };
+  }, [hasLoaded, subnet, startNetworkScan]); // Restart when subnet changes
 
 
   return (
@@ -340,12 +404,16 @@ export default function App() {
         onClose={() => setRebootAlertNodeIp(null)}
       />
       <BrowserRouter>
-        <Box sx={{ display: 'flex', height: '100vh' }}>
-          <Sidebar
+        <Box sx={{ display: 'flex', height: '100vh' }}>          <Sidebar
             allNodeData={allNodeData}
             setAllNodeData={setAllNodeData}
-            setRebootAlertNodeIp={setRebootAlertNodeIp} // Pass setter to Sidebar
-            onMapDataRefresh={triggerMapDataRefresh} // Pass map refresh trigger function
+            setRebootAlertNodeIp={setRebootAlertNodeIp}
+            onMapDataRefresh={triggerMapDataRefresh}
+            autoDiscoveredNodes={autoDiscoveredNodes}
+            isNetworkScanning={isNetworkScanning}
+            subnet={subnet}
+            onSubnetChange={handleSubnetChange}
+            startNetworkScan={startNetworkScan}
           />
           <Box
             component="main"
