@@ -3,8 +3,8 @@
 
 class NetworkScanner {
   constructor() {
-    this.batchSize = 90; // Increased to 90 IPs per batch
-    this.timeout = 2000; // 2 second timeout for health API calls
+    this.batchSize = 65; // Scan 65 IPs per batch
+    this.timeout = 2500; // 2.5 second timeout for health API calls
     this.port = 5000;
     this.discoveredNodes = new Map();
     this.isScanning = false;
@@ -75,7 +75,7 @@ class NetworkScanner {
     for (let i = 1; i <= 254; i++) {
       allIPs.push(`${subnet}.${i}`);
     }    // Scan all IPs with limited concurrency for speed
-    const concurrencyLimit = 90; // Scan up to 90 IPs simultaneously
+    const concurrencyLimit = 65; // Scan up to 65 IPs simultaneously
     const results = [];
     
     for (let i = 0; i < allIPs.length; i += concurrencyLimit) {

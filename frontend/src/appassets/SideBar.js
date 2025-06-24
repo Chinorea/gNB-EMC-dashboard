@@ -286,7 +286,7 @@ function Sidebar({
           }}
         >
           {/* Scanned Nodes Card */}
-          <Card sx={{ mb: 2, flex: '0 1 auto', display: 'flex', flexDirection: 'column', maxHeight: '40%' }}>
+          <Card sx={{ mb: 2, flex: '0 0 auto', display: 'flex', flexDirection: 'column', maxHeight: '40%' }}>
             <CardContent sx={{ 
               p: 1.5, 
               '&:last-child': { pb: 1.5 }, 
@@ -370,7 +370,7 @@ function Sidebar({
           </Card>
 
           {/* Saved Nodes Card */}
-          <Card sx={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Card sx={{ flex: '1 1 0', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <CardContent sx={{ 
               p: 1.5, 
               '&:last-child': { pb: 1.5 }, 
