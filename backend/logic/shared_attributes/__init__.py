@@ -1,0 +1,1 @@
+# Shared attributes package - board-agnostic implementations
