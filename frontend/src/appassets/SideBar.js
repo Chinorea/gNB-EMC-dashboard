@@ -37,7 +37,6 @@ import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
 import DarkModeToggle from '../theme/DarkModeToggle';
 import { getThemeColors } from '../theme/theme';
-import NetworkScanner from './NetworkScanner';
 
 const drawerWidth = 350;
 
@@ -46,29 +45,19 @@ function Sidebar({
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
   onMapDataRefresh, // New prop to trigger map data refresh
+  autoDiscoveredNodes, // Network scanning results from App.js
+  isNetworkScanning, // Network scanning state from App.js
+  subnet, // Current subnet from App.js
+  onSubnetChange, // Function to change subnet from App.js
+  startNetworkScan, // Function to start network scan from App.js
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [ip, setIp] = useState('');
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
+  const [editOpen, setEditOpen] = useState(false);  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
   const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
-  const [editSecondary, setEditSecondary] = useState('');  const [editName, setEditName] = useState('');
-    // Network scanner states
-  const [autoDiscoveredNodes, setAutoDiscoveredNodes] = useState([]);
-  const [isNetworkScanning, setIsNetworkScanning] = useState(false);
-  const [showAutoNodes, setShowAutoNodes] = useState(false);
-  const [subnet, setSubnet] = useState(() => {
-    const savedSubnet = localStorage.getItem('networkSubnet');
-    return savedSubnet || '192.168.2';
-  });
-  const [scanner] = useState(() => new NetworkScanner());
-
-  // Handle subnet change and persist to localStorage
-  const handleSubnetChange = (newSubnet) => {
-    setSubnet(newSubnet);
-    localStorage.setItem('networkSubnet', newSubnet);
-  };
+  const [editSecondary, setEditSecondary] = useState('');
+  const [editName, setEditName] = useState('');
 
   // Custom scrollbar styling
   const scrollbarStyle = {
@@ -121,42 +110,7 @@ function Sidebar({
       if (onMapDataRefresh) {
         onMapDataRefresh();
       }
-    }
-  };
-  
-  // Start network scan
-  const startNetworkScan = async () => {
-    if (isNetworkScanning) return;
-    
-    setIsNetworkScanning(true);
-    setAutoDiscoveredNodes([]);
-    
-    try {
-      const results = await scanner.scanUserSubnet(
-        subnet,
-        null, // progress callback
-        (node) => {
-          // Node found callback
-          setAutoDiscoveredNodes(prev => {
-            const existing = prev.find(n => n.ip === node.ip);
-            if (!existing) {
-              return [...prev, node.data];
-            }
-            return prev;
-          });
-        },
-        (results) => {
-          // Scan complete callback
-          console.log('Network scan completed:', results);
-          setAutoDiscoveredNodes(results.nodes);
-        }
-      );
-    } catch (error) {
-      console.error('Network scan failed:', error);
-    } finally {
-      setIsNetworkScanning(false);
-    }
-  };
+    }  };
 
   const removeNode = (ipToRemove) => {
     setAllNodeData(prevInstances => {
@@ -348,7 +302,7 @@ function Sidebar({
                   fullWidth
                   label="Subnet (e.g., 192.168.2)"
                   value={subnet}
-                  size="small"                  onChange={e => handleSubnetChange(e.target.value)}
+                  size="small"                  onChange={e => onSubnetChange(e.target.value)}
                   placeholder="192.168.2"InputLabelProps={{
                     sx: { fontSize: '1.1rem' }
                   }}
