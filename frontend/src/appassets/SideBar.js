@@ -293,33 +293,22 @@ function Sidebar({
               display: 'flex', 
               flexDirection: 'column',
               overflow: 'hidden',
-              flex: 1
-            }}>              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
-                Scanned Nodes ({autoDiscoveredNodes.filter(node => !allNodeData.some(n => n.ip === node.ip)).length})
-              </Typography>
-                {/* Network Scanner Controls */}              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              flex: 1            }}>              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', flexShrink: 0 }}>
+                  Scanned Nodes ({autoDiscoveredNodes.filter(node => !allNodeData.some(n => n.ip === node.ip)).length})
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: '16px' }} />
                 <TextField
-                  fullWidth
-                  label="Subnet (e.g., 192.168.2)"
+                  size="small"
+                  label="Subnet"
                   value={subnet}
-                  size="small"                  onChange={e => onSubnetChange(e.target.value)}
-                  placeholder="192.168.2"InputLabelProps={{
-                    sx: { fontSize: '1.1rem' }
+                  onChange={e => onSubnetChange(e.target.value)}
+                  placeholder="192.168.2"
+                  sx={{ minWidth: '120px' }}
+                  InputLabelProps={{
+                    sx: { fontSize: '0.9rem' }
                   }}
                 />
-                <IconButton
-                  onClick={startNetworkScan}
-                  disabled={isNetworkScanning}
-                  sx={{ 
-                    minWidth: '40px',
-                    height: '40px',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: theme.palette.divider
-                  }}
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
               </Box><Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
                 {autoDiscoveredNodes.length > 0 ? (
                   <List dense sx={{ p: 0 }}>
