@@ -16,13 +16,22 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Typography
+  Typography,
+  Collapse,
+  Chip,
+  Card,
+  CardContent
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
 import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
-import NetworkCheckIcon from '@mui/icons-material/NetworkCheck'; // Add ARP Scanner icon
+import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ComputerIcon from '@mui/icons-material/Computer';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import NodeInfo from '../NodeInfo';
@@ -36,12 +45,16 @@ function Sidebar({
   setAllNodeData,
   setRebootAlertNodeIp, // Added prop
   onMapDataRefresh, // New prop to trigger map data refresh
+  autoDiscoveredNodes, // Network scanning results from App.js
+  isNetworkScanning, // Network scanning state from App.js
+  subnet, // Current subnet from App.js
+  onSubnetChange, // Function to change subnet from App.js
+  startNetworkScan, // Function to start network scan from App.js
 }) {
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [ip, setIp] = useState('');
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
+  const [editOpen, setEditOpen] = useState(false);  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
   const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
   const [editSecondary, setEditSecondary] = useState('');
   const [editName, setEditName] = useState('');
@@ -69,7 +82,6 @@ function Sidebar({
       ? 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05)' 
       : 'rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.05)',
   };
-
   const addNode = () => {
     if (ip && !allNodeData.some(node => node.ip === ip)) {
       // Pass setAllNodeData and setRebootAlertNodeIp to the NodeInfo constructor
@@ -86,6 +98,19 @@ function Sidebar({
       }
     }
   };
+  // Add auto-discovered node to manual nodes list
+  const addAutoDiscoveredNode = (autoNode) => {
+    if (!allNodeData.some(node => node.ip === autoNode.ip)) {
+      const newNodeInstance = new NodeInfo(autoNode.ip, setAllNodeData, setRebootAlertNodeIp);
+      newNodeInstance.nodeName = '';
+      newNodeInstance.manet.ip = '';
+      newNodeInstance.manet.connectionStatus = 'Not Configured';
+      setAllNodeData(prev => [...prev, newNodeInstance]);
+      
+      if (onMapDataRefresh) {
+        onMapDataRefresh();
+      }
+    }  };
 
   const removeNode = (ipToRemove) => {
     setAllNodeData(prevInstances => {
@@ -205,18 +230,21 @@ function Sidebar({
                 backgroundColor: colors.button.addHover,
               }
             }} 
-            onClick={addNode}
-          >
+            onClick={addNode}          >
             Add
-          </Button>          <Divider sx={{ my: 2 }} />          <List subheader={
+          </Button>
+          
+          <Divider sx={{ my: 2 }} />
+          
+          <List subheader={
             <ListSubheader sx={{ 
               backgroundColor: 'transparent',
               fontSize: '1.0rem',
-              fontWeight: 'bold'
-            }}>
+              fontWeight: 'bold'            }}>
               Navigation
             </ListSubheader>
-          }>            <ListItemButton component={RouterLink} to="/">
+          }>
+            <ListItemButton component={RouterLink} to="/">
               <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
                 <HomeIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
               </ListItemIcon>
@@ -225,6 +253,7 @@ function Sidebar({
                 primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
               />
             </ListItemButton>
+            
             <ListItemButton component={RouterLink} to="/map">
               <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
                 <MapIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
@@ -232,142 +261,250 @@ function Sidebar({
               <ListItemText
                 primary="Map"
                 primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
-              />
-            </ListItemButton>
-            <ListItemButton component={RouterLink} to="/arp-scanner">
-              <ListItemIcon sx={{ minWidth: '32px', margin: 0, padding: 0 }}>
-                <NetworkCheckIcon sx={{ fontSize: '1.2rem', margin: 0 }} />
-              </ListItemIcon>
-              <ListItemText
-                primary="ARP Scanner"
-                primaryTypographyProps={{ fontWeight: 'bold', fontSize: '1.3rem' }}
-              />
-            </ListItemButton>
+              />            </ListItemButton>
           </List>
-        </Box>        {/* Dynamically sized Nodes section with isolated scrolling */}
+
+          <ListSubheader sx={{ 
+            backgroundColor: 'transparent',
+            fontSize: '1.0rem',
+            fontWeight: 'bold',
+            mt: 1
+          }}>
+            Nodes
+          </ListSubheader>
+        </Box>
+
+        {/* Dynamically sized Nodes section with isolated scrolling */}
         <Box 
           sx={{ 
-            flex: 1, // Take remaining vertical space
-            overflow: 'auto', // Only this section scrolls
-            p: 2, // Same padding as the fixed header section
-            ...scrollbarStyle // Apply custom scrollbar only to this section
-          }}          ><List 
-            subheader={
-              <ListSubheader 
-                sx={{ 
-                  backgroundColor: 'transparent',
-                  position: 'sticky', 
-                  top: 0, 
-                  zIndex: 1,
-                  fontSize: '1.0rem',
-                  fontWeight: 'bold'
-                }}
-              >
-                Nodes
-              </ListSubheader>
-            }
-          >
-            {allNodeData.map(nodeInstance => { // Iterate over NodeInfo instances
-              const currentStatus = nodeInstance.status || 'DISCONNECTED';
-              let bg;              switch (currentStatus) {
-                case 'RUNNING':
-                  bg = colors.nodeStatus.running;
-                  break;
-                case 'INITIALIZING': // This status is now mainly for script toggling
-                  bg = colors.nodeStatus.initializing;
-                  break;
-                case 'OFF':
-                  bg = colors.nodeStatus.off;
-                  break;
-                case 'DISCONNECTED':
-                  bg = colors.nodeStatus.disconnected;
-                  break;
-                case 'UNREACHABLE':
-                  bg = colors.nodeStatus.unreachable;
-                  break;
-                default:
-                  bg = colors.nodeStatus.disconnected;
-              }              return (
-                <ListItem
-                  key={nodeInstance.ip} // Use instance.ip as key
-                  disablePadding
-                  sx={{
-                    width: '100%',
-                    backgroundColor: bg,
-                    display: 'flex',
+            flex: 1,
+            overflow: 'hidden',
+            p: 2,
+            pt: 0,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Scanned Nodes Card */}
+          <Card sx={{ mb: 2, flex: '0 1 auto', display: 'flex', flexDirection: 'column', maxHeight: '40%' }}>
+            <CardContent sx={{ 
+              p: 1.5, 
+              '&:last-child': { pb: 1.5 }, 
+              display: 'flex', 
+              flexDirection: 'column',
+              overflow: 'hidden',
+              flex: 1
+            }}>              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Scanned Nodes ({autoDiscoveredNodes.filter(node => !allNodeData.some(n => n.ip === node.ip)).length})
+              </Typography>
+                {/* Network Scanner Controls */}              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Subnet (e.g., 192.168.2)"
+                  value={subnet}
+                  size="small"                  onChange={e => onSubnetChange(e.target.value)}
+                  placeholder="192.168.2"InputLabelProps={{
+                    sx: { fontSize: '1.1rem' }
                   }}
-                >                  <ListItemButton
-                    onClick={() => openEdit(nodeInstance.ip)}
-                    sx={{ 
-                      minWidth: '40px', 
-                      maxWidth: '40px',
-                      minHeight: '40px',
-                      maxHeight: '40px',
-                      justifyContent: 'center',
-                      borderRadius: '50%',
-                      padding: '4px'
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </ListItemButton>
-                  <ListItemButton
-                    component={RouterLink}
-                    to={`/node/${nodeInstance.ip}`} // Link uses instance.ip
-                    sx={{ flex: 1 }}
-                  >
-                    <ListItemText
-                      primary={nodeInstance.nodeName || nodeInstance.ip} // Show name or IP
-                      primaryTypographyProps={{
-                        fontWeight: 'bold',
-                        variant: 'body1',
-                        fontSize: '1.0rem'
-                      }}
-                      secondary={
-                        <>
-                          {nodeInstance.nodeName && ( // Only show Node IP if a custom name is displayed
-                            <Typography
-                              component="span"
-                              variant="body1"
-                              color="textSecondary"
-                              sx={{ fontSize: '0.9rem', display: 'block' }}
-                            >
-                              Node IP: {nodeInstance.ip}
-                            </Typography>
-                          )}
-                          <Typography
-                            component="span"
-                            variant="body1"
-                            color="textSecondary"
-                            sx={{ fontSize: '0.9rem', display: 'block' }}
-                          >
-                            MANET: {nodeInstance.manet.ip || 'Not configured'}
-                          </Typography>
-                        </>
+                />
+                <IconButton
+                  onClick={startNetworkScan}
+                  disabled={isNetworkScanning}
+                  sx={{ 
+                    minWidth: '40px',
+                    height: '40px',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: theme.palette.divider
+                  }}
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </Box><Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
+                {autoDiscoveredNodes.length > 0 ? (
+                  <List dense sx={{ p: 0 }}>
+                    {autoDiscoveredNodes
+                      .filter(node => !allNodeData.some(n => n.ip === node.ip))
+                      .map((node, index) => (
+                      <ListItem
+                        key={node.ip || index}
+                        disablePadding                        sx={{
+                          width: '100%',
+                          backgroundColor: colors.scannedNodes.background,
+                          display: 'flex',
+                          mb: 0.5,
+                          borderRadius: 1
+                        }}
+                      >
+                        <ListItemButton
+                          sx={{ 
+                            minWidth: '40px', 
+                            maxWidth: '40px',
+                            minHeight: '40px',
+                            maxHeight: '40px',
+                            justifyContent: 'center',
+                            borderRadius: '50%',
+                            padding: '4px'
+                          }}
+                        >
+                          <ComputerIcon fontSize="small" color="primary" />
+                        </ListItemButton>
+                        <ListItemButton
+                          onClick={() => addAutoDiscoveredNode(node)}
+                          sx={{ flex: 1 }}
+                        >
+                          <ListItemText
+                            primary={node.ip}
+                            primaryTypographyProps={{
+                              fontWeight: 'bold',
+                              variant: 'body1',
+                              fontSize: '1.0rem'
+                            }}
+                          />
+                        </ListItemButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => addAutoDiscoveredNode(node)}
+                          sx={{ mr: 1 }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </ListItem>
+                    ))}
+                  </List>) : isNetworkScanning ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Scanning for nodes...
+                  </Typography>
+                ) : null}
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Saved Nodes Card */}
+          <Card sx={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <CardContent sx={{ 
+              p: 1.5, 
+              '&:last-child': { pb: 1.5 }, 
+              display: 'flex', 
+              flexDirection: 'column',
+              overflow: 'hidden',
+              flex: 1
+            }}>              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                Saved Nodes ({allNodeData.length})
+              </Typography>
+              <Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
+                {allNodeData.length > 0 ? (
+                  <List dense sx={{ p: 0 }}>
+                    {allNodeData.map(nodeInstance => {
+                      const currentStatus = nodeInstance.status || 'DISCONNECTED';
+                      let bg;
+                      switch (currentStatus) {
+                        case 'RUNNING':
+                          bg = colors.nodeStatus.running;
+                          break;
+                        case 'INITIALIZING':
+                          bg = colors.nodeStatus.initializing;
+                          break;
+                        case 'OFF':
+                          bg = colors.nodeStatus.off;
+                          break;
+                        case 'DISCONNECTED':
+                          bg = colors.nodeStatus.disconnected;
+                          break;
+                        case 'UNREACHABLE':
+                          bg = colors.nodeStatus.unreachable;
+                          break;
+                        default:
+                          bg = colors.nodeStatus.disconnected;
                       }
-                      secondaryTypographyProps={{
-                        component: 'div',
-                        sx: { mt: 0.5, fontSize: '0.9rem' }
-                      }}
-                    />
-                  </ListItemButton>
-                  <ListItemButton
-                    onClick={() => removeNode(nodeInstance.ip)}
-                    sx={{ 
-                      minWidth: '40px', 
-                      maxWidth: '40px',
-                      minHeight: '40px',
-                      maxHeight: '40px',
-                      justifyContent: 'center',
-                      borderRadius: '50%',
-                      padding: '4px'
-                    }}
-                  >
-                    <ClearIcon fontSize="small" />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
-          </List>
+
+                      return (
+                        <ListItem
+                          key={nodeInstance.ip}
+                          disablePadding
+                          sx={{
+                            width: '100%',
+                            backgroundColor: bg,
+                            display: 'flex',
+                            mb: 0.5,
+                            borderRadius: 1
+                          }}
+                        >
+                          <ListItemButton
+                            onClick={() => openEdit(nodeInstance.ip)}
+                            sx={{ 
+                              minWidth: '40px', 
+                              maxWidth: '40px',
+                              minHeight: '40px',
+                              maxHeight: '40px',
+                              justifyContent: 'center',
+                              borderRadius: '50%',
+                              padding: '4px'
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </ListItemButton>
+                          <ListItemButton
+                            component={RouterLink}
+                            to={`/node/${nodeInstance.ip}`}
+                            sx={{ flex: 1 }}
+                          >
+                            <ListItemText
+                              primary={nodeInstance.nodeName || nodeInstance.ip}
+                              primaryTypographyProps={{
+                                fontWeight: 'bold',
+                                variant: 'body1',
+                                fontSize: '1.0rem'
+                              }}
+                              secondary={
+                                <>
+                                  {nodeInstance.nodeName && (
+                                    <Typography
+                                      component="span"
+                                      variant="body1"
+                                      color="textSecondary"
+                                      sx={{ fontSize: '0.9rem', display: 'block' }}
+                                    >
+                                      Node IP: {nodeInstance.ip}
+                                    </Typography>
+                                  )}
+                                  <Typography
+                                    component="span"
+                                    variant="body1"
+                                    color="textSecondary"
+                                    sx={{ fontSize: '0.9rem', display: 'block' }}
+                                  >
+                                    MANET: {nodeInstance.manet.ip || 'Not configured'}
+                                  </Typography>
+                                </>
+                              }
+                              secondaryTypographyProps={{
+                                component: 'div',
+                                sx: { mt: 0.5, fontSize: '0.9rem' }
+                              }}
+                            />
+                          </ListItemButton>
+                          <ListItemButton
+                            onClick={() => removeNode(nodeInstance.ip)}
+                            sx={{ 
+                              minWidth: '40px', 
+                              maxWidth: '40px',
+                              minHeight: '40px',
+                              maxHeight: '40px',
+                              justifyContent: 'center',
+                              borderRadius: '50%',
+                              padding: '4px'
+                            }}
+                          >
+                            <ClearIcon fontSize="small" />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}                  </List>
+                ) : null}
+              </Box>
+            </CardContent>
+          </Card>
         </Box>
 
         {/* Fixed Footer Section */}
