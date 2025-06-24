@@ -4,7 +4,7 @@
 class NetworkScanner {
   constructor() {
     this.batchSize = 65; // Scan 65 IPs per batch
-    this.timeout = 2000; // 2 second timeout for health API calls
+    this.timeout = 2500; // 2.5 second timeout for health API calls
     this.port = 5000;
     this.discoveredNodes = new Map();
     this.isScanning = false;

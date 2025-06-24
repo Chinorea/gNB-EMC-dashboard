@@ -383,11 +383,10 @@ export default function App() {
     const initialScanTimeout = setTimeout(() => {
       startNetworkScan();
     }, 500);
-    
-    // Set up interval for scanning every 10 seconds
+      // Set up interval for scanning every 15 seconds
     const networkScanInterval = setInterval(() => {
       startNetworkScan();
-    }, 10000);
+    }, 15000);
     
     return () => {
       clearTimeout(initialScanTimeout);
