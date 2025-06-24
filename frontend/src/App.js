@@ -7,7 +7,6 @@ import { ThemeContextProvider } from './theme/ThemeContext';
 import HomePage from './HomePage';
 import NodeDashboard from './NodeDashboard';
 import MapView from './Map';
-import ArpScanner from './ArpScanner'; // Add ARP Scanner import
 import 'leaflet/dist/leaflet.css';
 import buildStaticsLQM, { getBatteryPercentage } from './utils';
 import NodeInfo from './NodeInfo'; // Ensure NodeInfo is imported
@@ -381,10 +380,6 @@ export default function App() {
                 element={<MapView 
                   markers={mapMarkers} 
                   linkQualityMatrix={lqm} />}
-              />
-              <Route
-                path="/arp-scanner"
-                element={<ArpScanner />}
               />
             </Routes>
           </Box>
