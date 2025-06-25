@@ -550,6 +550,11 @@ Advanced troubleshooting tools and diagnostics.
 
 ## 🚀 Advanced Features
 
+### API Documentation & Developer Resources
+- **Interactive API Documentation**: Complete Swagger/OpenAPI documentation with live testing capabilities
+- **Developer Guide**: Comprehensive technical documentation for developers and system integrators
+- **Independent Testing Environment**: API documentation runs separately from main backend for safe testing
+
 ### Multi-Board Architecture
 - **Automatic Detection**: System automatically detects board type based on installed software and file paths
 - **Extensible Design**: New board types can be easily added through the board factory pattern
@@ -907,6 +912,13 @@ For technical support, bug reports, or feature requests:
 - Documentation: Available in the `docs/` folder
 - GitHub Issues: Report bugs and request features
 
+**Developer Resources**
+- **[Developer Guide](DeveloperGuide.md)**: Comprehensive technical documentation for system integration, architecture details, and development workflows
+- **[API Documentation](../docs_generator/README.md)**: Interactive Swagger/OpenAPI documentation with live testing capabilities
+  - Quick Start: Double-click `start_docs.bat` in the `docs_generator/` folder
+  - Access at: `http://localhost:8080/docs/` (after starting the documentation server)
+  - Features: Live API testing, endpoint documentation, request/response schemas
+
 **When contacting support, please include:**
 - Dashboard version and release information
 - Operating system and browser details
@@ -916,4 +928,4 @@ For technical support, bug reports, or feature requests:
 
 ---
 
-*This guide covers version 1.0 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*
+*This guide covers version 1.1 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*
