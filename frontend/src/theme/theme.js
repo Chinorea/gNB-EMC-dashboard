@@ -82,6 +82,9 @@ const lightColors = {
   },
   scannedNodes: {
     background: '#e8f7fc',    // Light pastel baby blue
+  },
+  manetNodes: {
+    background: '#f3e5f5',    // Light pastel purple
   }
 };
 
@@ -166,6 +169,12 @@ const darkColors = {
   },
   scannedNodes: {
     background: '#182e34',    // Dark blue-grey for dark mode
+  },
+  manetNodes: {
+    background: '#2d1b69',    // Dark pastel purple for dark mode
+  },
+  manetNodes: {
+    background: '#3e2a47',    // Darker pastel purple for dark mode
   }
 };
 

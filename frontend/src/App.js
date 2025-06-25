@@ -375,7 +375,7 @@ export default function App() {
         running = false;
       }    }, 5000);
     return () => clearInterval(manetInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array  // Effect 6: Network scanning every 10 seconds
+  }, [hasLoaded]); // Add hasLoaded to dependency array  // Effect 6: Network scanning every 20 seconds
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
     
@@ -383,10 +383,10 @@ export default function App() {
     const initialScanTimeout = setTimeout(() => {
       startNetworkScan();
     }, 500);
-      // Set up interval for scanning every 15 seconds
+    // Set up interval for scanning every 20 seconds
     const networkScanInterval = setInterval(() => {
       startNetworkScan();
-    }, 15000);
+    }, 20000);
     
     return () => {
       clearTimeout(initialScanTimeout);
