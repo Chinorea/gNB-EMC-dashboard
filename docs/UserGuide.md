@@ -1,6 +1,6 @@
 # 5G RAN Dashboard User Guide
 
-**ST Engineering Web Dashboard for gNB-Metanoia**
+**ST Engineering Web Dashboard for Multi-Board gNB Systems**
 
 ---
 
@@ -21,6 +21,7 @@
   - [Configuration Management](#configuration-management)
   - [Logs & Troubleshooting](#logs--troubleshooting)
 - [Advanced Features](#-advanced-features)
+- [Board Support](#-board-support)
 - [Troubleshooting](#-troubleshooting)
 - [FAQ](#-faq)
 - [Glossary](#-glossary)
@@ -28,15 +29,17 @@
 
 ## 🚀 Introduction
 
-The **5G RAN Dashboard** is a comprehensive web-based interface designed to visualize live status updates and manage 5G RAN boards (gNB-Metanoia). This professional-grade dashboard provides network operators with powerful tools to configure, monitor, and maintain gNB systems efficiently.
+The **5G RAN Dashboard** is a comprehensive web-based interface designed to visualize live status updates and manage multiple types of 5G RAN boards. This professional-grade dashboard provides network operators with powerful tools to configure, monitor, and maintain gNB systems efficiently across different hardware platforms.
 
 ### Key Capabilities
+- **Multi-Board Support**: Compatible with EdgeQ and other 5G gNB platforms with automatic detection
 - **Real-time Monitoring**: Live status updates, performance metrics, and system health
 - **Interactive Mapping**: GPS tracking with link quality visualization  
 - **Remote Management**: Start/stop nodes, configuration management, and system control
 - **Performance Analytics**: CPU, RAM, and disk usage monitoring with historical trends
 - **Multi-node Support**: Manage up to 20+ nodes simultaneously
 - **Professional UI**: Modern, responsive interface with light/dark mode support
+- **Automatic Setup**: Simplified installation with automatic dependency management
 
 ---
 
@@ -57,6 +60,7 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
 - **RAM**: Minimum 2GB recommended
 - **Storage**: At least 1GB free space
 - **Network**: TCP/IP connectivity
+- **Board Support**: EdgeQ (with support for future board types)
 
 ---
 
@@ -117,8 +121,8 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
 #### Step 1: Prepare the Backend Files
 1. Extract `webdashboard.zip` from the GitHub release
 2. You should have:
-   - `WebDashboard.py` - Main backend service
-   - `backend/` folder - Contains all backend logic and dependencies
+   - `WebDashboard.py` - Main backend service with automatic dependency installation
+   - `backend/` folder - Contains all backend logic, board support, and dependencies
 
 #### Step 2: Transfer to gNB Board
 1. Copy the entire extracted backend folder to your gNB RAN board
@@ -126,18 +130,23 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
 3. Ensure you have the following structure on the board:
    ```
    /home/user/webdashboard/
-   ├── WebDashboard.py
-   └── backend/
-       ├── logic/
-       ├── webframework/
-       └── dependencies/
-           ├── flask_pkgs/
-           │   ├── Flask-2.2.5-py3-none-any.whl
-           │   ├── Flask_Cors-3.0.10-py2.py3-none-any.whl
-           │   └── ... (other Flask packages)
-           └── pexpect_pkgs/
-               ├── pexpect-4.9.0-py2.py3-none-any.whl
-               └── ptyprocess-0.7.0-py2.py3-none-any.whl
+   ├── WebDashboard.py            # Main entry point with auto-setup
+   ├── backend/
+   │   ├── board_factory.py       # Multi-board support factory
+   │   ├── config_manager.py      # Board-specific configuration management
+   │   ├── Flask.py               # Flask web service
+   │   ├── boards/                # Board-specific implementations
+   │   │   ├── base_board.py      # Abstract base class
+   │   │   ├── edgeq_board.py     # EdgeQ-specific implementation
+   │   │   └── __init__.py
+   │   ├── logic/                 # Board attributes and system logic
+   │   │   ├── setupLogManager.py # Log Manager for setup logs
+   │   │   ├── edgeq_attributes/
+   │   │   └── shared_attributes/
+   │   └── dependencies/          # Pre-packaged dependencies
+   │       ├── flask_pkgs/        # Flask and web framework packages
+   │       ├── pexpect_pkgs/      # Process automation packages
+   │       └── pytest_pkgs/       # Testing framework packages
    ```
 
 #### Step 3: Verify Python Installation
@@ -148,50 +157,90 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
    ```
    ✅ Should return Python 3.9 or higher
 
-#### Step 4: Install Dependencies
+#### Step 4: **Automatic Setup** (Recommended)
+The new WebDashboard.py includes automatic dependency management and board detection.
+
 1. Navigate to the webdashboard directory:
    ```bash
    cd /home/user/webdashboard
    ```
 
-2. Install Flask dependencies:
-   ```bash
-   cd backend/dependencies/flask_pkgs
-   pip3 install *.whl
-   ```
-
-3. Install pexpect dependencies:
-   ```bash
-   cd ../pexpect_pkgs
-   pip3 install *.whl
-   ```
-
-4. Install pytest dependencies:
-   ```bash
-   cd ../pytest_pkgs
-   python -m pip install *.whl --no-index --find-links . --no-deps
-   ```
-
-5. Return to main directory:
-   ```bash
-   cd /home/user/webdashboard
-   ```
-
-#### Step 5: Start Backend Service
-1. Launch the backend service:
+2. **Start with automatic setup** (handles all dependencies):
    ```bash
    python3 WebDashboard.py
    ```
 
-2. ✅ **Success Indicators**:
+3. ✅ **The system will automatically**:
+   - Check for existing dependencies
+   - Install required packages from local wheel files if needed
+   - Detect your board type (EdgeQ or others)
+   - Initialize board-specific configurations
+   - Start the Flask backend service
+
+4. **Success Indicators**:
    ```
-   * Running on http://0.0.0.0:5000
-   * Debug mode: off
-   * Press CTRL+C to quit
-   Flask backend service started successfully!
+   ============================================================
+   gNB Dashboard - Multi-Board Support
+   ============================================================
+   Board type: auto-detect (defaults to EdgeQ)
+   Available boards: edgeq
+   For help: python3 WebDashboard.py --help
+   ------------------------------------------------------------
+   All required dependencies are already installed.
+   Starting Flask application...
+   Board system initialized successfully
+   Dependencies verified
+   Access the dashboard at: http://localhost:5000
+   ============================================================
+   * Running on all addresses (0.0.0.0)
+   * Running on http://127.0.0.1:5000
+   * Running on http://[your-ip]:5000
    ```
 
-3. The backend is now ready to receive connections from the frontend dashboard
+#### Step 5: **Manual Setup** (If Needed)
+If automatic setup fails, you can install dependencies manually:
+
+1. Install Flask dependencies:
+   ```bash
+   cd backend/dependencies/flask_pkgs
+   pip3 install *.whl --no-deps
+   ```
+
+2. Install pexpect dependencies:
+   ```bash
+   cd ../pexpect_pkgs
+   pip3 install *.whl --no-deps
+   ```
+
+3. Install pytest dependencies:
+   ```bash
+   cd ../pytest_pkgs
+   pip3 install *.whl --no-deps
+   ```
+
+4. Return to main directory and start:
+   ```bash
+   cd /home/user/webdashboard
+   python3 WebDashboard.py
+   ```
+
+#### Step 6: **Board-Specific Options**
+The dashboard now supports multiple board types with command-line options:
+
+```bash
+# Auto-detect board type (default behavior)
+python3 WebDashboard.py
+
+# Explicitly specify EdgeQ board
+python3 WebDashboard.py --edgeq
+
+# View help and available options
+python3 WebDashboard.py --help
+```
+
+**Available Board Types:**
+- **EdgeQ**: 5G gNodeB platform with EdgeQ chipsets (currently supported)
+- **Future boards**: Additional board types can be added through the extensible architecture
 
 > **🔒 Security Note**: The backend runs on port 5000. Ensure this port is accessible from your client machine but secured from unauthorized access.
 
@@ -212,8 +261,20 @@ The **5G RAN Dashboard** is a comprehensive web-based interface designed to visu
 - [ ] Backend service is running on port 5000
 - [ ] No firewall blocking port 5000
 - [ ] Both machines are on the same network or have proper routing
+- [ ] Correct board type detected (check startup messages)
+
+#### Board Detection Verification
+1. Check the startup messages for board detection:
+   ```
+   Board type: auto-detect (defaults to EdgeQ)
+   Available boards: edgeq
+   ```
+2. For EdgeQ boards, verify these paths exist:
+   - `/opt/ste/bin/gnb_commission`
+   - `/opt/ste/active/commissioning/configs/`
 
 ---
+
 ## 🎯 Getting Started
 
 Once both frontend and backend are successfully installed and running, follow these steps to start monitoring your gNB nodes:
@@ -281,8 +342,36 @@ How to use:
 
 ---
 
-#### 1. Add Node
-Add a new node to be monitored by the dashboard.
+#### 1. Network Scanning & Discovery
+Automatically scan the network to discover available gNB and MANET devices.
+
+**How it works:**
+- The system performs dual-sweep scanning using two APIs:
+  - **Health API scan**: Detects gNB nodes at `http://[ip]:5000/api/health`
+  - **MANET API scan**: Detects MANET devices at `http://[ip]/status?content=temp`
+- Scans are performed automatically every 15 seconds after initial load
+- Manual scans can be triggered using the scan controls in the sidebar
+
+**How to use:**
+1. **Configure Subnet**: In the sidebar, enter the network subnet to scan (e.g., `192.168.1`)
+2. **Start Scan**: Click the scan button to manually trigger network discovery
+3. **View Results**: Discovered devices appear in the "Scanned Nodes" section
+4. **Add Devices**: 
+   - **For gNB nodes**: Click the ➕ icon to add directly to your saved nodes
+   - **For MANET devices**: Click the ➕ icon to assign the MANET IP to an existing saved node
+
+**Device Types:**
+- 🔧 **GNB**: 5G base station nodes that respond to health API calls
+- 📡 **MANET**: Mesh network radios that respond to status API calls
+
+**Features:**
+- **Real-time Discovery**: Automatic scanning finds new devices as they come online
+- **Smart Filtering**: Only shows devices not already in your saved nodes list
+- **Status Indication**: Color-coded chips show device type (GNB/MANET)
+- **Subnet Persistence**: Your chosen subnet is saved for future sessions
+
+#### 2. Add Node (Manual)
+Add a new node manually by entering its IP address.
 
 How to use:
 * Enter a node IP in the sidebar form
@@ -290,7 +379,18 @@ How to use:
 * The system adds the node to the tracked list and begins polling its status
 * Even if the node is unreachable, it will be added but shown as disconnected
 
-#### 2. Remove Node
+#### 3. Add Node (From Discovery)
+Add discovered nodes directly from the network scan results.
+
+How to use:
+* Perform a network scan to discover available devices
+* **For gNB nodes**: Click the ➕ icon next to any discovered gNB
+* **For MANET devices**: Click the ➕ icon to open the assignment dialog
+  - Select which saved gNB node to attach the MANET to
+  - MANET devices cannot be added without an existing gNB node
+* The device is automatically added to your saved nodes with appropriate configuration
+
+#### 4. Remove Node
 Remove a node from the dashboard monitoring.
 
 How to use:
@@ -298,7 +398,7 @@ How to use:
 * Click the remove icon next to the node
 * The node will be removed from tracking
 
-#### 3. Start/Stop Node
+#### 5. Start/Stop Node
 Control the operational state of a node remotely.
 
 How to use:
@@ -311,6 +411,20 @@ How to use:
 If command fails or times out:
 * System displays error notification
 * You may retry the operation
+
+#### 6. MANET Assignment
+Assign discovered MANET devices to existing gNB nodes for mesh networking.
+
+**How to use:**
+1. **Discover MANET**: Network scan identifies MANET devices on the network
+2. **Open Assignment**: Click the ➕ icon next to a discovered MANET device
+3. **Select Node**: Choose which saved gNB node to attach the MANET to
+4. **Confirm Assignment**: The MANET IP is automatically configured for the selected node
+
+**Requirements:**
+- At least one saved gNB node must exist before assigning MANET devices
+- MANET devices are identified by their response to `/status` API calls
+- Assigned MANET IPs enable GPS tracking and mesh network visualization
 
 ### GPS & Network Mapping
 
@@ -436,6 +550,24 @@ Advanced troubleshooting tools and diagnostics.
 
 ## 🚀 Advanced Features
 
+### Multi-Board Architecture
+- **Automatic Detection**: System automatically detects board type based on installed software and file paths
+- **Extensible Design**: New board types can be easily added through the board factory pattern
+- **Board-Specific Logic**: Each board type has its own configuration, setup commands, and attribute management
+- **Unified Interface**: Consistent API and user experience across all supported board types
+
+### Enhanced Configuration Management
+- **Board-Specific Configs**: Each board type uses optimized configuration parameters
+- **Override Support**: User-specific configuration overrides through `config/board_overrides.json`
+- **Automatic Config Generation**: EdgeQ boards can automatically generate configuration files through commissioning
+- **Validation & Enhancement**: Automatic validation and enhancement of generated configurations
+
+### Dependency Management
+- **Automatic Installation**: Dependencies are automatically installed from pre-packaged wheel files
+- **Offline Support**: All required packages included for boards without internet access
+- **Selective Installation**: Only installs missing dependencies to avoid conflicts
+- **Compatibility Checking**: Verifies critical imports after installation
+
 ### Multi-Node Operations
 - **Bulk Actions**: Perform operations across multiple nodes simultaneously
 - **Group Management**: Create and manage node groups for easier administration
@@ -450,6 +582,57 @@ Advanced troubleshooting tools and diagnostics.
 - **Role-based Access**: Different permission levels for various user types
 - **Audit Logging**: Complete audit trail of all user actions and system changes
 - **Secure Communications**: Encrypted communications between dashboard and nodes
+
+---
+
+## 🎯 Board Support
+
+The dashboard now supports multiple 5G RAN board types through an extensible architecture:
+
+### Currently Supported Boards
+
+#### EdgeQ Boards
+**Features:**
+- Automatic board detection based on EdgeQ software paths
+- EdgeQ-specific commissioning automation with `gnb_commission`
+- Custom configuration file generation and enhancement
+- EdgeQ attribute monitoring (CPU, temperature, memory, radio parameters)
+- Integration with EdgeQ's `gnb_ctl` control interface
+
+**Detection Criteria:**
+- Presence of `/opt/ste/bin/gnb_commission`
+- Presence of `/opt/ste/active/commissioning/configs/` directory
+
+**Command Line Usage:**
+```bash
+# Auto-detect EdgeQ board
+python3 WebDashboard.py
+
+# Explicitly specify EdgeQ
+python3 WebDashboard.py --edgeq
+```
+
+### Future Board Support
+The architecture is designed to easily support additional board types
+
+### Board-Specific Features
+
+#### Configuration Management
+Each board type has its own:
+- Configuration file paths and formats
+- Setup and control commands
+- Log file locations and formats
+- Timeout settings and automation parameters
+
+#### Attribute Monitoring
+Board-specific attributes include:
+- **Common**: CPU usage, RAM usage, disk space, date/time
+- **EdgeQ-specific**: SoC temperature, EdgeQ radio parameters, EdgeQ core attributes, Raptor status
+- **Future boards**: Board-specific monitoring parameters
+
+#### Commissioning & Setup
+- **EdgeQ**: Automated commissioning with `gnb_commission -g`
+- **Future boards**: Board-specific setup and commissioning procedures
 
 ---
 
@@ -472,14 +655,44 @@ Advanced troubleshooting tools and diagnostics.
 2. Check backend service is running on port 5000
 3. Verify firewall settings allow port 5000
 4. Restart backend service: `python3 WebDashboard.py`
+5. Check board detection messages in startup output
 
 #### Backend Service Fails to Start
 **Symptoms:** `python3 WebDashboard.py` returns errors
 **Solutions:**
 1. Check Python version: `python3 --version` (should be 3.9+)
-2. Verify all dependencies installed correctly
-3. Check port 5000 availability: `netstat -ln | grep 5000`
-4. Review backend logs for specific error messages
+2. **Check automatic dependency installation output for errors**
+3. Try manual dependency installation if automatic fails
+4. Check port 5000 availability: `netstat -ln | grep 5000`
+5. Review backend logs for specific error messages
+6. Verify board detection is working properly
+
+#### Board Detection Issues
+**Symptoms:** Wrong board type detected or detection fails
+**Solutions:**
+1. Check startup messages for detection criteria
+2. For EdgeQ: Verify `/opt/ste/bin/gnb_commission` exists
+3. For EdgeQ: Verify `/opt/ste/active/commissioning/configs/` exists  
+4. Use explicit board selection: `python3 WebDashboard.py --edgeq`
+5. Check file permissions on detection paths
+
+#### Dependency Installation Fails
+**Symptoms:** Automatic dependency installation reports errors
+**Solutions:**
+1. Check available disk space on the board
+2. Verify pip3 is installed and working: `pip3 --version`
+3. Try manual installation from `backend/dependencies/*/`
+4. Check Python module paths and permissions
+5. Ensure no conflicting package versions are installed
+
+#### Configuration File Issues
+**Symptoms:** Config file generation fails or node won't start
+**Solutions:**
+1. For EdgeQ: Check `/opt/ste/bin/gnb_commission` is executable
+2. Verify commission automation triggers in board configuration
+3. Check log files in `/opt/webdashboard/logdump/` for commissioning errors
+4. Manually run commissioning if automation fails
+5. Verify configuration file permissions and format
 
 #### Performance Issues
 **Symptoms:** Slow dashboard response or high resource usage
@@ -488,13 +701,24 @@ Advanced troubleshooting tools and diagnostics.
 2. Limit number of historical data points
 3. Close unused browser tabs
 4. Check system resources on client machine
+5. Verify board-specific timeouts are appropriate
+
+### Board-Specific Troubleshooting
+
+#### EdgeQ Boards
+**Common EdgeQ Issues:**
+- **Config file not generated**: Check EdgeQ software installation
+- **Raptor status errors**: Verify `/logdump/du_log.txt` exists and is readable
+- **gnb_ctl commands fail**: Verify EdgeQ software paths and permissions
 
 ### Getting Help
 - **Documentation**: Review this guide and developer documentation
 - **Logs**: Check both frontend browser console and backend logs
+- **Board Information**: Use `python3 WebDashboard.py --help` for board options
 - **Support**: Contact ST Engineering technical support with:
-  - Dashboard version
+  - Dashboard version and detected board type
   - Browser and OS information
+  - Backend startup messages and board detection output
   - Error logs and screenshots
   - Network topology details
 
@@ -504,8 +728,20 @@ Advanced troubleshooting tools and diagnostics.
 
 ### General Questions
 
+**Q: How does the dashboard detect my board type?**
+**A:** The detection is specified by the user that runs the backend. You may refer to [board support](#-board-support) for the instruction of detection.
+
+**Q: What board types are currently supported?**
+**A:** Currently, the dashboard supports EdgeQ-based gNB platforms with automatic detection. The architecture is designed to easily support additional board types in the future.
+
+**Q: Can I force a specific board type?**
+**A:** Yes, use command-line arguments: `python3 WebDashboard.py --edgeq` for EdgeQ boards. Use `python3 WebDashboard.py --help` to see all available options.
+
 **Q: How frequently does the dashboard update node status?**
-**A:** The dashboard updates node attributes every 1 second and node status every 3 seconds to provide real-time monitoring while minimizing network load.
+**A:** The dashboard updates node attributes and status every 5 second while node and manet scanning every 20 seconds.
+
+**Q: Do I need to manually install dependencies?**
+**A:** No, the new WebDashboard.py automatically checks and installs all required dependencies from pre-packaged wheel files. This works even on boards without internet access.
 
 **Q: What does each node status color indicate?**
 **A:** 
@@ -522,6 +758,15 @@ Advanced troubleshooting tools and diagnostics.
 
 ### Installation & Setup
 
+**Q: The automatic dependency installation failed. What should I do?**
+**A:** If automatic installation fails, you can install dependencies manually from the `backend/dependencies/` folders. Navigate to each package folder (flask_pkgs, pexpect_pkgs, pytest_pkgs) and run `pip3 install *.whl --no-deps`.
+
+**Q: How do I know if my board type was detected correctly?**
+**A:** Check the startup messages when running `python3 WebDashboard.py`. You'll see output like "Board type: auto-detect (defaults to EdgeQ)" and "Available boards: edgeq". The system will also show board-specific initialization messages.
+
+**Q: Can I add support for a custom board type?**
+**A:** Yes, the architecture is extensible. You'll need to create a new board class inheriting from `BaseBoard`, implement the required methods, and add it to the `BoardFactory`. Contact support for guidance on custom board implementations or refer to developer guide for more instructions.
+
 **Q: What browsers are supported?**
 **A:** The dashboard works best with modern browsers: Chrome, Firefox, Safari, and Edge (latest versions). Internet Explorer is not supported.
 
@@ -533,12 +778,18 @@ Advanced troubleshooting tools and diagnostics.
 
 ### Operation & Usage
 
+**Q: My EdgeQ board won't generate a configuration file. What's wrong?**
+**A:** Ensure that `/opt/ste/bin/gnb_commission` exists and is executable. The EdgeQ commissioning process requires proper EdgeQ software installation. Check the commissioning logs in `/opt/webdashboard/logdump/` for detailed error information.
+
+**Q: Can I use the dashboard with multiple different board types simultaneously?**
+**A:** Yes, the frontend can connect to multiple backend instances running on different board types. The frontend calls the backend via REST APIs through the flask server. The backend handles the difference in board types
+
 **Q: How do I troubleshoot a node that won't start?**
 **A:** 
 1. Navigate to the node's dashboard
 2. Check the logs for error messages
 3. Ensure the node is reachable on the network
-4. Try restarting using "Turn Off" followed by "Turn On"
+4. Try restarting using "Turn Off" followed by "Turn On". Make sure a physical hard reset is done.
 5. Contact support if issues persist
 
 **Q: Is my node configuration saved if I close the browser?**
@@ -559,11 +810,28 @@ Advanced troubleshooting tools and diagnostics.
 **Q: How much historical data is stored?**
 **A:** The dashboard maintains approximately 200 data points for performance charts. Older data is automatically rotated to maintain performance.
 
+### Board-Specific Questions
+
+**Q: What EdgeQ-specific features are supported?**
+**A:** The dashboard supports EdgeQ's commissioning automation, gnb_ctl control interface, EdgeQ-specific attribute monitoring (SoC temperature, radio parameters), and automatic configuration file generation and enhancement.
+
+**Q: How does EdgeQ commissioning automation work?**
+**A:** The system automatically runs `gnb_commission -g` and handles the interactive commissioning process, including filename customization and profile selection. The generated configuration is automatically enhanced with board-specific settings.
+
+**Q: What happens if EdgeQ commissioning fails?**
+**A:** The system will log detailed error information and fall back to manual configuration. Check the commissioning logs and ensure EdgeQ software is properly installed. You can also try running commissioning manually and then restarting the dashboard.
+
 ---
 
 ## 📚 Glossary
 
 ### Technical Terms
+
+**Board Factory**
+A software design pattern used to create board-specific instances based on detected or specified board type, enabling support for multiple hardware platforms.
+
+**Multi-Board Architecture**
+The dashboard's extensible design that supports multiple types of 5G gNB hardware platforms through a common interface.
 
 **gNB (5G Node B)**
 The base station in a 5G network that provides radio coverage and connects user equipment to the core network.
@@ -580,6 +848,17 @@ A measure of signal quality, indicating the level of desired signal relative to 
 **MANET (Mobile Ad Hoc Network)**
 A continuously self-configuring, infrastructure-less network of mobile devices connected wirelessly.
 
+### Board Types
+
+**EdgeQ Board**
+A 5G gNodeB platform using EdgeQ chipsets and software, with specific commissioning procedures and attribute monitoring.
+
+**Base Board**
+The abstract foundation class that defines the common interface all board types must implement.
+
+**Board-Specific Configuration**
+Configuration parameters, file paths, and settings that are unique to each supported board type.
+
 ### Dashboard Status Types
 
 **RUNNING**
@@ -595,6 +874,15 @@ Node is powered down or not operational. No services are running.
 Node is unreachable from the dashboard. This may indicate network issues, backend problems, or node failure.
 
 ### System Components
+
+**BoardFactory**
+The central component responsible for detecting board types and creating appropriate board instances.
+
+**ConfigManager**
+Manages board-specific configurations and user overrides, supporting different configuration formats and paths.
+
+**Commissioning Automation**
+The automated process of generating configuration files through board-specific commissioning procedures.
 
 **Frontend**
 The web-based user interface that runs in your browser, providing the dashboard visualization and controls.
