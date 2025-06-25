@@ -55,7 +55,11 @@ function Sidebar({
   const theme = useTheme();
   const colors = getThemeColors(theme);
   const [ip, setIp] = useState('');
-  const [editOpen, setEditOpen] = useState(false);  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
+  const [editOpen, setEditOpen] = useState(false);
+  const [manetAssignOpen, setManetAssignOpen] = useState(false);
+  const [selectedManetIp, setSelectedManetIp] = useState('');
+  const [selectedNodeForManet, setSelectedNodeForManet] = useState('');
+  const [editTarget, setEditTarget] = useState(''); // Stores the original IP of the node being edited
   const [editPrimary, setEditPrimary] = useState(''); // Stores the potentially new primary IP
   const [editSecondary, setEditSecondary] = useState('');
   const [editName, setEditName] = useState('');
@@ -111,7 +115,39 @@ function Sidebar({
       if (onMapDataRefresh) {
         onMapDataRefresh();
       }
-    }  };
+    }
+  };
+
+  // Open MANET assignment modal
+  const openManetAssignModal = (manetIp) => {
+    setSelectedManetIp(manetIp);
+    setSelectedNodeForManet('');
+    setManetAssignOpen(true);
+  };
+
+  // Assign MANET IP to selected node
+  const assignManetToNode = (nodeIp) => {
+    setAllNodeData(prev => {
+      const targetNode = prev.find(node => node.ip === nodeIp);
+      if (targetNode) {
+        targetNode.manet.ip = selectedManetIp;
+        targetNode.manet.connectionStatus = 'Not Configured';
+        // Clear any existing selfManetInfo to force refresh
+        targetNode.manet.selfManetInfo = null;
+      }
+      return [...prev];
+    });
+    
+    setManetAssignOpen(false);
+    setSelectedManetIp('');
+    setSelectedNodeForManet('');
+    
+    if (onMapDataRefresh) {
+      setTimeout(() => {
+        onMapDataRefresh();
+      }, 10);
+    }
+  };
 
   const removeNode = (ipToRemove) => {
     setAllNodeData(prevInstances => {
@@ -394,7 +430,7 @@ function Sidebar({
                             </ListItemButton>
                             <IconButton
                               size="small"
-                              onClick={() => addAutoDiscoveredNode(node)}
+                              onClick={() => isManetNode ? openManetAssignModal(node.ip) : addAutoDiscoveredNode(node)}
                               sx={{ mr: 1 }}
                             >
                               <AddIcon fontSize="small" />
@@ -581,6 +617,120 @@ function Sidebar({
             <Button type="submit" variant="contained">Save</Button>
           </DialogActions>
         </Box>
+      </Dialog>
+
+      {/* MANET Assignment Modal */}
+      <Dialog 
+        open={manetAssignOpen} 
+        onClose={() => {
+          setManetAssignOpen(false);
+          setSelectedNodeForManet('');
+        }} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>Assign MANET IP to Node</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Assign MANET IP <strong>{selectedManetIp}</strong> to an existing saved node:
+          </Typography>
+          
+          <Box sx={{ maxHeight: '400px', overflow: 'auto', ...scrollbarStyle }}>
+            <List dense sx={{ p: 0 }}>
+              {allNodeData.map(nodeInstance => {
+                const currentStatus = nodeInstance.status || 'DISCONNECTED';
+                let bg;
+                switch (currentStatus) {
+                  case 'RUNNING':
+                    bg = colors.nodeStatus.running;
+                    break;
+                  case 'INITIALIZING':
+                    bg = colors.nodeStatus.initializing;
+                    break;
+                  case 'OFF':
+                    bg = colors.nodeStatus.off;
+                    break;
+                  case 'DISCONNECTED':
+                    bg = colors.nodeStatus.disconnected;
+                    break;
+                  case 'UNREACHABLE':
+                    bg = colors.nodeStatus.unreachable;
+                    break;
+                  default:
+                    bg = colors.nodeStatus.disconnected;
+                }
+
+                return (
+                  <ListItem
+                    key={nodeInstance.ip}
+                    disablePadding
+                    sx={{
+                      width: '100%',
+                      backgroundColor: bg,
+                      display: 'flex',
+                      mb: 0.5,
+                      borderRadius: 1,
+                      border: selectedNodeForManet === nodeInstance.ip ? `2px solid ${theme.palette.primary.main}` : 'none'
+                    }}
+                  >
+                    <ListItemButton
+                      onClick={() => setSelectedNodeForManet(nodeInstance.ip)}
+                      sx={{ flex: 1, cursor: 'pointer' }}
+                    >
+                      <ListItemText
+                        primary={nodeInstance.nodeName || nodeInstance.ip}
+                        primaryTypographyProps={{
+                          fontWeight: 'bold',
+                          variant: 'body1',
+                          fontSize: '1.0rem'
+                        }}
+                        secondary={
+                          <>
+                            {nodeInstance.nodeName && (
+                              <Typography
+                                component="span"
+                                variant="body1"
+                                color="textSecondary"
+                                sx={{ fontSize: '0.9rem', display: 'block' }}
+                              >
+                                Node IP: {nodeInstance.ip}
+                              </Typography>
+                            )}
+                            <Typography
+                              component="span"
+                              variant="body1"
+                              color="textSecondary"
+                              sx={{ fontSize: '0.9rem', display: 'block' }}
+                            >
+                              MANET: {nodeInstance.manet.ip || 'Not configured'}
+                            </Typography>
+                          </>
+                        }
+                        secondaryTypographyProps={{
+                          component: 'div',
+                          sx: { mt: 0.5, fontSize: '0.9rem' }
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setManetAssignOpen(false);
+            setSelectedNodeForManet('');
+          }}>Cancel</Button>
+          <Button 
+            onClick={() => assignManetToNode(selectedNodeForManet)} 
+            variant="contained"
+            disabled={!selectedNodeForManet}
+          >
+            Assign
+          </Button>
+        </DialogActions>
       </Dialog>
     </Drawer>
   );
