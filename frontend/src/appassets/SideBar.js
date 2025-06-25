@@ -30,6 +30,7 @@ import MapIcon from '@mui/icons-material/Map';
 import NetworkCheckIcon from '@mui/icons-material/NetworkCheck';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ComputerIcon from '@mui/icons-material/Computer';
+import RadioIcon from '@mui/icons-material/Radio';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Link as RouterLink } from 'react-router-dom';
@@ -309,57 +310,98 @@ function Sidebar({
                     sx: { fontSize: '0.9rem' }
                   }}
                 />
-              </Box><Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
+              </Box>              <Box sx={{ flex: 1, overflow: 'auto', ...scrollbarStyle }}>
                 {autoDiscoveredNodes.length > 0 ? (
                   <List dense sx={{ p: 0 }}>
                     {autoDiscoveredNodes
                       .filter(node => !allNodeData.some(n => n.ip === node.ip))
-                      .map((node, index) => (
-                      <ListItem
-                        key={node.ip || index}
-                        disablePadding                        sx={{
-                          width: '100%',
-                          backgroundColor: colors.scannedNodes.background,
-                          display: 'flex',
-                          mb: 0.5,
-                          borderRadius: 1
-                        }}
-                      >
-                        <ListItemButton
-                          sx={{ 
-                            minWidth: '40px', 
-                            maxWidth: '40px',
-                            minHeight: '40px',
-                            maxHeight: '40px',
-                            justifyContent: 'center',
-                            borderRadius: '50%',
-                            padding: '4px'
-                          }}
-                        >
-                          <ComputerIcon fontSize="small" color="primary" />
-                        </ListItemButton>
-                        <ListItemButton
-                          onClick={() => addAutoDiscoveredNode(node)}
-                          sx={{ flex: 1 }}
-                        >
-                          <ListItemText
-                            primary={node.ip}
-                            primaryTypographyProps={{
-                              fontWeight: 'bold',
-                              variant: 'body1',
-                              fontSize: '1.0rem'
+                      .map((node, index) => {
+                        // Determine node type and colors
+                        const isManetNode = node.type === 'manet';
+                        const backgroundColor = isManetNode ? colors.manetNodes.background : colors.scannedNodes.background;
+                        
+                        return (
+                          <ListItem
+                            key={node.ip || index}
+                            disablePadding
+                            sx={{
+                              width: '100%',
+                              backgroundColor: backgroundColor,
+                              display: 'flex',
+                              mb: 0.5,
+                              borderRadius: 1
                             }}
-                          />
-                        </ListItemButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => addAutoDiscoveredNode(node)}
-                          sx={{ mr: 1 }}
-                        >
-                          <AddIcon fontSize="small" />
-                        </IconButton>
-                      </ListItem>
-                    ))}
+                          >
+                            <ListItemButton
+                              sx={{ 
+                                minWidth: '40px', 
+                                maxWidth: '40px',
+                                minHeight: '40px',
+                                maxHeight: '40px',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                padding: '4px'
+                              }}
+                            >
+                              {isManetNode ? (
+                                <RadioIcon 
+                                  fontSize="small" 
+                                  sx={{ 
+                                    color: '#9c27b0' 
+                                  }} 
+                                />
+                              ) : (
+                                <ComputerIcon 
+                                  fontSize="small" 
+                                  sx={{ 
+                                    color: theme.palette.primary.main 
+                                  }} 
+                                />
+                              )}
+                            </ListItemButton>
+                            <ListItemButton
+                              onClick={() => addAutoDiscoveredNode(node)}
+                              sx={{ flex: 1 }}
+                            >
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography
+                                      variant="body1"
+                                      sx={{
+                                        fontWeight: 'bold',
+                                        fontSize: '1.0rem'
+                                      }}
+                                    >
+                                      {node.ip}
+                                    </Typography>
+                                    <Chip
+                                      label={isManetNode ? 'MANET' : 'GNB'}
+                                      size="small"
+                                      sx={{
+                                        fontSize: '0.65rem',
+                                        height: '18px',
+                                        backgroundColor: isManetNode ? '#9c27b0' : theme.palette.primary.main,
+                                        color: 'white',
+                                        '& .MuiChip-label': {
+                                          px: 0.75
+                                        }
+                                      }}
+                                    />
+                                  </Box>
+                                }
+                              />
+                            </ListItemButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => addAutoDiscoveredNode(node)}
+                              sx={{ mr: 1 }}
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                          </ListItem>
+                        );
+                      })}
                   </List>) : isNetworkScanning ? (
                   <Typography variant="caption" color="text.secondary">
                     Scanning for nodes...
