@@ -1,10 +1,10 @@
 // Network Scanner Utility
-// Scans user-specified subnets for active nodes
+// Scans user-specified subnets for active nodes with dual-sweep approach
 
 class NetworkScanner {
   constructor() {
     this.batchSize = 65; // Scan 65 IPs per batch
-    this.timeout = 2500; // 2.5 second timeout for health API calls
+    this.timeout = 2000; // 2 second timeout for individual API calls
     this.port = 5000;
     this.discoveredNodes = new Map();
     this.isScanning = false;
@@ -29,8 +29,18 @@ class NetworkScanner {
     }
   }
 
-  // Scan a single IP address
-  async scanIP(ip) {
+  // Scan a single IP address for a specific API type
+  async scanIP(ip, apiType = 'health') {
+    if (apiType === 'health') {
+      return await this.checkHealthAPI(ip);
+    } else if (apiType === 'manet') {
+      return await this.checkManetAPI(ip);
+    }
+    return { ip, online: false };
+  }
+
+  // Check health API endpoint
+  async checkHealthAPI(ip) {
     try {
       const response = await this.fetchWithTimeout(`http://${ip}:${this.port}/api/health`);
       if (response.ok) {
@@ -38,9 +48,11 @@ class NetworkScanner {
         if (data.status === 'online') {
           return {
             ip,
-            online: true,            data: {
+            online: true,
+            data: {
               ip,
               status: 'online',
+              type: 'health',
               discoveredAt: new Date().toISOString(),
               responseTime: Date.now()
             }
@@ -48,14 +60,38 @@ class NetworkScanner {
         }
       }
     } catch (error) {
-      // IP is offline or unreachable
+      // Health API is offline or unreachable
     }
     return { ip, online: false };
   }
 
-  // Scan a batch of IPs
-  async scanBatch(ips) {
-    const promises = ips.map(ip => this.scanIP(ip));
+  // Check MANET API endpoint
+  async checkManetAPI(ip) {
+    try {
+      const response = await this.fetchWithTimeout(`http://${ip}/status?content=temp`);
+      if (response.ok) {
+        // Any response (even empty) means MANET is active
+        return {
+          ip,
+          online: true,
+          data: {
+            ip,
+            status: 'manet',
+            type: 'manet',
+            discoveredAt: new Date().toISOString(),
+            responseTime: Date.now()
+          }
+        };
+      }
+    } catch (error) {
+      // MANET API is offline or unreachable
+    }
+    return { ip, online: false };
+  }
+
+  // Scan a batch of IPs for a specific API type
+  async scanBatch(ips, apiType = 'health') {
+    const promises = ips.map(ip => this.scanIP(ip, apiType));
     const results = await Promise.allSettled(promises);
     
     return results.map((result, index) => {
@@ -66,23 +102,44 @@ class NetworkScanner {
       }
     });
   }
-  // Scan a specific subnet - optimized for speed
+
+  // Scan a specific subnet with two separate sweeps
   async scanSubnet(subnet, onProgress = null, onNodeFound = null) {
-    console.log(`� Fast scanning subnet: ${subnet}.x`);
+    console.log(`🔍 Starting dual-sweep scan of subnet: ${subnet}.x`);
     const allIPs = [];
     
     // Generate all IPs in subnet (1-254)
     for (let i = 1; i <= 254; i++) {
       allIPs.push(`${subnet}.${i}`);
-    }    // Scan all IPs with limited concurrency for speed
-    const concurrencyLimit = 65; // Scan up to 65 IPs simultaneously
-    const results = [];
+    }
+
+    // SWEEP 1: Health API scan
+    console.log(`📡 Sweep 1: Health API scan (${allIPs.length} IPs)`);
+    await this.performSweep(allIPs, 'health', onProgress, onNodeFound, subnet);
+
+    // SWEEP 2: MANET API scan
+    console.log(`📻 Sweep 2: MANET API scan (${allIPs.length} IPs)`);
+    await this.performSweep(allIPs, 'manet', onProgress, onNodeFound, subnet);
+
+    const results = Array.from(this.discoveredNodes.values()).map(nodeData => ({
+      ip: nodeData.ip,
+      online: true,
+      data: nodeData
+    }));
+
+    console.log(`✅ Dual-sweep scan complete! Found ${this.discoveredNodes.size} nodes`);
+    return results;
+  }
+
+  // Perform a single sweep for a specific API type
+  async performSweep(allIPs, apiType, onProgress, onNodeFound, subnet) {
+    const concurrencyLimit = 65;
     
     for (let i = 0; i < allIPs.length; i += concurrencyLimit) {
       const batch = allIPs.slice(i, i + concurrencyLimit);
-      const batchPromises = batch.map(ip => this.scanIP(ip));
+      const batchPromises = batch.map(ip => this.scanIP(ip, apiType));
       
-      console.log(`📡 Fast scanning batch: ${batch[0]} - ${batch[batch.length - 1]} (${batch.length} IPs)`);
+      console.log(`📡 ${apiType.toUpperCase()} sweep batch: ${batch[0]} - ${batch[batch.length - 1]} (${batch.length} IPs)`);
       
       const batchResults = await Promise.allSettled(batchPromises);
       
@@ -90,10 +147,12 @@ class NetworkScanner {
         const ip = batch[index];
         if (result.status === 'fulfilled' && result.value.online) {
           const node = result.value;
-          this.discoveredNodes.set(node.ip, node.data);
-          results.push(node);
-          if (onNodeFound) {
-            onNodeFound(node);
+          // Only add if not already discovered (health API has priority)
+          if (!this.discoveredNodes.has(node.ip)) {
+            this.discoveredNodes.set(node.ip, node.data);
+            if (onNodeFound) {
+              onNodeFound(node);
+            }
           }
         }
       });
@@ -104,13 +163,13 @@ class NetworkScanner {
           subnet,
           scannedIPs: Math.min(i + concurrencyLimit, allIPs.length),
           totalIPs: allIPs.length,
-          nodesFound: this.discoveredNodes.size
+          nodesFound: this.discoveredNodes.size,
+          currentSweep: apiType
         });
       }
     }
-    
-    return results;
   }
+
   // Scan user-specified subnet
   async scanUserSubnet(subnet, onProgress = null, onNodeFound = null, onComplete = null) {
     if (this.isScanning) {
