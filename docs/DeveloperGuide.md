@@ -39,10 +39,11 @@
 
 ## Acknowledgements
 
-- **React** ([reactjs.org][react]) & **Material-UI** ([mui.com][mui])  
-- **Flask** ([palletsprojects.com/p/flask][flask]) & **Flask-CORS**  
-- **Recharts** ([recharts.org][recharts])  
-- **Leaflet** for interactive mapping and GPS visualization
+- **[React](https://reactjs.org/)** & **[Material-UI](https://mui.com/)**  
+- **[Flask](https://flask.palletsprojects.com/)** & **Flask-CORS**  
+- **[Recharts](https://recharts.org/)**  
+- **[Leaflet](https://leafletjs.com/)** for interactive mapping and GPS visualization
+- **NetworkScanner** custom implementation for device discovery
 
 ---
 
@@ -412,10 +413,10 @@ The backend Flask service provides REST API endpoints for monitoring and control
 
 For comprehensive interactive API documentation with "Try it out" functionality, see the **Flasgger Documentation System**:
 
-📖 **[Complete Setup Guide](../backend/docs_generator/README.md)**
+📖 **[Complete Setup Guide](../docs_generator/README.md)**
 
 **Quick Start:**
-1. Navigate to `backend/docs_generator/`
+1. Navigate to `docs_generator/`
 2. Double-click `start_docs.bat` (Windows) or run `python swagger_docs.py`
 3. Access interactive documentation at: http://localhost:8080/docs/
 
