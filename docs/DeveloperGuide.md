@@ -1,4 +1,4 @@
-# gNB-EMC Dashboard Developer Guide
+# gNB-EMS Dashboard Developer Guide
 
 **Version 1.1 - Multi-Board Architecture**
 

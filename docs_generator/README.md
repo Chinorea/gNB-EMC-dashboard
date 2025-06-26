@@ -1,6 +1,6 @@
-# gNB EMC Dashboard API Documentation Generator
+# gNB EMS Dashboard API Documentation Generator
 
-This module provides local Swagger/OpenAPI documentation for the gNB EMC Dashboard API using Flasgger. It runs completely separately from your main Flask.py backend application.
+This module provides local Swagger/OpenAPI documentation for the gNB EMS Dashboard API using Flasgger. It runs completely separately from your main Flask.py backend application.
 
 ## Features
 
@@ -14,13 +14,13 @@ This module provides local Swagger/OpenAPI documentation for the gNB EMC Dashboa
 ## Quick Start
 
 ### Method 1: Double-click Launcher (Easiest)
-1. Navigate to `backend/docs_generator/`
+1. Navigate to `docs_generator/`
 2. Double-click `start_docs.bat`
 3. Your browser will automatically open to the Swagger UI
 
 ### Method 2: Command Line
 ```bash
-cd backend/docs_generator
+cd docs_generator
 python swagger_docs.py
 ```
 
@@ -208,4 +208,4 @@ For issues or questions:
 
 ## License
 
-This documentation generator is part of the gNB EMC Dashboard project.
+This documentation generator is part of the gNB EMS Dashboard project.
