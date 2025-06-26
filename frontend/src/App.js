@@ -88,33 +88,143 @@ export default function App() {
     // Main execution flow
     const executeMapDataFlow = async () => {
       try {
-        // STEP 1: Get network data from first working node
-        let networkData = null;
+        // STEP 1: Robust network discovery with proper overlap detection
+        const networkDataResults = [];
+        const allResponses = [];
+
+        // First, try to get responses from ALL nodes
         for (const node of nodesWithManetIp) {
           try {
-            networkData = await fetchWithTimeout(`http://${node.manet.ip}/status`);
-            break; // Success - exit loop
+            const networkData = await fetchWithTimeout(`http://${node.manet.ip}/status`, 2000); // Increased timeout
+            allResponses.push({
+              sourceNode: node,
+              data: networkData,
+              sourceIp: node.manet.ip
+            });
           } catch (error) {
             console.warn(`Failed to fetch from ${node.manet.ip}:`, error.message);
-            continue; // Try next node
+            continue;
           }
         }
 
-        if (!networkData) {
+        if (allResponses.length === 0) {
           console.error("All MANET IP attempts failed");
           setMapMarkers([]);
           setLQM([]);
           return;
         }
 
-        // STEP 2: Process network data and get battery levels in parallel
-        const infos = Array.isArray(networkData.nodeInfos) 
-          ? networkData.nodeInfos 
-          : Object.values(networkData.nodeInfos || {});
+        // STEP 2: Analyze responses to find distinct networks using robust method
+        const networkGroups = [];
+        
+        for (const response of allResponses) {
+          const responseNodeIps = new Set();
+          
+          // Extract all IPs from this response
+          const infos = Array.isArray(response.data.nodeInfos) 
+            ? response.data.nodeInfos 
+            : Object.values(response.data.nodeInfos || {});
+          
+          infos.forEach(info => {
+            if (info.ip && info.ip.trim()) {
+              responseNodeIps.add(info.ip.trim());
+            }
+          });
 
-        // Set LQM
-        const rawLQM = Array.isArray(networkData.linkQuality) ? networkData.linkQuality : [];
-        setLQM(buildStaticsLQM(infos, rawLQM, currentLQM, 100, null));
+          // Check if this response belongs to an existing network group
+          let foundGroup = false;
+          
+          for (const group of networkGroups) {
+            // Calculate overlap between this response and existing group
+            const existingIps = group.allNodeIps;
+            const intersection = new Set([...responseNodeIps].filter(ip => existingIps.has(ip)));
+            const union = new Set([...responseNodeIps, ...existingIps]);
+            
+            // If there's significant overlap (>30%) or source IP is in the group, it's the same network
+            const overlapRatio = intersection.size / union.size;
+            const sourceInGroup = existingIps.has(response.sourceIp);
+            
+            if (overlapRatio > 0.3 || sourceInGroup) {
+              // Add this response to existing group
+              group.responses.push(response);
+              responseNodeIps.forEach(ip => group.allNodeIps.add(ip));
+              foundGroup = true;
+              break;
+            }
+          }
+          
+          // If no overlap found, create new network group
+          if (!foundGroup) {
+            const newGroup = {
+              responses: [response],
+              allNodeIps: new Set(responseNodeIps),
+              networkId: networkGroups.length + 1
+            };
+            networkGroups.push(newGroup);
+          }
+        }
+
+        // Log summary only if multiple networks detected
+        if (networkGroups.length > 1) {
+          console.log(`🌐 Detected ${networkGroups.length} distinct MANET networks`);
+        }
+        
+        // STEP 3: Select best response from each network group
+        networkGroups.forEach((group, index) => {
+          // Pick the response with the most complete data
+          const bestResponse = group.responses.reduce((best, current) => {
+            const currentInfos = Array.isArray(current.data.nodeInfos) 
+              ? current.data.nodeInfos 
+              : Object.values(current.data.nodeInfos || {});
+            const bestInfos = Array.isArray(best.data.nodeInfos) 
+              ? best.data.nodeInfos 
+              : Object.values(best.data.nodeInfos || {});
+            
+            return currentInfos.length > bestInfos.length ? current : best;
+          });
+          
+          networkDataResults.push(bestResponse);
+        });
+
+        // STEP 4: SAFE merge of all discovered networks
+        const allNetworkInfosMap = new Map(); // Use Map to prevent duplicates
+        const allLinkQualityEntries = [];
+
+        networkDataResults.forEach((result, index) => {
+          const infos = Array.isArray(result.data.nodeInfos) 
+            ? result.data.nodeInfos 
+            : Object.values(result.data.nodeInfos || {});
+          
+          // SAFE: Merge network infos without duplicates
+          infos.forEach(info => {
+            if (info.ip && !allNetworkInfosMap.has(info.ip)) {
+              allNetworkInfosMap.set(info.ip, info);
+            }
+          });
+          
+          // SAFE: Collect link quality data with source tracking
+          const rawLQM = Array.isArray(result.data.linkQuality) ? result.data.linkQuality : [];
+          rawLQM.forEach(entry => {
+            // Add source network info to prevent conflicts
+            allLinkQualityEntries.push({
+              ...entry,
+              sourceNetwork: result.sourceNode.manet.ip,
+              networkGroup: index + 1
+            });
+          });
+        });
+
+        const uniqueNetworkInfos = Array.from(allNetworkInfosMap.values());
+
+        // SAFE: Merge LQM data instead of overriding
+        const mergedLQM = buildStaticsLQM(
+          uniqueNetworkInfos, 
+          allLinkQualityEntries, 
+          currentLQM, // This preserves existing LQM data
+          100, 
+          null
+        );
+        setLQM(mergedLQM);
 
         // Get battery levels from all nodes in parallel
         const batteryPromises = nodesWithManetIp.map(async (node) => {
@@ -140,12 +250,27 @@ export default function App() {
         const batteryData = await Promise.all(batteryPromises);
         const batteryMap = new Map(batteryData.map(item => [item.ip, item]));
 
-        // STEP 3: Update node data with network info and battery levels
+        // STEP 3: SAFE node data update - merge instead of override
         nodesWithManetIp.forEach(node => {
-          const match = infos.find(info => info.ip === node.manet.ip);
+          const match = uniqueNetworkInfos.find(info => info.ip === node.manet.ip);
           if (match) {
-            const batteryInfo = batteryMap.get(node.manet.ip) || { batteryLevel: 'unknown', batteryPercentage: 'unknown' };
-            node.manet.nodeInfo = infos;
+            const batteryInfo = batteryMap.get(node.manet.ip) || { 
+              batteryLevel: 'unknown', 
+              batteryPercentage: 'unknown' 
+            };
+            
+            // SAFE: Merge nodeInfo instead of overriding
+            const existingNodeInfo = node.manet.nodeInfo || [];
+            const mergedNodeInfo = [...existingNodeInfo];
+            
+            // Add new network infos that don't already exist
+            uniqueNetworkInfos.forEach(info => {
+              if (!mergedNodeInfo.find(existing => existing.ip === info.ip)) {
+                mergedNodeInfo.push(info);
+              }
+            });
+            
+            node.manet.nodeInfo = mergedNodeInfo;
             node.manet.selfManetInfo = {
               ...match,
               label: node.nodeName || node.ip,
@@ -153,7 +278,10 @@ export default function App() {
               batteryPercentage: batteryInfo.batteryPercentage
             };
           } else {
-            node.manet.selfManetInfo = null;
+            // Don't override if no match - preserve existing data
+            if (!node.manet.selfManetInfo) {
+              node.manet.selfManetInfo = null;
+            }
           }
         });
 
