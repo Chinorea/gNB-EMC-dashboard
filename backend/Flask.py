@@ -26,10 +26,24 @@ except ImportError:
 from board_factory import BoardFactory
 from config_manager import BoardConfigManager
 from logic.shared_attributes.Network import Network
+import sys
+
+# Check if we're running in a test environment
+def is_testing():
+    """Check if we're running in a test environment"""
+    return 'pytest' in sys.modules or 'unittest' in sys.modules or any('test' in arg for arg in sys.argv)
 
 # Initialize board based on command line args or auto-detection (defaults to EdgeQ)
-board_type = BoardFactory.parse_board_from_args()
-current_board = BoardFactory.create_board(board_type)
+if is_testing():
+    # For testing, use default EdgeQ board without parsing args
+    board_type = 'edgeq'
+    current_board = BoardFactory.create_board(board_type)
+else:
+    # Normal execution - parse command line arguments
+    board_type = BoardFactory.parse_board_from_args()
+    current_board = BoardFactory.create_board(board_type)
+
+# Initialize config manager
 config_manager = BoardConfigManager(current_board)
 
 # Set up LogManager with board config as single source of truth
