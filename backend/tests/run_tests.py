@@ -17,7 +17,9 @@ def run_command(cmd, description):
     print('='*60)
     
     try:
-        result = subprocess.run(cmd, cwd=Path(__file__).parent, capture_output=False)
+        # Run from the backend directory (parent of tests)
+        backend_dir = Path(__file__).parent.parent
+        result = subprocess.run(cmd, cwd=backend_dir, capture_output=False)
         return result.returncode == 0
     except Exception as e:
         print(f"Error running command: {e}")
@@ -28,7 +30,7 @@ def main():
     if len(sys.argv) < 2:
         print("Backend Test Runner")
         print("==================")
-        print("Usage: python run_tests.py <command>")
+        print("Usage: python tests/run_tests.py <command>")
         print()
         print("Available commands:")
         print("  all           - Run all tests")
@@ -39,8 +41,8 @@ def main():
         print("  flask_api     - Run Flask API tests")
         print()
         print("Examples:")
-        print("  python run_tests.py all")
-        print("  python run_tests.py flask_api")
+        print("  python tests/run_tests.py all")
+        print("  python tests/run_tests.py flask_api")
         return
 
     command = sys.argv[1].lower()
@@ -74,7 +76,7 @@ def main():
     
     else:
         print(f"Unknown command: {command}")
-        print("Run 'python run_tests.py' to see available commands")
+        print("Run 'python tests/run_tests.py' to see available commands")
         return
     
     # Summary

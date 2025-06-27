@@ -8,22 +8,18 @@ import sys
 import os
 from pathlib import Path
 
-# Get the backend directory (parent of tests directory)
-backend_dir = Path(__file__).parent.parent.absolute()
+# Add the backend directory to Python path for imports
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
 
-# Add backend directory to Python path
-if str(backend_dir) not in sys.path:
-    sys.path.insert(0, str(backend_dir))
-
-# Change working directory to backend for proper relative imports
+# Set working directory to backend for relative imports
 os.chdir(backend_dir)
 
-# Ensure we can import all backend modules
 print(f"Test environment setup: backend_dir = {backend_dir}")
 print(f"Working directory: {os.getcwd()}")
 print(f"Python path includes: {backend_dir}")
 
-# Test that critical imports work
+# Test imports to ensure everything works
 try:
     import board_factory
     print("✓ board_factory import successful")
