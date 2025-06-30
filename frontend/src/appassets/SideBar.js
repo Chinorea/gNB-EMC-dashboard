@@ -332,7 +332,16 @@ function Sidebar({
               overflow: 'hidden',
               flex: 1            }}>              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', flexShrink: 0 }}>
-                  Scanned Nodes ({autoDiscoveredNodes.filter(node => !allNodeData.some(n => n.ip === node.ip)).length})
+                  Scanned Nodes ({autoDiscoveredNodes.filter(node => {
+                    // Filter out nodes that are already in saved nodes (by main IP)
+                    const isAlreadySaved = allNodeData.some(n => n.ip === node.ip);
+                    
+                    // For MANET nodes, also filter out if their IP is already assigned to any saved node's MANET IP
+                    const isManetAlreadyAssigned = node.type === 'manet' && 
+                      allNodeData.some(n => n.manet.ip === node.ip);
+                    
+                    return !isAlreadySaved && !isManetAlreadyAssigned;
+                  }).length})
                 </Typography>
                 <Box sx={{ flex: 1, minWidth: '16px' }} />
                 <TextField
@@ -350,7 +359,16 @@ function Sidebar({
                 {autoDiscoveredNodes.length > 0 ? (
                   <List dense sx={{ p: 0 }}>
                     {autoDiscoveredNodes
-                      .filter(node => !allNodeData.some(n => n.ip === node.ip))
+                      .filter(node => {
+                        // Filter out nodes that are already in saved nodes (by main IP)
+                        const isAlreadySaved = allNodeData.some(n => n.ip === node.ip);
+                        
+                        // For MANET nodes, also filter out if their IP is already assigned to any saved node's MANET IP
+                        const isManetAlreadyAssigned = node.type === 'manet' && 
+                          allNodeData.some(n => n.manet.ip === node.ip);
+                        
+                        return !isAlreadySaved && !isManetAlreadyAssigned;
+                      })
                       .map((node, index) => {
                         // Determine node type and colors
                         const isManetNode = node.type === 'manet';
