@@ -21,7 +21,6 @@ def check_all_dependencies():
     required_modules = [
         'flask', 
         'flask_cors',
-        'zeroconf',  # from mdns_pkgs
         'pexpect',   # from pexpect_pkgs
         'pytest'     # from pytest_pkgs
     ]
@@ -46,10 +45,9 @@ def install_all_dependencies():
     """
     dependencies_dir = os.path.join(backend_dir, "dependencies")
     
-    # List of dependency directories to install from
+    # List of dependency directories to install from (updated to match actual directories)
     dep_dirs = [
         "flask_pkgs",
-        "mdns_pkgs", 
         "pexpect_pkgs",
         "pytest_pkgs"
     ]
