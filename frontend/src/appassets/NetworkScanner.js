@@ -105,7 +105,6 @@ class NetworkScanner {
 
   // Scan a specific subnet with two separate sweeps
   async scanSubnet(subnet, onProgress = null, onNodeFound = null) {
-    console.log(`🔍 Starting dual-sweep scan of subnet: ${subnet}.x`);
     const allIPs = [];
     
     // Generate all IPs in subnet (1-254)
@@ -114,11 +113,9 @@ class NetworkScanner {
     }
 
     // SWEEP 1: Health API scan
-    console.log(`📡 Sweep 1: Health API scan (${allIPs.length} IPs)`);
     await this.performSweep(allIPs, 'health', onProgress, onNodeFound, subnet);
 
     // SWEEP 2: MANET API scan
-    console.log(`📻 Sweep 2: MANET API scan (${allIPs.length} IPs)`);
     await this.performSweep(allIPs, 'manet', onProgress, onNodeFound, subnet);
 
     const results = Array.from(this.discoveredNodes.values()).map(nodeData => ({
@@ -127,7 +124,6 @@ class NetworkScanner {
       data: nodeData
     }));
 
-    console.log(`✅ Dual-sweep scan complete! Found ${this.discoveredNodes.size} nodes`);
     return results;
   }
 
@@ -138,8 +134,6 @@ class NetworkScanner {
     for (let i = 0; i < allIPs.length; i += concurrencyLimit) {
       const batch = allIPs.slice(i, i + concurrencyLimit);
       const batchPromises = batch.map(ip => this.scanIP(ip, apiType));
-      
-      console.log(`📡 ${apiType.toUpperCase()} sweep batch: ${batch[0]} - ${batch[batch.length - 1]} (${batch.length} IPs)`);
       
       const batchResults = await Promise.allSettled(batchPromises);
       
@@ -181,11 +175,7 @@ class NetworkScanner {
     this.discoveredNodes.clear();
     
     try {
-      console.log(`🔍 Starting scan of subnet: ${subnet}.x`);
-      
       const results = await this.scanSubnet(subnet, onProgress, onNodeFound);
-      
-      console.log(`✅ Subnet scan complete! Found ${this.discoveredNodes.size} nodes`);
       
       if (onComplete) {
         onComplete({

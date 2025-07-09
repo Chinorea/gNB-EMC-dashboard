@@ -311,16 +311,9 @@ export default function App() {
         setMapMarkers([]);
         setLQM([]);
       }
-
-      // For Dummy Testing, uncomment below lines to only show dummy markers and LQM
-      // setMapMarkers(DUMMY_MARKERS[0].nodeInfos);
-      // const rawLQM = Array.isArray(DUMMY_LQM)
-      //   ? DUMMY_LQM
-      //   : [];
-      // const fullLQM = buildStaticsLQM(DUMMY_MARKERS[0].nodeInfos, rawLQM, lqm, 100, null);
-      // setLQM(fullLQM);
     };    executeMapDataFlow();
-  }, []); // No dependencies needed since buildStaticsLQM is imported function
+  }, []);
+
   // Function to manually trigger map data refresh
   const triggerMapDataRefresh = useCallback((options = {}) => {
     // If this is a node removal, immediately clear map markers to prevent lag
@@ -339,12 +332,13 @@ export default function App() {
     
     // For other cases, use the normal trigger mechanism
     setMapDataRefreshTrigger(prev => prev + 1);
-  }, [loadMapData]);  // Network scanning function
+  }, [loadMapData]);
+
+  // Network scanning function
   const startNetworkScan = useCallback(async () => {
     // Check both React state and scanner internal state to prevent overlaps
     if (isNetworkScanning || scanner.getIsScanning()) return;
     
-    console.log(`🔍 Initiating network scan for subnet: ${subnet}.x`);
     setIsNetworkScanning(true);
     
     try {
@@ -456,6 +450,7 @@ export default function App() {
     }));
     localStorage.setItem('allNodeDataStorage', JSON.stringify(plainObjects));
   }, [allNodeData, hasLoaded]); // Depend on allNodeData and hasLoaded
+
   // Effect 3: Poll attributes every 2 seconds with re-entrancy guard
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
@@ -495,6 +490,7 @@ export default function App() {
     }, 5000);
     return () => clearInterval(statusInterval);
   }, [hasLoaded]); // Add hasLoaded to dependency array
+
   // Effect 5: Poll MANET connection every 2 seconds (as per user's current code)
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
@@ -510,9 +506,12 @@ export default function App() {
         console.error("Error polling MANET connection:", error);
       } finally {
         running = false;
-      }    }, 5000);
+      }
+    }, 5000);
     return () => clearInterval(manetInterval);
-  }, [hasLoaded]); // Add hasLoaded to dependency array  // Effect 6: Network scanning every 20 seconds
+  }, [hasLoaded]); // Add hasLoaded to dependency array
+
+  // Effect 6: Network scanning every 20 seconds
   useEffect(() => {
     if (!hasLoaded) return; // Guard: Only run if initial load is complete
     
@@ -575,7 +574,6 @@ export default function App() {
                 element={(
                   <NodeDashboard
                     allNodeData={allNodeData}
-                    // handleToggle={handleToggleNodeScript} // Remove this prop
                   />
                 )}
               />

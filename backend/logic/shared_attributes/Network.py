@@ -69,7 +69,6 @@ class Network(Attribute):
             else:
                 cmd = ["ping", "-c", "1", "-W", str(timeout), host]
 
-            print(f"\\n--- Ping attempt {i}/{attempts} ---")
             try:
                 # capture both stdout and stderr so we can print the full ping output
                 result = subprocess.run(
@@ -91,9 +90,6 @@ class Network(Attribute):
         #     return NetworkType.UNSTABLE
         else: # True if the single ping failed
             return NetworkType.DOWN
-
-    def print_network_status(self):
-           print(f"Network Status: {self.networkStatus.name}")
 
     def test_network(self, ip: str):
         self.host = ip

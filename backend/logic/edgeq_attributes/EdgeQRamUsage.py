@@ -1,7 +1,7 @@
 from logic.shared_attributes.Attribute import Attribute
+import subprocess
 from collections import deque
-# Update refresh such that it stores ram usage for the most recent 100 entries
-# on refresh, remove the oldest data and add the newest data
+
 class EdgeQRamUsage(Attribute):
 
     def __init__(self):
@@ -11,39 +11,37 @@ class EdgeQRamUsage(Attribute):
         # history deques with fixed maxlen=100
         self.usage_history = deque(maxlen=100)
 
-
     def refresh(self):
         self.ramUsage = self.get_ram_usage()
         self.usage_history.append(self.ramUsage)
 
-
     def get_ram_usage(self):
         """
-        EdgeQ-specific RAM monitoring using /proc/meminfo
-        Parse /proc/meminfo to compute used RAM percentage.
-        Uses MemAvailable if present, otherwise falls back.
+        Read /proc/meminfo to extract total and available memory,
+        then calculate percentage usage.
         """
-        meminfo = {}
-        with open('/proc/meminfo', 'r') as f:
-            for line in f:
-                key, val = line.split(':')[0], line.split(':')[1].strip().split()[0]
-                meminfo[key] = float(val)
+        try:
+            result = subprocess.run(['cat', '/proc/meminfo'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                return 0.0
 
-        total = meminfo.get('MemTotal', 0.0)
-        available = meminfo.get('MemAvailable',
-                                meminfo.get('MemFree', 0.0)
-                                + meminfo.get('Buffers', 0.0)
-                                + meminfo.get('Cached', 0.0))
-        used = total - available
-        self.totalRam = round(total / (1024.0 * 1024.0),1)
-        return round((used / total) * 100.0 if total else 0.0,1)
+            lines = result.stdout.strip().split('\n')
+            mem_total = None
+            mem_available = None
 
-    def print_ram_usage(self):
-        print(f"EdgeQ Total Ram: {self.totalRam}GiB")
-        print(f"EdgeQ Ram Usage: {self.ramUsage}%")
+            for line in lines:
+                if line.startswith('MemTotal:'):
+                    mem_total = int(line.split()[1])  # in kB
+                elif line.startswith('MemAvailable:'):
+                    mem_available = int(line.split()[1])  # in kB
 
-    def print_ram_usage_hist(self):
-        print(f"EdgeQ Total Ram: {self.totalRam} GiB")
-        print(f"EdgeQ Ram Usage: {self.ramUsage}%")
-        print(f"History (last {len(self.usage_history)} samples):")
-        print(list(self.usage_history))
+            if mem_total and mem_available:
+                self.totalRam = round(mem_total / (1024 * 1024), 1)  # Convert to GB
+                usage_percent = ((mem_total - mem_available) / mem_total) * 100
+                return round(usage_percent, 1)
+            else:
+                return 0.0
+
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError) as e:
+            return 0.0

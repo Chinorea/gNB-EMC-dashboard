@@ -5,12 +5,12 @@ from pathlib import Path
 import pexpect
 from logic.setupLogManger import LogManager
 import threading
-import os
 import datetime
 import re
 import json
 import socket
 import platform
+import sys
 
 # Import fcntl for non-blocking I/O
 import fcntl
@@ -26,7 +26,6 @@ except ImportError:
 from board_factory import BoardFactory
 from config_manager import BoardConfigManager
 from logic.shared_attributes.Network import Network
-import sys
 
 # Check if we're running in a test environment
 def is_testing():
@@ -47,7 +46,6 @@ else:
 config_manager = BoardConfigManager(current_board)
 
 # Set up LogManager with board config as single source of truth
-from logic.setupLogManger import LogManager
 LogManager.set_config_manager(config_manager)
 
 print(f"Initializing {current_board.get_board_name()} board...")

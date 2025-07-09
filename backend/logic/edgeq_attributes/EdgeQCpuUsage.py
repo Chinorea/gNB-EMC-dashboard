@@ -39,11 +39,3 @@ class EdgeQCpuUsage(Attribute):
         if total_delta == 0:
             return 0.0
         return round((1.0 - idle_delta / total_delta) * 100.0,1)
-
-    def print_cpu_usage(self):
-        print(f"EdgeQ CPU Usage: {self.cpuUsage}%")
-
-    def print_cpu_usage_hist(self):
-        print(f"EdgeQ CPU Usage: {self.cpuUsage}%")
-        print(f"History (last {len(self.usage_history)} samples):")
-        print(list(self.usage_history))

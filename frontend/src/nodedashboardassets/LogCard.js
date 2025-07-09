@@ -1,5 +1,4 @@
-// filepath: c:\Users\intern\OneDrive\Documents\Internships\STEngineering\webdashboard\frontend\src\nodedashboardassets\LogCard.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, Typography, Grid, Box, Button, ButtonGroup, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useTheme } from '@mui/material/styles';
@@ -12,13 +11,10 @@ export default function LogCard({ ip }) {
   const [error, setError] = useState(null);
   const [logType, setLogType] = useState('du'); // 'du' or 'cu' or 'setup' or 'api'
 
-  useEffect(() => {
-    if (!ip) return;
-    fetchLogs();
-  }, [ip, logType]);
-
   // Fetch logs from backend
-  const fetchLogs = () => {
+  const fetchLogs = useCallback(() => {
+    if (!ip) return;
+    
     setError(null);
     fetch(`http://${ip}:5000/api/download/${logType}_log`)
       .then(res => {
@@ -37,7 +33,12 @@ export default function LogCard({ ip }) {
         console.error(err);
         setError(err.message);
       });
-  };
+  }, [ip, logType]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
   return (
     <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>      <Card
         elevation={3}
