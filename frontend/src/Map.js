@@ -4,13 +4,15 @@ import 'leaflet/dist/leaflet.css';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors, lightColors, darkColors } from './theme';
 import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
-import { Satellite, Map as MapIcon, HighQuality } from '@mui/icons-material';
+import { Satellite, Map as MapIcon, CloudOff, Cloud } from '@mui/icons-material';
 import MapSideBar from './mapassets/MapSideBar';
-// extract images from Leaflet's default icon set path
+import { PMTiles, Protocol } from 'pmtiles';
+import { leafletLayer, PolygonSymbolizer, LineSymbolizer, CenteredTextSymbolizer } from 'protomaps-leaflet';
+
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl       from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl     from 'leaflet/dist/images/marker-shadow.png';
-// tell Leaflet to use these metioned image paths for map objects
+
 L.Icon.Default.mergeOptions({
   iconRetinaUrl,
   iconUrl,
@@ -27,15 +29,17 @@ function MapView({
   const colors = getThemeColors(theme);
   const mapEl = useRef(null);
   const map   = useRef(null);
-  const layer = useRef(null);  const tileLayer = useRef(null);
+  const layer = useRef(null);
+  const tileLayer = useRef(null);
   const [isSatellite, setIsSatellite] = useState(false);
   const [satelliteProvider, setSatelliteProvider] = useState('googleHybrid');
-    // Sidebar state management
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [offlineMapAvailable, setOfflineMapAvailable] = useState(false);
+  const pmtilesRef = useRef(null);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
 
-  // Function to handle node click from sidebar
   const handleNodeClick = (node) => {
     if (!map.current || !node.latitude || !node.longitude) return;
     
@@ -44,47 +48,35 @@ function MapView({
     
     if (isNaN(lat) || isNaN(lng)) return;
     
-    // Center the map on the selected node
     map.current.setView([lat, lng], 18, {
       animate: true,
       duration: 1
     });
     
-    // Set selected node for highlighting
     setSelectedNodeId(node.id);
   };
 
-  // Helper function to get tile URL based on current settings
   const getTileUrl = (isDark, satelliteMode, provider = 'esri') => {
     if (satelliteMode) {
       const satelliteProviders = {
-        // Google Satellite - Highest resolution and clarity
         google: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-        
-        // ESRI World Imagery - Good balance of quality and reliability
         esri: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        
-        // Google Hybrid - Satellite with labels and roads
         googleHybrid: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-        
-        // ESRI World Imagery with Labels
         esriHybrid: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       };
       
       return satelliteProviders[provider] || satelliteProviders.esri;
     }
     
-    // Regular map modes
     const colorfulDarkOptions = {
-      // Stadia Alidade Smooth Dark - Beautiful dark theme with green parks/forests and blue water
       stadia_dark: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
     };
     
     return isDark 
-      ? colorfulDarkOptions.stadia_dark  // Dark mode with green vegetation and blue water
-      : 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';  // Light mode
+      ? colorfulDarkOptions.stadia_dark
+      : 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';
   };
-  // Helper function to get attribution based on current settings
+
   const getAttribution = (satelliteMode, provider = 'esri') => {
     if (satelliteMode) {
       const attributions = {
@@ -98,11 +90,9 @@ function MapView({
     return '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
   };
 
-  // initialize map once
   useEffect(() => {
     map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
-      // Create initial tile layer based on current theme and satellite mode
-    const isDark = theme.palette.mode === 'dark';
+      const isDark = theme.palette.mode === 'dark';
     const tileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
     const attribution = getAttribution(isSatellite, satelliteProvider);
     
@@ -114,37 +104,238 @@ function MapView({
     
     return () => map.current.remove();
   }, []);
-  // Update tile layer when theme or satellite mode changes
+
+  useEffect(() => {
+    const initializePMTiles = async () => {
+      try {
+        const pmtilesUrl = './offline-maps/singapore.pmtiles';
+        const response = await fetch(pmtilesUrl, { method: 'HEAD' });
+        
+        if (response.ok) {
+          pmtilesRef.current = new PMTiles(pmtilesUrl);
+          
+          if (!window.pmtilesProtocol) {
+            window.pmtilesProtocol = new Protocol();
+            window.pmtilesProtocol.add(pmtilesRef.current);
+          }
+          
+          setOfflineMapAvailable(true);
+          console.log('✅ Singapore offline map available');
+          
+          try {
+            const header = await pmtilesRef.current.getHeader();
+            console.log('📍 PMTiles header:', {
+              bounds: `${header.minLat}, ${header.minLon} to ${header.maxLat}, ${header.maxLon}`,
+              zoom: `${header.minZoom} to ${header.maxZoom}`,
+              center: `${header.centerLat}, ${header.centerLon}`
+            });
+          } catch (headerError) {
+            console.error('❌ Error reading PMTiles header:', headerError);
+          }
+        } else {
+          console.log('⚠️ Singapore offline map not found');
+          setOfflineMapAvailable(false);
+        }
+      } catch (error) {
+        console.error('❌ Error initializing PMTiles:', error);
+        setOfflineMapAvailable(false);
+      }
+    };
+    
+    initializePMTiles();
+  }, []);
+
+  const createPMTilesLayer = () => {
+    if (!pmtilesRef.current) return null;
+    
+    try {
+      const pmtilesLayer = leafletLayer({
+        url: pmtilesRef.current,
+        attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
+        maxZoom: 15,
+        paintRules: [
+          {
+            dataLayer: "water",
+            symbolizer: new PolygonSymbolizer({
+              fill: "#4A90E2",
+              opacity: 0.8
+            })
+          },
+          {
+            dataLayer: "earth", 
+            symbolizer: new PolygonSymbolizer({
+              fill: "#F5F5DC",
+              opacity: 1.0
+            })
+          },
+          {
+            dataLayer: "landuse",
+            symbolizer: new PolygonSymbolizer({
+              fill: "#E8F5E8",
+              opacity: 0.6
+            })
+          },
+          {
+            dataLayer: "landcover",
+            symbolizer: new PolygonSymbolizer({
+              fill: "#90EE90", 
+              opacity: 0.7
+            })
+          },
+          {
+            dataLayer: "buildings",
+            symbolizer: new PolygonSymbolizer({
+              fill: "#D3D3D3",
+              stroke: "#999999",
+              width: 0.5,
+              opacity: 0.8
+            })
+          },
+          {
+            dataLayer: "roads",
+            symbolizer: new LineSymbolizer({
+              color: "#666666",
+              width: 2
+            })
+          },
+          {
+            dataLayer: "boundaries", 
+            symbolizer: new LineSymbolizer({
+              color: "#888888",
+              width: 1,
+              opacity: 0.5
+            })
+          }
+        ],
+        labelRules: [
+          {
+            dataLayer: "places",
+            symbolizer: new CenteredTextSymbolizer({
+              labelProps: ["name"],
+              fill: "#000000",
+              font: "12px Arial",
+              stroke: "#FFFFFF",
+              width: 2
+            })
+          },
+          {
+            dataLayer: "pois", 
+            symbolizer: new CenteredTextSymbolizer({
+              labelProps: ["name"],
+              fill: "#333333", 
+              font: "10px Arial"
+            })
+          }
+        ]
+      });
+      
+      console.log('✅ Created protomaps leaflet layer with explicit styling for Singapore PMTiles');
+      return pmtilesLayer;
+    } catch (error) {
+      console.error('❌ Error creating protomaps layer:', error);
+      
+      const fallbackLayer = L.tileLayer('', {
+        attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
+        maxZoom: 15,
+      });
+      
+      fallbackLayer.createTile = function(coords, done) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        
+        pmtilesRef.current.getZxy(coords.z, coords.x, coords.y)
+          .then(result => {
+            const ctx = canvas.getContext('2d');
+            
+            if (result && result.data) {
+              const dataSize = result.data.byteLength || result.data.length || 0;
+              
+              const intensity = Math.min(dataSize / 20000, 1);
+              
+              if (intensity > 0.7) {
+                ctx.fillStyle = '#f8f9fa'; // Urban areas - light gray
+              } else if (intensity > 0.4) {
+                ctx.fillStyle = '#e9ecef'; // Suburban - lighter gray
+              } else if (intensity > 0.1) {
+                ctx.fillStyle = '#e3f2fd'; // Low density - light blue
+              } else {
+                ctx.fillStyle = '#bbdefb'; // Water/empty - blue
+              }
+              
+              ctx.fillRect(0, 0, 256, 256);
+              
+              if (intensity > 0.3) {
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < intensity * 10; i++) {
+                  ctx.beginPath();
+                  ctx.moveTo(Math.random() * 256, Math.random() * 256);
+                  ctx.lineTo(Math.random() * 256, Math.random() * 256);
+                  ctx.stroke();
+                }
+              }
+              
+              ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(0, 0, 256, 256);
+              
+              console.log(`🗺️ Rendered fallback tile ${coords.z}/${coords.x}/${coords.y}: ${dataSize} bytes`);
+            } else {
+              ctx.fillStyle = '#81c784';
+              ctx.fillRect(0, 0, 256, 256);
+            }
+            
+            done(null, canvas);
+          })
+          .catch(error => {
+            console.error(`❌ Error in fallback tile ${coords.z}/${coords.x}/${coords.y}:`, error);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffcdd2';
+            ctx.fillRect(0, 0, 256, 256);
+            done(null, canvas);
+          });
+        
+        return canvas;
+      };
+      
+      console.log('⚠️ Using fallback tile rendering');
+      return fallbackLayer;
+    }
+  };
+
   useEffect(() => {
     if (!map.current || !tileLayer.current) return;
-      const isDark = theme.palette.mode === 'dark';
-    const newTileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
-    const attribution = getAttribution(isSatellite, satelliteProvider);
     
-    // Remove current tile layer
     map.current.removeLayer(tileLayer.current);
     
-    // Add new tile layer with updated theme/mode
-    tileLayer.current = L.tileLayer(newTileUrl, {
-      maxZoom: 20,
-      attribution: attribution,
-      subdomains: 'abcd'
-    }).addTo(map.current);
-  }, [theme.palette.mode, isSatellite, satelliteProvider]);
+    if (isOfflineMode && offlineMapAvailable) {
+      tileLayer.current = createPMTilesLayer();
+      if (tileLayer.current) {
+        tileLayer.current.addTo(map.current);
+      }
+    } else {
+      const isDark = theme.palette.mode === 'dark';
+      const newTileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
+      const attribution = getAttribution(isSatellite, satelliteProvider);
+      
+      tileLayer.current = L.tileLayer(newTileUrl, {
+        maxZoom: 20,
+        attribution: attribution,
+        subdomains: 'abcd'
+      }).addTo(map.current);
+    }
+  }, [theme.palette.mode, isSatellite, satelliteProvider, isOfflineMode, offlineMapAvailable]);
 
-    // helper: map SNR (-10..+30) → color (red→green)
   function qualityToColor(q) {
     const min = -10, max = 30;
-    // clamp:
     const clamped = Math.max(min, Math.min(max, q));
     const pct = (clamped - min) / (max - min);   // 0..1
     const hue = pct * 120;                       // 0=red, 120=green
     return `hsl(${hue},100%,50%)`;
   }
 
-  // Helper function to scale circle radius based on txPower (-1 to 3)
   function txPowerToRadius(txPower) {
-    // Default radius for null/undefined txPower
     if (txPower === null || txPower === undefined || isNaN(parseFloat(txPower))) {
       return 3; // Default radius when txPower is not available (reduced from 10)
     }
@@ -155,10 +346,8 @@ function MapView({
     const minRadius = 6;   // Minimum circle radius (for txPower = -1)
     const maxRadius = 18;  // Maximum circle radius (for txPower = 3)
     
-    // Clamp the power value to the expected range
     const clampedPower = Math.max(minPower, Math.min(maxPower, power));
     
-    // Linear scaling from power range to radius range
     const normalizedPower = (clampedPower - minPower) / (maxPower - minPower); // 0..1
     const radius = minRadius + (normalizedPower * (maxRadius - minRadius));
     
@@ -168,19 +357,14 @@ function MapView({
   useEffect(() => {
     if (!map.current) return;
 
-    // clear old layer
     if (layer.current) {
       map.current.removeLayer(layer.current);
-    }    // Helper function to get status-based colors
-    // Uses inverted theme colors: light colors in dark mode, dark colors in light mode
-    const getStatusColors = (nodeStatus) => {
+    }    const getStatusColors = (nodeStatus) => {
       const isDarkMode = theme.palette.mode === 'dark';
       
-      // Use inverted theme colors for better map contrast
       const sourceColors = isDarkMode ? lightColors : darkColors;
       
       if (!nodeStatus) {
-        // Use inverted disconnected color
         const statusColor = sourceColors.nodeStatus.disconnected;
         return {
           color: statusColor,
@@ -221,17 +405,14 @@ function MapView({
       const { latitude, longitude, nodeStatus, txPower, ...rest } = marker;
       const label = String(marker.label);
       
-      // Calculate radius based on txPower value
       const radius = txPowerToRadius(txPower);
       
-      // Create popup content including txPower information
       const popupEntries = Object.entries(rest).map(([k,v]) => `<strong>${k}</strong>: ${v}`);
       if (txPower !== null && txPower !== undefined) {
         popupEntries.unshift(`<strong>TX Power</strong>: ${txPower} dBm`);
       }
       const popupHtml = popupEntries.join('<br>');
 
-      // Get status-based colors
       const statusColors = getStatusColors(nodeStatus);
 
       const circle = L.circle([lat, lng], {
@@ -251,7 +432,6 @@ function MapView({
       circle.on('click', function(e) { this.openPopup(); });
     });
 
-    // draw SNR‐colored links
     const coords = markers.map(m => [
       parseFloat(m.latitude)||0,
       parseFloat(m.longitude)||0
@@ -273,7 +453,6 @@ function MapView({
     group.addTo(map.current);
     layer.current = group;
 
-    // Clean up on unmount
     return () => {
       if (layer.current) {
         map.current.removeLayer(layer.current);
@@ -282,8 +461,6 @@ function MapView({
     };
   }, [markers, linkQualityMatrix]);
 
-  //console.log("MapView rendered, markers:", markers);
-  
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
@@ -298,7 +475,7 @@ function MapView({
         isVisible={isSidebarVisible}
         onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
         onCollapseChange={setIsSidebarCollapsed}
-      />        {/* Satellite View Toggle - positioned relative to sidebar state */}
+      />        {/* Control Panel - positioned relative to sidebar state */}
       <Paper
         elevation={3}
         style={{
@@ -311,42 +488,82 @@ function MapView({
         }}
       >
         <Box display="flex" flexDirection="column" gap={1}>
-          <ToggleButtonGroup
-            value={isSatellite ? 'satellite' : 'map'}
-            exclusive
-            onChange={(event, newValue) => {
-              if (newValue !== null) {
-                setIsSatellite(newValue === 'satellite');
-              }
-            }}
-            size="small"
-            sx={{
-              '& .MuiToggleButton-root': {
-                color: colors.text.primary,
-                border: `1px solid ${colors.border.main}`,
-                '&.Mui-selected': {
-                  backgroundColor: colors.primary.main,
-                  color: colors.background.paper,
+          {/* Offline/Online Toggle */}
+          {offlineMapAvailable && (
+            <ToggleButtonGroup
+              value={isOfflineMode ? 'offline' : 'online'}
+              exclusive
+              onChange={(event, newValue) => {
+                if (newValue !== null) {
+                  setIsOfflineMode(newValue === 'offline');
+                }
+              }}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  color: colors.text.primary,
+                  border: `1px solid ${colors.border.main}`,
+                  '&.Mui-selected': {
+                    backgroundColor: colors.primary.main,
+                    color: colors.background.paper,
+                    '&:hover': {
+                      backgroundColor: colors.primary.dark,
+                    },
+                  },
                   '&:hover': {
-                    backgroundColor: colors.primary.dark,
+                    backgroundColor: colors.background.hover,
                   },
                 },
-                '&:hover': {
-                  backgroundColor: colors.background.hover,
-                },
-              },
-            }}
-          >
-            <ToggleButton value="map" aria-label="map view">
-              <MapIcon fontSize="small" />
-            </ToggleButton>
-            <ToggleButton value="satellite" aria-label="satellite view">
-              <Satellite fontSize="small" />
-            </ToggleButton>
-          </ToggleButtonGroup>
+              }}
+            >
+              <ToggleButton value="online" aria-label="online maps">
+                <Cloud fontSize="small" />
+              </ToggleButton>
+              <ToggleButton value="offline" aria-label="offline maps">
+                <CloudOff fontSize="small" />
+              </ToggleButton>
+            </ToggleButtonGroup>
+          )}
           
-          {/* Satellite Quality Selector */}
-          {isSatellite && (
+          {/* Satellite/Map Toggle - only show in online mode */}
+          {!isOfflineMode && (
+            <ToggleButtonGroup
+              value={isSatellite ? 'satellite' : 'map'}
+              exclusive
+              onChange={(event, newValue) => {
+                if (newValue !== null) {
+                  setIsSatellite(newValue === 'satellite');
+                }
+              }}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  color: colors.text.primary,
+                  border: `1px solid ${colors.border.main}`,
+                  '&.Mui-selected': {
+                    backgroundColor: colors.primary.main,
+                    color: colors.background.paper,
+                    '&:hover': {
+                      backgroundColor: colors.primary.dark,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: colors.background.hover,
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="map" aria-label="map view">
+                <MapIcon fontSize="small" />
+              </ToggleButton>
+              <ToggleButton value="satellite" aria-label="satellite view">
+                <Satellite fontSize="small" />
+              </ToggleButton>
+            </ToggleButtonGroup>
+          )}
+          
+          {/* Satellite Quality Selector - only show in online satellite mode */}
+          {!isOfflineMode && isSatellite && (
             <FormControl size="small" variant="outlined">
               <InputLabel 
                 sx={{ 
@@ -382,6 +599,25 @@ function MapView({
                 <MenuItem value="esri">🗺️ ESRI (Standard)</MenuItem>
               </Select>
             </FormControl>
+          )}
+          
+          {/* Offline Map Status Indicator */}
+          {isOfflineMode && (
+            <Box 
+              display="flex" 
+              alignItems="center" 
+              gap={1}
+              sx={{
+                padding: '4px 8px',
+                backgroundColor: colors.success?.main || '#4caf50',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: 'white',
+              }}
+            >
+              <CloudOff fontSize="small" />
+              <span>Offline Mode</span>
+            </Box>
           )}
         </Box>
       </Paper>
