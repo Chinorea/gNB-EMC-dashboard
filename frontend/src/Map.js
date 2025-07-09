@@ -154,28 +154,29 @@ function MapView({
         attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
         maxZoom: 15,
         paintRules: [
-          // 1. Earth/land background
+          // 1. Earth/land background - theme aware
           {
             dataLayer: "earth", 
             symbolizer: new PolygonSymbolizer({
-              fill: "#FAFAFA", // Clean background
+              fill: theme.palette.mode === 'dark' ? "#1a1a1a" : "#FAFAFA", // Dark gray for dark mode
               opacity: 1.0
             })
           },
-          // 2. Landcover (parks, forests) - ALL GREEN
+          // 2. Landcover (parks, forests) - theme aware green
           {
             dataLayer: "landcover",
             symbolizer: new PolygonSymbolizer({
-              fill: "#A5D6A7", // Vibrant green for all landcover
+              fill: theme.palette.mode === 'dark' ? "#2d5a2d" : "#A5D6A7", // Darker green for dark mode
               opacity: 0.9
             })
           },
-          // 3. Landuse - SMART STYLING based on kind property
+          // 3. Landuse - SMART STYLING with dark mode support
           {
             dataLayer: "landuse",
             symbolizer: {
               draw: function(context, geom, z, feature) {
                 const kind = feature.props?.kind;
+                const isDark = theme.palette.mode === 'dark';
                 
                 // Green landuse types (parks, recreation, forests, etc.)
                 const greenTypes = [
@@ -192,12 +193,12 @@ function MapView({
                 );
                 
                 if (isGreen) {
-                  // Render as green
-                  context.fillStyle = "#A5D6A7";
+                  // Theme-aware green
+                  context.fillStyle = isDark ? "#2d5a2d" : "#A5D6A7";
                   context.globalAlpha = 0.9;
                 } else {
-                  // Render as light gray for urban/commercial landuse
-                  context.fillStyle = "#F0F0F0";
+                  // Theme-aware gray for urban/commercial landuse
+                  context.fillStyle = isDark ? "#2a2a2a" : "#F0F0F0";
                   context.globalAlpha = 0.7;
                 }
                 
@@ -214,50 +215,51 @@ function MapView({
               }
             }
           },
-          // 4. Water bodies - HIGHER OPACITY and different approach
+          // 4. Water bodies - theme aware blue
           {
             dataLayer: "water",
             symbolizer: new PolygonSymbolizer({
-              fill: "#5B9BD5", // Blue water
-              opacity: 1.0 // Full opacity
+              fill: theme.palette.mode === 'dark' ? "#1e3a5f" : "#5B9BD5", // Darker blue for dark mode
+              opacity: 1.0
             })
           },
-          // 5. Buildings
+          // 5. Buildings - theme aware gray
           {
             dataLayer: "buildings",
             symbolizer: new PolygonSymbolizer({
-              fill: "#E0E0E0",
-              stroke: "#BDBDBD",
+              fill: theme.palette.mode === 'dark' ? "#3a3a3a" : "#E0E0E0", // Darker for dark mode
+              stroke: theme.palette.mode === 'dark' ? "#555555" : "#BDBDBD", // Darker stroke for dark mode
               width: 0.5,
               opacity: 0.8
             })
           },
-          // 6. Roads
+          // 6. Roads - theme aware
           {
             dataLayer: "roads",
             symbolizer: new LineSymbolizer({
-              color: "#757575",
+              color: theme.palette.mode === 'dark' ? "#666666" : "#757575", // Slightly lighter for dark mode visibility
               width: 2
             })
           },
-          // 7. Boundaries
+          // 7. Boundaries - theme aware
           {
             dataLayer: "boundaries", 
             symbolizer: new LineSymbolizer({
-              color: "#9E9E9E",
+              color: theme.palette.mode === 'dark' ? "#777777" : "#9E9E9E", // Lighter for dark mode visibility
               width: 1,
               opacity: 0.5
             })
           }
         ],
         labelRules: [
+          // Theme-aware text labels
           {
             dataLayer: "places",
             symbolizer: new CenteredTextSymbolizer({
               labelProps: ["name"],
-              fill: "#000000",
+              fill: theme.palette.mode === 'dark' ? "#ffffff" : "#000000", // White text in dark mode
               font: "12px Arial",
-              stroke: "#FFFFFF",
+              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF", // Inverted stroke for contrast
               width: 2
             })
           },
@@ -265,8 +267,10 @@ function MapView({
             dataLayer: "pois", 
             symbolizer: new CenteredTextSymbolizer({
               labelProps: ["name"],
-              fill: "#333333", 
-              font: "10px Arial"
+              fill: theme.palette.mode === 'dark' ? "#cccccc" : "#333333", // Light gray text in dark mode
+              font: "10px Arial",
+              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF", // Inverted stroke
+              width: 1
             })
           }
         ]
