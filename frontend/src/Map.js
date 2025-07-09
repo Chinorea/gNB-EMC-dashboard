@@ -154,54 +154,97 @@ function MapView({
         attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
         maxZoom: 15,
         paintRules: [
-          {
-            dataLayer: "water",
-            symbolizer: new PolygonSymbolizer({
-              fill: "#4A90E2",
-              opacity: 0.8
-            })
-          },
+          // 1. Earth/land background
           {
             dataLayer: "earth", 
             symbolizer: new PolygonSymbolizer({
-              fill: "#F5F5DC",
+              fill: "#FAFAFA", // Clean background
               opacity: 1.0
             })
           },
-          {
-            dataLayer: "landuse",
-            symbolizer: new PolygonSymbolizer({
-              fill: "#E8F5E8",
-              opacity: 0.6
-            })
-          },
+          // 2. Landcover (parks, forests) - ALL GREEN
           {
             dataLayer: "landcover",
             symbolizer: new PolygonSymbolizer({
-              fill: "#90EE90", 
-              opacity: 0.7
+              fill: "#A5D6A7", // Vibrant green for all landcover
+              opacity: 0.9
             })
           },
+          // 3. Landuse - SMART STYLING based on kind property
+          {
+            dataLayer: "landuse",
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind;
+                
+                // Green landuse types (parks, recreation, forests, etc.)
+                const greenTypes = [
+                  'park', 'forest', 'recreation_ground', 'recreation', 'green', 'grass',
+                  'garden', 'cemetery', 'golf_course', 'nature_reserve', 'wood', 'woods',
+                  'meadow', 'farmland', 'farm', 'allotments', 'orchard', 'vineyard',
+                  'scrub', 'heath', 'wetland', 'conservation', 'protected_area',
+                  'national_park', 'village_green', 'common', 'playground'
+                ];
+                
+                // Check if this landuse should be green
+                const isGreen = greenTypes.some(type => 
+                  kind && kind.toLowerCase().includes(type.toLowerCase())
+                );
+                
+                if (isGreen) {
+                  // Render as green
+                  context.fillStyle = "#A5D6A7";
+                  context.globalAlpha = 0.9;
+                } else {
+                  // Render as light gray for urban/commercial landuse
+                  context.fillStyle = "#F0F0F0";
+                  context.globalAlpha = 0.7;
+                }
+                
+                // Draw the polygon
+                context.beginPath();
+                for (var poly of geom) {
+                  for (var p = 0; p < poly.length - 1; p++) {
+                    let pt = poly[p];
+                    if (p == 0) context.moveTo(pt.x, pt.y);
+                    else context.lineTo(pt.x, pt.y);
+                  }
+                }
+                context.fill();
+              }
+            }
+          },
+          // 4. Water bodies - HIGHER OPACITY and different approach
+          {
+            dataLayer: "water",
+            symbolizer: new PolygonSymbolizer({
+              fill: "#5B9BD5", // Blue water
+              opacity: 1.0 // Full opacity
+            })
+          },
+          // 5. Buildings
           {
             dataLayer: "buildings",
             symbolizer: new PolygonSymbolizer({
-              fill: "#D3D3D3",
-              stroke: "#999999",
+              fill: "#E0E0E0",
+              stroke: "#BDBDBD",
               width: 0.5,
               opacity: 0.8
             })
           },
+          // 6. Roads
           {
             dataLayer: "roads",
             symbolizer: new LineSymbolizer({
-              color: "#666666",
+              color: "#757575",
               width: 2
             })
           },
+          // 7. Boundaries
           {
             dataLayer: "boundaries", 
             symbolizer: new LineSymbolizer({
-              color: "#888888",
+              color: "#9E9E9E",
               width: 1,
               opacity: 0.5
             })
@@ -230,6 +273,15 @@ function MapView({
       });
       
       console.log('✅ Created protomaps leaflet layer with explicit styling for Singapore PMTiles');
+      
+      // Add debugging to see what features are actually being rendered
+      console.log('🔍 Debugging PMTiles layers:');
+      console.log('- Water layer: Blue (#5B9BD5)');
+      console.log('- Earth layer: Light gray (#FAFAFA)');
+      console.log('- Landuse layer: Light green (#E8F5E8)');
+      console.log('- Landcover layer: Muted green (#C8E6C9)');
+      console.log('If water bodies appear wrong, they might be in earth/landuse layers with different classification');
+      
       return pmtilesLayer;
     } catch (error) {
       console.error('❌ Error creating protomaps layer:', error);
