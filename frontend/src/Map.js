@@ -125,6 +125,14 @@ function MapView({
           bounds: { north: 1.5, south: 1.2, east: 104.1, west: 103.6 },
           center: [1.3521, 103.8198], // Singapore city center (Marina Bay area)
           zoom: 18
+        },
+        {
+          id: 'shoalwater_bay',
+          name: 'Shoalwater Bay Area, Australia',
+          url: './offline-maps/shoalwater_bay_area.pmtiles',
+          bounds: { north: -22.0, south: -23.0, east: 150.5, west: 149.5 },
+          center: [-22.5, 150.3], // Shoalwater Bay center coordinates - shifted right
+          zoom: 12
         }
       ];
 
