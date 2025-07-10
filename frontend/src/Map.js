@@ -3,8 +3,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors, lightColors, darkColors } from './theme';
-import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box } from '@mui/material';
-import { Satellite, Map as MapIcon, CloudOff, Cloud } from '@mui/icons-material';
+import { ToggleButton, ToggleButtonGroup, Paper, Select, MenuItem, FormControl, InputLabel, Box, Collapse, Typography, List, ListItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
+import { Satellite, Map as MapIcon, CloudOff, Cloud, ExpandMore, ExpandLess, Terrain, Info, GridOn } from '@mui/icons-material';
 import MapSideBar from './mapassets/MapSideBar';
 import { PMTiles, Protocol } from 'pmtiles';
 import { leafletLayer, PolygonSymbolizer, LineSymbolizer, CenteredTextSymbolizer } from 'protomaps-leaflet';
@@ -41,6 +41,7 @@ function MapView({
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [isLegendsVisible, setIsLegendsVisible] = useState(false);
 
   const handleNodeClick = (node) => {
     if (!map.current || !node.latitude || !node.longitude) return;
@@ -103,6 +104,37 @@ function MapView({
       attribution: attribution,
       subdomains: 'abcd'
     }).addTo(map.current);
+    
+    // Add scale control to the map
+    L.control.scale({
+      maxWidth: 200,
+      metric: true,
+      imperial: true,
+      position: 'bottomleft'
+    }).addTo(map.current);
+    
+    // Add coordinates display control
+    const coordControl = L.control({position: 'bottomright'});
+    coordControl.onAdd = function() {
+      const div = L.DomUtil.create('div', 'leaflet-control-coordinates');
+      div.innerHTML = 'Coordinates: 0.0000°, 0.0000°';
+      div.style.backgroundColor = theme.palette.mode === 'dark' ? '#333333' : '#ffffff';
+      div.style.padding = '6px 8px';
+      div.style.borderRadius = '4px';
+      div.style.fontSize = '12px';
+      div.style.color = theme.palette.mode === 'dark' ? '#ffffff' : '#333333';
+      div.style.border = `1px solid ${theme.palette.mode === 'dark' ? '#555555' : '#dddddd'}`;
+      return div;
+    };
+    coordControl.addTo(map.current);
+    
+    // Update coordinates display on mouse move
+    map.current.on('mousemove', function(e) {
+      const coordDiv = document.querySelector('.leaflet-control-coordinates');
+      if (coordDiv) {
+        coordDiv.innerHTML = `Coordinates: ${e.latlng.lat.toFixed(6)}°, ${e.latlng.lng.toFixed(6)}°`;
+      }
+    });
     
     return () => map.current.remove();
   }, []);
@@ -997,6 +1029,229 @@ function MapView({
                 {availableOfflineMaps.find(m => m.id === selectedOfflineMap)?.name || 'Offline Mode'}
               </span>
             </Box>
+          )}
+          
+          {/* Map Legends - Offline Mode Only */}
+          {isOfflineMode && (
+            <Paper
+              elevation={2}
+              sx={{
+                backgroundColor: colors.background.default,
+                padding: 2,
+                borderRadius: 2,
+                marginTop: 1,
+              }}
+            >
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Typography variant="subtitle2" fontWeight="medium" color={colors.text.primary}>
+                  Map Legends
+                </Typography>
+                <Box>
+                  <ToggleButton
+                    size="small"
+                    value={isLegendsVisible ? 'collapse' : 'expand'}
+                    onChange={() => setIsLegendsVisible(!isLegendsVisible)}
+                    sx={{
+                      border: `1px solid ${colors.border.main}`,
+                      '&.Mui-selected': {
+                        backgroundColor: colors.primary.main,
+                        color: colors.background.paper,
+                      },
+                    }}
+                  >
+                    {isLegendsVisible ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                  </ToggleButton>
+                </Box>
+              </Box>
+              
+              <Collapse in={isLegendsVisible}>
+                <Divider sx={{ borderColor: colors.border.main, my: 1 }} />
+                
+                <List dense>
+                  {/* Land */}
+                  <ListItem>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: 16,
+                        height: 16,
+                        mr: 1,
+                        backgroundColor: theme.palette.mode === 'dark' ? "#1a1a1a" : "#F5F5DC",
+                        border: `1px solid ${colors.border.main}`,
+                      }}
+                    />
+                    <ListItemText 
+                      primary="Land" 
+                      secondary="Base terrain"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                  
+                  {/* Vegetation */}
+                  <ListItem>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: 16,
+                        height: 16,
+                        mr: 1,
+                        backgroundColor: theme.palette.mode === 'dark' ? "#2d4a2d" : "#90B090",
+                        border: `1px solid ${colors.border.main}`,
+                      }}
+                    />
+                    <ListItemText 
+                      primary="Vegetation" 
+                      secondary="Forests, parks, bushland"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                  
+                  {/* Water */}
+                  <ListItem>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: 16,
+                        height: 16,
+                        mr: 1,
+                        backgroundColor: theme.palette.mode === 'dark' ? "#1e3a5f" : "#4A90E2",
+                        border: `1px solid ${colors.border.main}`,
+                      }}
+                    />
+                    <ListItemText 
+                      primary="Water" 
+                      secondary="Rivers, lakes, ocean"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                  
+                  {/* Buildings */}
+                  <ListItem>
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: 16,
+                        height: 16,
+                        mr: 1,
+                        backgroundColor: theme.palette.mode === 'dark' ? "#3a3a3a" : "#D0D0D0",
+                        border: `1px solid ${colors.border.main}`,
+                      }}
+                    />
+                    <ListItemText 
+                      primary="Buildings" 
+                      secondary="Structures and facilities"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                  
+                  {/* Roads */}
+                  <ListItem>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        mr: 1,
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-block',
+                          width: 16,
+                          height: 3,
+                          mr: 0.5,
+                          backgroundColor: theme.palette.mode === 'dark' ? "#FFD700" : "#FFA500",
+                        }}
+                      />
+                    </Box>
+                    <ListItemText 
+                      primary="Major Roads" 
+                      secondary="Highways and main routes"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                  
+                  {/* Minor Roads */}
+                  <ListItem>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        mr: 1,
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-block',
+                          width: 16,
+                          height: 2,
+                          mr: 0.5,
+                          backgroundColor: theme.palette.mode === 'dark' ? "#999999" : "#666666",
+                        }}
+                      />
+                    </Box>
+                    <ListItemText 
+                      primary="Local Roads" 
+                      secondary="Residential and secondary roads"
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        fontWeight: 'medium',
+                        color: colors.text.primary 
+                      }}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: colors.text.secondary
+                      }}
+                    />
+                  </ListItem>
+                </List>
+              </Collapse>
+            </Paper>
           )}
         </Box>
       </Paper>
