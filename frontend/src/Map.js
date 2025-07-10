@@ -143,20 +143,20 @@ function MapView({
     const initializePMTiles = async () => {
       const offlineMaps = [
         {
-          id: 'queensland',
-          name: 'Queensland, Australia',
-          url: './offline-maps/queensland.pmtiles',
-          bounds: { north: -10.4, south: -29.2, east: 153.6, west: 138.0 },
-          center: [-23.3781, 150.5144], // Rockhampton city center coordinates
-          zoom: 6
-        },
-        {
           id: 'singapore',
           name: 'Singapore',
           url: './offline-maps/singapore.pmtiles',
           bounds: { north: 1.5, south: 1.2, east: 104.1, west: 103.6 },
           center: [1.3521, 103.8198], // Singapore city center (Marina Bay area)
           zoom: 18
+        },
+        {
+          id: 'queensland',
+          name: 'Queensland, Australia',
+          url: './offline-maps/queensland.pmtiles',
+          bounds: { north: -10.4, south: -29.2, east: 153.6, west: 138.0 },
+          center: [-23.3781, 150.5144], // Rockhampton city center coordinates
+          zoom: 6
         },
         {
           id: 'shoalwater_bay',
@@ -207,10 +207,10 @@ function MapView({
       setAvailableOfflineMaps(availableMaps);
       setOfflineMapAvailable(availableMaps.length > 0);
       
-      // Default to Queensland if available, otherwise first available map
+      // Default to Singapore if available, otherwise first available map
       if (availableMaps.length > 0) {
-        const queenslandMap = availableMaps.find(map => map.id === 'queensland');
-        const defaultMap = queenslandMap || availableMaps[0];
+        const singaporeMap = availableMaps.find(map => map.id === 'singapore');
+        const defaultMap = singaporeMap || availableMaps[0];
         
         pmtilesRef.current = defaultMap.pmtiles;
         setSelectedOfflineMap(defaultMap.id);
@@ -465,7 +465,7 @@ function MapView({
           {
             dataLayer: "water",
             symbolizer: new PolygonSymbolizer({
-              fill: theme.palette.mode === 'dark' ? "#1e3a5f" : "#4A90E2", // Better water blue
+              fill: theme.palette.mode === 'dark' ? "#162c46" : "#7bafd4", // Dulled down water blue
               opacity: 1.0
             })
           },
@@ -474,7 +474,7 @@ function MapView({
           {
             dataLayer: "waterway",
             symbolizer: new LineSymbolizer({
-              color: theme.palette.mode === 'dark' ? "#1e3a5f" : "#4A90E2",
+              color: theme.palette.mode === 'dark' ? "#162c46" : "#7bafd4", // Dulled down water blue
               width: 2
             })
           },
