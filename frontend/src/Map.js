@@ -35,6 +35,8 @@ function MapView({
   const [satelliteProvider, setSatelliteProvider] = useState('googleHybrid');
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [offlineMapAvailable, setOfflineMapAvailable] = useState(false);
+  const [availableOfflineMaps, setAvailableOfflineMaps] = useState([]);
+  const [selectedOfflineMap, setSelectedOfflineMap] = useState('auto');
   const pmtilesRef = useRef(null);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -92,7 +94,7 @@ function MapView({
 
   useEffect(() => {
     map.current = L.map(mapEl.current).setView(initialCenter, initialZoom);
-      const isDark = theme.palette.mode === 'dark';
+    const isDark = theme.palette.mode === 'dark';
     const tileUrl = getTileUrl(isDark, isSatellite, satelliteProvider);
     const attribution = getAttribution(isSatellite, satelliteProvider);
     
@@ -107,43 +109,107 @@ function MapView({
 
   useEffect(() => {
     const initializePMTiles = async () => {
-      try {
-        const pmtilesUrl = './offline-maps/singapore.pmtiles';
-        const response = await fetch(pmtilesUrl, { method: 'HEAD' });
-        
-        if (response.ok) {
-          pmtilesRef.current = new PMTiles(pmtilesUrl);
-          
-          if (!window.pmtilesProtocol) {
-            window.pmtilesProtocol = new Protocol();
-            window.pmtilesProtocol.add(pmtilesRef.current);
-          }
-          
-          setOfflineMapAvailable(true);
-          console.log('✅ Singapore offline map available');
-          
-          try {
-            const header = await pmtilesRef.current.getHeader();
-            console.log('📍 PMTiles header:', {
-              bounds: `${header.minLat}, ${header.minLon} to ${header.maxLat}, ${header.maxLon}`,
-              zoom: `${header.minZoom} to ${header.maxZoom}`,
-              center: `${header.centerLat}, ${header.centerLon}`
-            });
-          } catch (headerError) {
-            console.error('❌ Error reading PMTiles header:', headerError);
-          }
-        } else {
-          console.log('⚠️ Singapore offline map not found');
-          setOfflineMapAvailable(false);
+      const offlineMaps = [
+        {
+          id: 'queensland',
+          name: 'Queensland, Australia',
+          url: './offline-maps/queensland.pmtiles',
+          bounds: { north: -10.4, south: -29.2, east: 153.6, west: 138.0 },
+          center: [-23.3781, 150.5144], // Rockhampton city center coordinates
+          zoom: 6
+        },
+        {
+          id: 'singapore',
+          name: 'Singapore',
+          url: './offline-maps/singapore.pmtiles',
+          bounds: { north: 1.5, south: 1.2, east: 104.1, west: 103.6 },
+          center: [1.3521, 103.8198], // Singapore city center (Marina Bay area)
+          zoom: 18
         }
-      } catch (error) {
-        console.error('❌ Error initializing PMTiles:', error);
-        setOfflineMapAvailable(false);
+      ];
+
+      const availableMaps = [];
+
+      for (const mapConfig of offlineMaps) {
+        try {
+          const response = await fetch(mapConfig.url, { method: 'HEAD' });
+          
+          if (response.ok) {
+            const pmtiles = new PMTiles(mapConfig.url);
+            
+            try {
+              const header = await pmtiles.getHeader();
+              const mapInfo = {
+                ...mapConfig,
+                pmtiles,
+                header,
+                size: response.headers.get('content-length') || 'Unknown'
+              };
+              
+              availableMaps.push(mapInfo);
+              console.log(`✅ ${mapConfig.name} offline map available`, {
+                bounds: `${header.minLat}, ${header.minLon} to ${header.maxLat}, ${header.maxLon}`,
+                zoom: `${header.minZoom} to ${header.maxZoom}`,
+                center: `${header.centerLat}, ${header.centerLon}`,
+                size: mapInfo.size
+              });
+            } catch (headerError) {
+              console.error(`❌ Error reading ${mapConfig.name} PMTiles header:`, headerError);
+            }
+          } else {
+            console.log(`⚠️ ${mapConfig.name} offline map not found`);
+          }
+        } catch (error) {
+          console.error(`❌ Error checking ${mapConfig.name} offline map:`, error);
+        }
+      }
+
+      setAvailableOfflineMaps(availableMaps);
+      setOfflineMapAvailable(availableMaps.length > 0);
+      
+      // Default to Queensland if available, otherwise first available map
+      if (availableMaps.length > 0) {
+        const queenslandMap = availableMaps.find(map => map.id === 'queensland');
+        const defaultMap = queenslandMap || availableMaps[0];
+        
+        pmtilesRef.current = defaultMap.pmtiles;
+        setSelectedOfflineMap(defaultMap.id);
+        
+        if (!window.pmtilesProtocol) {
+          window.pmtilesProtocol = new Protocol();
+        }
+        window.pmtilesProtocol.add(pmtilesRef.current);
+        
+        console.log(`🎯 Set ${defaultMap.name} as default offline map`);
       }
     };
     
     initializePMTiles();
   }, []);
+
+  const switchOfflineMap = (mapId) => {
+    const selectedMap = availableOfflineMaps.find(map => map.id === mapId);
+    if (selectedMap) {
+      pmtilesRef.current = selectedMap.pmtiles;
+      setSelectedOfflineMap(mapId);
+      
+      // Update map view to center on the new map
+      if (map.current) {
+        map.current.setView(selectedMap.center, selectedMap.zoom);
+      }
+      
+      // Refresh the tile layer if we're in offline mode
+      if (isOfflineMode && tileLayer.current) {
+        map.current.removeLayer(tileLayer.current);
+        tileLayer.current = createPMTilesLayer();
+        if (tileLayer.current) {
+          tileLayer.current.addTo(map.current);
+        }
+      }
+      
+      console.log(`🔄 Switched to ${selectedMap.name} offline map`);
+    }
+  };
 
   const createPMTilesLayer = () => {
     if (!pmtilesRef.current) return null;
@@ -154,60 +220,199 @@ function MapView({
         attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
         maxZoom: 15,
         paintRules: [
-          // 1. Earth/land background - theme aware
+          // 1. Earth/land background - more robust detection
           {
             dataLayer: "earth", 
             symbolizer: new PolygonSymbolizer({
-              fill: theme.palette.mode === 'dark' ? "#1a1a1a" : "#FAFAFA", // Dark gray for dark mode
+              fill: theme.palette.mode === 'dark' ? "#1a1a1a" : "#F5F5DC", // Beige for better Australia land appearance
               opacity: 1.0
             })
           },
-          // 2. Landcover (parks, forests) - theme aware green
+          // 1b. Alternative land layer names for different PMTiles sources
           {
-            dataLayer: "landcover",
+            dataLayer: "land", 
             symbolizer: new PolygonSymbolizer({
-              fill: theme.palette.mode === 'dark' ? "#2d5a2d" : "#A5D6A7", // Darker green for dark mode
-              opacity: 0.9
+              fill: theme.palette.mode === 'dark' ? "#1a1a1a" : "#F5F5DC",
+              opacity: 1.0
             })
           },
-          // 3. Landuse - SMART STYLING with dark mode support
+          {
+            dataLayer: "natural", 
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind || feature.props?.natural || feature.props?.class;
+                const isDark = theme.palette.mode === 'dark';
+                
+                // More comprehensive land detection
+                const landTypes = ['land', 'earth', 'continent', 'island', 'ground'];
+                const isLand = landTypes.some(type => 
+                  kind && kind.toLowerCase().includes(type.toLowerCase())
+                );
+                
+                if (isLand || !kind) { // Default to land if no kind specified
+                  context.fillStyle = isDark ? "#1a1a1a" : "#F5F5DC";
+                  context.globalAlpha = 1.0;
+                  
+                  context.beginPath();
+                  for (var poly of geom) {
+                    for (var p = 0; p < poly.length - 1; p++) {
+                      let pt = poly[p];
+                      if (p === 0) context.moveTo(pt.x, pt.y);
+                      else context.lineTo(pt.x, pt.y);
+                    }
+                  }
+                  context.fill();
+                }
+              }
+            }
+          },
+          
+          // 1c. Physical layer - sometimes continents are in physical layer
+          {
+            dataLayer: "physical",
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind || feature.props?.class;
+                const isDark = theme.palette.mode === 'dark';
+                
+                if (!kind || kind === 'land' || kind === 'continent') {
+                  context.fillStyle = isDark ? "#1a1a1a" : "#F5F5DC";
+                  context.globalAlpha = 1.0;
+                  
+                  context.beginPath();
+                  for (var poly of geom) {
+                    for (var p = 0; p < poly.length - 1; p++) {
+                      let pt = poly[p];
+                      if (p === 0) context.moveTo(pt.x, pt.y);
+                      else context.lineTo(pt.x, pt.y);
+                    }
+                  }
+                  context.fill();
+                }
+              }
+            }
+          },
+          
+          // 1d. Fallback for any polygon without water properties
+          {
+            dataLayer: "*", // Catch-all for any remaining polygons
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                if (geom[0] && geom[0].length > 3) { // Only for polygons
+                  const props = feature.props || {};
+                  const isWater = props.natural === 'water' || props.landuse === 'water' || 
+                                props.kind === 'water' || props.class === 'water' ||
+                                props.natural === 'bay' || props.natural === 'sea' ||
+                                props.natural === 'ocean' || props.natural === 'lake' ||
+                                props.natural === 'river';
+                  
+                  if (!isWater) {
+                    const isDark = theme.palette.mode === 'dark';
+                    context.fillStyle = isDark ? "#1a1a1a" : "#F5F5DC";
+                    context.globalAlpha = 0.3; // Lower opacity for fallback
+                    
+                    context.beginPath();
+                    for (var poly of geom) {
+                      for (var p = 0; p < poly.length - 1; p++) {
+                        let pt = poly[p];
+                        if (p === 0) context.moveTo(pt.x, pt.y);
+                        else context.lineTo(pt.x, pt.y);
+                      }
+                    }
+                    context.fill();
+                  }
+                }
+              }
+            }
+          },
+          
+          // 2. Landcover (parks, forests, vegetation) - enhanced for Australia
+          {
+            dataLayer: "landcover",
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind || feature.props?.landcover || feature.props?.class;
+                const isDark = theme.palette.mode === 'dark';
+                
+                // Australian vegetation types
+                const vegetationTypes = [
+                  'forest', 'wood', 'woods', 'scrub', 'grass', 'grassland',
+                  'heath', 'shrubland', 'bushland', 'woodland', 'trees'
+                ];
+                
+                const isVegetation = vegetationTypes.some(type => 
+                  kind && kind.toLowerCase().includes(type.toLowerCase())
+                );
+                
+                if (isVegetation) {
+                  context.fillStyle = isDark ? "#2d4a2d" : "#90B090"; // Better Australian bush color
+                  context.globalAlpha = 0.8;
+                  
+                  context.beginPath();
+                  for (var poly of geom) {
+                    for (var p = 0; p < poly.length - 1; p++) {
+                      let pt = poly[p];
+                      if (p === 0) context.moveTo(pt.x, pt.y);
+                      else context.lineTo(pt.x, pt.y);
+                    }
+                  }
+                  context.fill();
+                }
+              }
+            }
+          },
+          
+          // 3. Landuse - Enhanced for Australian land types
           {
             dataLayer: "landuse",
             symbolizer: {
               draw: function(context, geom, z, feature) {
-                const kind = feature.props?.kind;
+                const kind = feature.props?.kind || feature.props?.landuse || feature.props?.class;
                 const isDark = theme.palette.mode === 'dark';
                 
-                // Green landuse types (parks, recreation, forests, etc.)
+                // Australian-specific land use types
                 const greenTypes = [
                   'park', 'forest', 'recreation_ground', 'recreation', 'green', 'grass',
                   'garden', 'cemetery', 'golf_course', 'nature_reserve', 'wood', 'woods',
                   'meadow', 'farmland', 'farm', 'allotments', 'orchard', 'vineyard',
                   'scrub', 'heath', 'wetland', 'conservation', 'protected_area',
-                  'national_park', 'village_green', 'common', 'playground'
+                  'national_park', 'village_green', 'common', 'playground',
+                  // Australian specific
+                  'bushland', 'pastoral', 'grazing', 'station', 'outback'
                 ];
                 
-                // Check if this landuse should be green
+                const urbanTypes = [
+                  'residential', 'commercial', 'industrial', 'retail', 'office',
+                  'institutional', 'educational', 'hospital', 'parking'
+                ];
+                
                 const isGreen = greenTypes.some(type => 
                   kind && kind.toLowerCase().includes(type.toLowerCase())
                 );
                 
+                const isUrban = urbanTypes.some(type => 
+                  kind && kind.toLowerCase().includes(type.toLowerCase())
+                );
+                
                 if (isGreen) {
-                  // Theme-aware green
-                  context.fillStyle = isDark ? "#2d5a2d" : "#A5D6A7";
-                  context.globalAlpha = 0.9;
-                } else {
-                  // Theme-aware gray for urban/commercial landuse
-                  context.fillStyle = isDark ? "#2a2a2a" : "#F0F0F0";
+                  context.fillStyle = isDark ? "#2d4a2d" : "#90B090";
                   context.globalAlpha = 0.7;
+                } else if (isUrban) {
+                  context.fillStyle = isDark ? "#3a3a3a" : "#E8E8E8";
+                  context.globalAlpha = 0.6;
+                } else if (kind) {
+                  // Default for other landuse types
+                  context.fillStyle = isDark ? "#2a2a2a" : "#F0F0F0";
+                  context.globalAlpha = 0.5;
+                } else {
+                  return; // Don't draw if no kind specified
                 }
                 
-                // Draw the polygon
                 context.beginPath();
                 for (var poly of geom) {
                   for (var p = 0; p < poly.length - 1; p++) {
                     let pt = poly[p];
-                    if (p == 0) context.moveTo(pt.x, pt.y);
+                    if (p === 0) context.moveTo(pt.x, pt.y);
                     else context.lineTo(pt.x, pt.y);
                   }
                 }
@@ -215,76 +420,143 @@ function MapView({
               }
             }
           },
-          // 4. Water bodies - theme aware blue
+          
+          // 4. Water bodies - enhanced for Australian water features
           {
             dataLayer: "water",
             symbolizer: new PolygonSymbolizer({
-              fill: theme.palette.mode === 'dark' ? "#1e3a5f" : "#5B9BD5", // Darker blue for dark mode
+              fill: theme.palette.mode === 'dark' ? "#1e3a5f" : "#4A90E2", // Better water blue
               opacity: 1.0
             })
           },
+          
+          // 4b. Alternative water layer names
+          {
+            dataLayer: "waterway",
+            symbolizer: new LineSymbolizer({
+              color: theme.palette.mode === 'dark' ? "#1e3a5f" : "#4A90E2",
+              width: 2
+            })
+          },
+          
           // 5. Buildings - theme aware gray
           {
             dataLayer: "buildings",
             symbolizer: new PolygonSymbolizer({
-              fill: theme.palette.mode === 'dark' ? "#3a3a3a" : "#E0E0E0", // Darker for dark mode
-              stroke: theme.palette.mode === 'dark' ? "#555555" : "#BDBDBD", // Darker stroke for dark mode
+              fill: theme.palette.mode === 'dark' ? "#3a3a3a" : "#D0D0D0",
+              stroke: theme.palette.mode === 'dark' ? "#555555" : "#BDBDBD",
               width: 0.5,
               opacity: 0.8
             })
           },
-          // 6. Roads - theme aware
+          
+          // 6. Roads - enhanced for Australian road network
           {
             dataLayer: "roads",
-            symbolizer: new LineSymbolizer({
-              color: theme.palette.mode === 'dark' ? "#666666" : "#757575", // Slightly lighter for dark mode visibility
-              width: 2
-            })
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind || feature.props?.highway || feature.props?.class;
+                const isDark = theme.palette.mode === 'dark';
+                
+                let color = isDark ? "#666666" : "#757575";
+                let width = 1;
+                
+                // Australian road hierarchy
+                if (kind === 'highway' || kind === 'motorway') {
+                  color = isDark ? "#FF8C00" : "#FF6B00"; // Orange for highways
+                  width = 4;
+                } else if (kind === 'primary' || kind === 'trunk') {
+                  color = isDark ? "#FFD700" : "#FFA500"; // Gold for primary roads
+                  width = 3;
+                } else if (kind === 'secondary') {
+                  color = isDark ? "#87CEEB" : "#4682B4"; // Steel blue for secondary
+                  width = 2;
+                } else if (kind === 'tertiary' || kind === 'residential') {
+                  color = isDark ? "#999999" : "#666666"; // Gray for local roads
+                  width = 1.5;
+                }
+                
+                context.strokeStyle = color;
+                context.lineWidth = width;
+                context.lineCap = 'round';
+                context.lineJoin = 'round';
+                
+                context.beginPath();
+                for (var line of geom) {
+                  for (var p = 0; p < line.length; p++) {
+                    let pt = line[p];
+                    if (p === 0) context.moveTo(pt.x, pt.y);
+                    else context.lineTo(pt.x, pt.y);
+                  }
+                }
+                context.stroke();
+              }
+            }
           },
-          // 7. Boundaries - theme aware
+          
+          // 7. Boundaries - Australian state/territory boundaries
           {
             dataLayer: "boundaries", 
-            symbolizer: new LineSymbolizer({
-              color: theme.palette.mode === 'dark' ? "#777777" : "#9E9E9E", // Lighter for dark mode visibility
-              width: 1,
-              opacity: 0.5
-            })
+            symbolizer: {
+              draw: function(context, geom, z, feature) {
+                const kind = feature.props?.kind || feature.props?.admin_level || feature.props?.class;
+                const isDark = theme.palette.mode === 'dark';
+                
+                let color = isDark ? "#777777" : "#9E9E9E";
+                let width = 1;
+                
+                // Australian administrative boundaries
+                if (kind === 'state' || kind === 'territory' || feature.props?.admin_level === '4') {
+                  color = isDark ? "#FF69B4" : "#D2691E"; // Hot pink/orange for state boundaries
+                  width = 2;
+                } else if (kind === 'local' || feature.props?.admin_level === '6') {
+                  color = isDark ? "#87CEEB" : "#708090"; // Light blue for local boundaries
+                  width = 1;
+                }
+                
+                context.strokeStyle = color;
+                context.lineWidth = width;
+                context.globalAlpha = 0.7;
+                
+                context.beginPath();
+                for (var line of geom) {
+                  for (var p = 0; p < line.length; p++) {
+                    let pt = line[p];
+                    if (p === 0) context.moveTo(pt.x, pt.y);
+                    else context.lineTo(pt.x, pt.y);
+                  }
+                }
+                context.stroke();
+              }
+            }
           }
         ],
         labelRules: [
-          // Theme-aware text labels
           {
             dataLayer: "places",
             symbolizer: new CenteredTextSymbolizer({
               labelProps: ["name"],
-              fill: theme.palette.mode === 'dark' ? "#ffffff" : "#000000", // White text in dark mode
-              font: "12px Arial",
-              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF", // Inverted stroke for contrast
-              width: 2
+              fill: theme.palette.mode === 'dark' ? "#ffffff" : "#000000",
+              font: "bold 14px Arial", // Larger font for Australian cities
+              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF",
+              width: 3
             })
           },
           {
             dataLayer: "pois", 
             symbolizer: new CenteredTextSymbolizer({
               labelProps: ["name"],
-              fill: theme.palette.mode === 'dark' ? "#cccccc" : "#333333", // Light gray text in dark mode
-              font: "10px Arial",
-              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF", // Inverted stroke
-              width: 1
+              fill: theme.palette.mode === 'dark' ? "#cccccc" : "#333333",
+              font: "11px Arial",
+              stroke: theme.palette.mode === 'dark' ? "#000000" : "#FFFFFF",
+              width: 2
             })
           }
         ]
       });
       
-      console.log('✅ Created protomaps leaflet layer with explicit styling for Singapore PMTiles');
-      
-      // Add debugging to see what features are actually being rendered
-      console.log('🔍 Debugging PMTiles layers:');
-      console.log('- Water layer: Blue (#5B9BD5)');
-      console.log('- Earth layer: Light gray (#FAFAFA)');
-      console.log('- Landuse layer: Light green (#E8F5E8)');
-      console.log('- Landcover layer: Muted green (#C8E6C9)');
-      console.log('If water bodies appear wrong, they might be in earth/landuse layers with different classification');
+      const selectedMapName = availableOfflineMaps.find(m => m.id === selectedOfflineMap)?.name || 'PMTiles';
+      console.log(`✅ Created protomaps leaflet layer for ${selectedMapName}`);
       
       return pmtilesLayer;
     } catch (error) {
@@ -306,17 +578,16 @@ function MapView({
             
             if (result && result.data) {
               const dataSize = result.data.byteLength || result.data.length || 0;
-              
               const intensity = Math.min(dataSize / 20000, 1);
               
               if (intensity > 0.7) {
-                ctx.fillStyle = '#f8f9fa'; // Urban areas - light gray
+                ctx.fillStyle = '#f8f9fa';
               } else if (intensity > 0.4) {
-                ctx.fillStyle = '#e9ecef'; // Suburban - lighter gray
+                ctx.fillStyle = '#e9ecef';
               } else if (intensity > 0.1) {
-                ctx.fillStyle = '#e3f2fd'; // Low density - light blue
+                ctx.fillStyle = '#e3f2fd';
               } else {
-                ctx.fillStyle = '#bbdefb'; // Water/empty - blue
+                ctx.fillStyle = '#bbdefb';
               }
               
               ctx.fillRect(0, 0, 256, 256);
@@ -381,7 +652,7 @@ function MapView({
         subdomains: 'abcd'
       }).addTo(map.current);
     }
-  }, [theme.palette.mode, isSatellite, satelliteProvider, isOfflineMode, offlineMapAvailable]);
+  }, [theme.palette.mode, isSatellite, satelliteProvider, isOfflineMode, offlineMapAvailable, selectedOfflineMap]);
 
   function qualityToColor(q) {
     const min = -10, max = 30;
@@ -523,7 +794,7 @@ function MapView({
         ref={mapEl}
         style={{ width: '100%', height: '100%' }}
       />
-        {/* MapSideBar */}
+      
       <MapSideBar
         nodes={markers}
         onNodeClick={handleNodeClick}
@@ -531,13 +802,14 @@ function MapView({
         isVisible={isSidebarVisible}
         onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
         onCollapseChange={setIsSidebarCollapsed}
-      />        {/* Control Panel - positioned relative to sidebar state */}
+      />
+      
       <Paper
         elevation={3}
         style={{
           position: 'absolute',
           top: 20,
-          right: isSidebarVisible ? (isSidebarCollapsed ? 100 : 360) : 20, // Adjust based on sidebar visibility and collapse state
+          right: isSidebarVisible ? (isSidebarCollapsed ? 100 : 360) : 20,
           zIndex: 1000,
           backgroundColor: colors.background.paper,
           padding: '8px',
@@ -579,6 +851,47 @@ function MapView({
                 <CloudOff fontSize="small" />
               </ToggleButton>
             </ToggleButtonGroup>
+          )}
+          
+          {/* Offline Map Selector - only show in offline mode when multiple maps available */}
+          {isOfflineMode && availableOfflineMaps.length > 1 && (
+            <FormControl size="small" variant="outlined">
+              <InputLabel 
+                sx={{ 
+                  color: colors.text.secondary,
+                  '&.Mui-focused': { color: colors.primary.main }
+                }}
+              >
+                Region
+              </InputLabel>
+              <Select
+                value={selectedOfflineMap}
+                onChange={(e) => switchOfflineMap(e.target.value)}
+                label="Region"
+                sx={{
+                  minWidth: 150,
+                  color: colors.text.primary,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.border.main,
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.primary.main,
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: colors.primary.main,
+                  },
+                  '& .MuiSelect-icon': {
+                    color: colors.text.primary,
+                  },
+                }}
+              >
+                {availableOfflineMaps.map((mapInfo) => (
+                  <MenuItem key={mapInfo.id} value={mapInfo.id}>
+                    {mapInfo.id === 'queensland' ? '🇦🇺' : '🇸🇬'} {mapInfo.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
           
           {/* Satellite/Map Toggle - only show in online mode */}
@@ -672,7 +985,9 @@ function MapView({
               }}
             >
               <CloudOff fontSize="small" />
-              <span>Offline Mode</span>
+              <span>
+                {availableOfflineMaps.find(m => m.id === selectedOfflineMap)?.name || 'Offline Mode'}
+              </span>
             </Box>
           )}
         </Box>
