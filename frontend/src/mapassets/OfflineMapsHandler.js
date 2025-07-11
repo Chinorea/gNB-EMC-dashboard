@@ -42,6 +42,15 @@ export function useOfflineMaps(theme) {
           bounds: { north: -22.0, south: -23.0, east: 150.5, west: 149.5 },
           center: [-22.5, 150.3],
           zoom: 12
+        },
+        {
+          id: 'shoalwater_bay_satellite',
+          name: 'Shoalwater Bay Satellite',
+          url: './offline-maps/shoalwater_bay_satellite.pmtiles',
+          bounds: { north: -22.086, south: -22.958, east: 150.853, west: 149.832 },
+          center: [-22.522, 150.3],
+          zoom: 13,
+          type: 'satellite'
         }
       ];
 
@@ -99,8 +108,25 @@ export function useOfflineMaps(theme) {
   const switchOfflineMap = (mapId, mapRef) => {
     const selectedMap = availableOfflineMaps.find(map => map.id === mapId);
     if (selectedMap && mapRef) {
+      // Before switching, remove current protocol if exists
+      if (pmtilesRef.current && window.pmtilesProtocol) {
+        try {
+          window.pmtilesProtocol.remove(pmtilesRef.current);
+        } catch (e) {
+          console.warn("Could not remove previous PMTiles instance", e);
+        }
+      }
+      
+      // Set new PMTiles reference
       pmtilesRef.current = selectedMap.pmtiles;
       setSelectedOfflineMap(mapId);
+      
+      // Add to protocol
+      if (window.pmtilesProtocol) {
+        window.pmtilesProtocol.add(pmtilesRef.current);
+      }
+      
+      // Update map view
       mapRef.setView(selectedMap.center, selectedMap.zoom);
     }
   };
@@ -110,6 +136,15 @@ export function useOfflineMaps(theme) {
    */
   const createPMTilesLayer = () => {
     if (!pmtilesRef.current) return null;
+    
+    // Check if the current selected map is a satellite map
+    const currentMap = availableOfflineMaps.find(map => map.id === selectedOfflineMap);
+    const isSatelliteMap = currentMap?.type === 'satellite';
+    
+    if (isSatelliteMap) {
+      // For satellite maps, use a custom tile layer that directly renders JPEG images
+      return createSatelliteTileLayer(pmtilesRef.current);
+    }
     
     try {
       return leafletLayer({
@@ -178,6 +213,79 @@ export function useOfflineMaps(theme) {
       
       return fallbackLayer;
     }
+  };
+
+  /**
+   * Create a specialized tile layer for satellite imagery
+   */
+  const createSatelliteTileLayer = (pmtiles) => {
+    const tileLayer = L.tileLayer('', {
+      attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>',
+      maxZoom: 18,
+    });
+    
+    tileLayer.createTile = function(coords, done) {
+      const tile = document.createElement('img');
+      tile.alt = '';
+      tile.width = 256;
+      tile.height = 256;
+      
+      pmtiles.getZxy(coords.z, coords.x, coords.y)
+        .then(result => {
+          if (result && result.data) {
+            // For JPG tiles, create a blob URL directly
+            const blob = new Blob([result.data], { type: 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            
+            tile.onload = () => {
+              // Clean up the blob URL after image loads
+              URL.revokeObjectURL(url);
+              done(null, tile);
+            };
+            
+            tile.onerror = () => {
+              URL.revokeObjectURL(url);
+              done(null, createFallbackTile());
+            };
+            
+            tile.src = url;
+          } else {
+            done(null, createFallbackTile());
+          }
+        })
+        .catch(() => {
+          done(null, createFallbackTile());
+        });
+      
+      return tile;
+    };
+    
+    return tileLayer;
+  };
+  
+  /**
+   * Create a fallback tile for when imagery isn't available
+   */
+  const createFallbackTile = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = theme.palette.mode === 'dark' ? '#2d3436' : '#dfe6e9';
+    ctx.fillRect(0, 0, 256, 256);
+    
+    // Draw a simple pattern to indicate missing tile
+    ctx.strokeStyle = theme.palette.mode === 'dark' ? '#636e72' : '#b2bec3';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(256, 256);
+    ctx.moveTo(256, 0);
+    ctx.lineTo(0, 256);
+    ctx.stroke();
+    
+    return canvas;
   };
 
   return {

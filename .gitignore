@@ -37,8 +37,9 @@ __pycache__/
 *$py.class
 *.so
 
-# Exclude large PMTiles files
+# Exclude large map tile files
 frontend/public/offline-maps/*.pmtiles
+frontend/public/offline-maps/*.mbtiles
 # Exclude PMTiles executable
 frontend/public/offline-maps/pmtiles.exe
 

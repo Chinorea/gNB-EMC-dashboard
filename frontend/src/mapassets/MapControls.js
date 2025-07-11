@@ -119,6 +119,9 @@ const MapControls = ({
                 <MenuItem key={mapInfo.id} value={mapInfo.id}>
                   {mapInfo.id.includes('queensland') || mapInfo.id.includes('shoalwater') 
                     ? '🇦🇺' : '🇸🇬'} {mapInfo.name}
+                  {mapInfo.type === 'satellite' && (
+                    <Satellite fontSize="small" sx={{ ml: 1, opacity: 0.7 }} />
+                  )}
                 </MenuItem>
               ))}
             </Select>
