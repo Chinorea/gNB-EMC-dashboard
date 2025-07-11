@@ -1184,3 +1184,418 @@ cd backend && python3 WebDashboard.py --edgeq
 - **Recharts**: https://recharts.org/
 - **Leaflet**: https://leafletjs.com/
 - **Swagger/OpenAPI**: https://swagger.io/
+
+---
+
+## Offline Maps System
+
+The dashboard implements an offline maps capability that allows the application to work without an internet connection while still providing full map visualization. This system is critical for field deployments where internet connectivity may be unavailable or restricted.
+
+**Disclamer: The offline maps details are not the best due to limited file space. Always try to use online maps for the best resolution. This issue may be fixed in future releases of the app.**
+
+### PMTiles Implementation
+
+The offline maps system uses the PMTiles format, a single-file archive format for map tiles optimized for HTTP range requests, developed by Protomaps.
+
+#### Overview
+
+PMTiles (Protomaps Tiles) provides several key advantages for our offline mapping needs:
+
+- **Single file format**: All map data for a region is contained in one `.pmtiles` file
+- **Efficient random access**: Enables fast loading of specific map tiles
+- **Compact storage**: Optimized compression for map data
+- **Cross-platform support**: Works in browsers via JavaScript and WebAssembly
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   Map Component (Leaflet)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  useOfflineMaps() Hook ◄───────────┐                            │
+│  │                                 │                            │
+│  ▼                                 │                            │
+│  PMTiles Protocol Handler          │ createPMTilesLayer()       │
+│  (window.pmtilesProtocol)          │                            │
+│                                    │                            │
+│  OfflineMapsHandler.js             │                            │
+└────────────────────┬──────────────┬┘                            │
+                     │              │                             │
+     ┌───────────────▼───┐     ┌────▼────────────────────┐        │
+     │  PMTiles File     │     │  Custom Paint Rules     │        │
+     │  (*.pmtiles)      │     │  (Styling & Rendering)  │        │
+     └───────────────────┘     └─────────────────────────┘        │
+                     ▲                                            │
+                     │                                            │
+┌────────────────────┴────────────────────────────────────────────┘
+│                    protomaps-leaflet Library                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Creating Offline Map Files
+
+To create PMTiles files for offline use, follow these steps:
+
+#### 1. Install PMTiles Tools
+
+**Recommended Method: Downloading Latest Release from Github**
+
+You are only required to extract the exe file from the zip folder to be used. Just go to the directory where the exe file is placed in to start using it.
+Download the latest release from the link below:
+https://github.com/protomaps/go-pmtiles/releases
+
+
+
+**Alternative Method: Download through Npm**
+```bash
+# Install the PMTiles CLI tool
+npm install -g pmtiles
+```
+
+#### 2. Acquire Source Data
+
+**Recommended Method: Direct Extract from Protomaps Base Layer**
+
+The most efficient method is to extract specific regions directly from the Protomaps global base layer, by downloading through the PMTiles CLI tool:
+
+```bash
+# Extract a specific geographical area using bounding box coordinates
+# Format: --bbox=min_lon,min_lat,max_lon,max_lat
+pmtiles extract https://build.protomaps.com/20250708.pmtiles singapore.pmtiles --bbox=103.6,1.2,104.1,1.5
+
+# Extract a larger area with limited zoom level (reduces file size)
+pmtiles extract https://build.protomaps.com/20250708.pmtiles queensland_z10.pmtiles --bbox=142.5,-29.2,154.0,-9.8 --maxzoom=10
+```
+
+This method allows you to:
+- Extract precisely the region you need
+- Control the maximum zoom level to manage file size
+- Use the latest Protomaps data (update the date in the URL as needed)
+- Download only what's needed rather than the entire planet file
+- https://maps.protomaps.com/builds/ you can refer to this link for the latest build
+
+**Alternative Methods:**
+
+If you have specific requirements or existing data, you can also use these approaches:
+
+**Option A: Convert from MBTiles**
+```bash
+# Convert from MBTiles format (if you have existing MBTiles)
+pmtiles convert source.mbtiles destination.pmtiles
+```
+
+**Option B: Extract from OpenStreetMap**
+```bash
+# 1. Download OSM data for the region
+wget https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf
+
+# 2. Install Tilemaker
+# Follow instructions at https://github.com/systemed/tilemaker
+
+# 3. Convert OSM data to PMTiles
+tilemaker --input malaysia-singapore-brunei-latest.osm.pbf --output singapore.pmtiles \
+  --bbox 103.6 1.2 104.1 1.5 --config resources/config-openmaptiles.json \
+  --process resources/process-openmaptiles.lua
+```
+
+**Option C: Use Pre-built Protomaps Data**
+```bash
+# Download pre-built country or region extract
+curl -O https://protomaps.com/extracts/[COUNTRY_OR_REGION].pmtiles
+```
+
+#### 3. Optimize for Size and Performance
+
+PMTiles files can be optimized to balance quality and size:
+
+```bash
+# Limit maximum zoom level (reduces file size significantly)
+pmtiles extract source.pmtiles reduced_zoom.pmtiles --maxzoom=12
+
+# Select specific layers to include (reduces complexity and size)
+pmtiles extract source.pmtiles minimal.pmtiles --layers=water,roads,buildings
+
+# Compress output to reduce file size
+pmtiles extract source.pmtiles compressed.pmtiles --compression=gzip
+```
+
+**File Size Guidelines:**
+- Small area (single city): 5-20 MB
+- Medium area (state/province): 50-200 MB
+- Large area (small country): 200-500 MB
+- Very detailed area: Consider splitting into multiple files
+
+#### 4. Deploy to Application
+
+Place PMTiles files in the frontend's public folder:
+
+```
+frontend/
+  └── public/
+      └── offline-maps/
+          ├── singapore.pmtiles
+          ├── queensland.pmtiles
+          └── default.pmtiles
+```
+
+### Integrating Offline Maps
+
+#### Installation
+
+```bash
+# Install required packages
+npm install pmtiles leaflet protomaps-leaflet
+```
+
+#### Frontend Implementation
+
+**1. Map Component:**
+```javascript
+// Map.js - Key parts
+import * as pmtiles from "pmtiles";
+import * as protomaps from "protomaps-leaflet";
+
+const Map = ({ nodeCoordinates }) => {
+  useEffect(() => {
+    // Initialize PMTiles protocol
+    window.pmtilesProtocol = new pmtiles.Protocol();
+
+    // Create map instance
+    const map = L.map('map').setView([1.3521, 103.8198], 12);
+    
+    // Register PMTiles protocol
+    protomaps.register({
+      map: map,
+      protocol: window.pmtilesProtocol,
+    });
+
+    // Use offline map tiles
+    const offlineLayer = protomaps.leafletLayer({
+      url: "offline-maps/singapore.pmtiles",
+      attribution: "© Protomaps © OpenStreetMap contributors",
+      style: protomaps.defaultStyle
+    }).addTo(map);
+
+    // Add node markers
+    nodeCoordinates.forEach(node => {
+      L.marker([node.lat, node.lng], { title: node.name }).addTo(map);
+    });
+    
+    return () => map.remove();
+  }, [nodeCoordinates]);
+
+  return <div id="map" style={{ height: '500px', width: '100%' }} />;
+};
+```
+
+**2. Internet Connectivity Detection:**
+```javascript
+// OfflineMapsHandler.js
+export const useOfflineMaps = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [mapSource, setMapSource] = useState('offline');
+  
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setMapSource(localStorage.getItem('preferredMapSource') || 'online');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setMapSource('offline');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+  
+  return {
+    isOnline,
+    mapSource,
+    setMapSource: (source) => {
+      setMapSource(source);
+      localStorage.setItem('preferredMapSource', source);
+    }
+  };
+};
+```
+
+**3. Creating Map Layers:**
+```javascript
+// Creating map layers with options for online/offline
+export const createMapLayer = (mapSource) => {
+  if (mapSource === 'offline') {
+    return protomaps.leafletLayer({
+      url: "offline-maps/default.pmtiles",
+      attribution: "© Protomaps © OpenStreetMap contributors",
+      style: protomaps.defaultStyle
+    });
+  } else {
+    // Online map providers
+    return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+  }
+};
+```
+
+### Multi-Region Support
+
+For deployments in different geographical regions, implement a region selector:
+
+```javascript
+// Region selector component
+const RegionSelector = ({ onRegionChange }) => {
+  const regions = [
+    { id: 'singapore', name: 'Singapore', file: 'singapore.pmtiles', center: [1.3521, 103.8198] },
+    { id: 'queensland', name: 'Queensland', file: 'queensland.pmtiles', center: [-23.8, 148.0] },
+    // Add more regions as needed
+  ];
+  
+  return (
+    <select onChange={(e) => {
+      const region = regions.find(r => r.id === e.target.value);
+      onRegionChange(region);
+    }}>
+      {regions.map(region => (
+        <option key={region.id} value={region.id}>{region.name}</option>
+      ))}
+    </select>
+  );
+};
+```
+
+### Automatic Updates for Field Deployments
+
+For automatically updating offline maps when internet becomes available:
+
+```javascript
+// In OfflineMapUpdater.js
+export const checkForMapUpdates = async () => {
+  if (!navigator.onLine) return;
+  
+  try {
+    const response = await fetch('https://api.server.com/map-versions');
+    const versions = await response.json();
+    
+    const localVersions = JSON.parse(localStorage.getItem('mapVersions') || '{}');
+    
+    for (const [region, version] of Object.entries(versions)) {
+      if (version > (localVersions[region] || 0)) {
+        // Download new map version
+        await downloadMapFile(region, version);
+        localVersions[region] = version;
+      }
+    }
+    
+    localStorage.setItem('mapVersions', JSON.stringify(localVersions));
+  } catch (error) {
+    console.error('Failed to check for map updates:', error);
+  }
+};
+
+const downloadMapFile = async (region, version) => {
+  try {
+    const response = await fetch(`https://api.server.com/maps/${region}-${version}.pmtiles`);
+    const blob = await response.blob();
+    
+    // Save to IndexedDB for persistent storage
+    await saveMapToStorage(region, blob);
+  } catch (error) {
+    console.error(`Failed to download map for ${region}:`, error);
+  }
+};
+```
+
+### Performance Considerations
+
+- **Memory Usage**: PMTiles loads only the needed tiles, keeping memory usage low
+- **Caching**: Implement browser caching for frequently accessed regions
+- **Progressive Loading**: The format supports progressive loading for better UX
+- **Zoom Level Control**: Limit maximum zoom for better performance on low-end devices
+- **Layer Selection**: Only include necessary map features for your application
+
+By implementing this offline maps system, the gNB-EMS Dashboard ensures full mapping functionality even in environments with limited or no internet connectivity, making it suitable for field deployments in remote areas.
+
+---
+
+## Enhanced Network Discovery
+
+The network discovery system is enhanced with intelligent scanning and device classification features. It not only detects devices but also classifies them into categories for better management and visualization.
+
+### Key Enhancements
+
+1. **Device Classification**:
+   - Discovered devices are classified into categories: `gNB`, `MANET`, and `Unknown`.
+   - Classification is based on the presence of specific API endpoints and response patterns.
+
+2. **Intelligent Scanning**:
+   - Scanning is adaptive and can change intervals and methods based on network conditions and previous discoveries.
+   - Failed discovery attempts are retried with exponential backoff.
+
+3. **Integration with Node Management**:
+   - Discovered devices can be directly added to node management from the discovery interface.
+   - Manual and automatic discovery results are merged for a unified view.
+
+### Implementation Details
+
+#### Device Classification Logic
+
+Devices are classified into three main types:
+
+- **gNB (5G Node B)**: Detected via the Health API at `/api/health`.
+- **MANET (Mobile Ad Hoc Network)**: Detected via the MANET API at `/status?content=temp`.
+- **Unknown**: Devices that do not respond to either API.
+
+**Example Classification Code:**
+```javascript
+const classifyDevice = (ip, healthResponse, manetResponse) => {
+  if (healthResponse && healthResponse.status === 'up') {
+    return { type: 'gNB', ip };
+  } else if (manetResponse && manetResponse.nodes) {
+    return { type: 'MANET', ip };
+  } else {
+    return { type: 'Unknown', ip };
+  }
+};
+```
+
+#### Intelligent Scanning Workflow
+
+1. **Initial Scan**: Perform a full dual-sweep scan (Health + MANET APIs) on the configured subnet.
+2. **Adaptive Rescanning**:
+   - If new devices are found, rescans are triggered more frequently (every 10 seconds).
+   - If no new devices are found, the system reverts to the normal scan interval (every 20 seconds).
+3. **Exponential Backoff on Failure**:
+   - If a device fails to respond, the system waits longer before retrying (up to a maximum of 60 seconds).
+   - This prevents network flooding and allows for network recovery.
+
+**Example Scanning Code:**
+```javascript
+const scanSubnet = async (subnet) => {
+  const allIPs = getAllIPsInSubnet(subnet);
+  await performSweep(allIPs, 'health');
+  await performSweep(allIPs, 'manet');
+  
+  // Adaptive rescanning
+  if (newDevicesFound) {
+    setScanInterval(10); // 10 seconds
+  } else {
+    setScanInterval(20); // 20 seconds
+  }
+};
+```
+
+### User Interface Enhancements
+
+- **Discovery Page**: A dedicated page for network discovery showing real-time scan progress, discovered devices, and manual addition options.
+- **Device Status Indicators**: Color-coded indicators for device status (e.g., green for active, red for inactive).
+- **Filter and Search**: Options to filter devices by type and search by IP or name.
+
+---
