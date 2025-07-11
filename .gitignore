@@ -37,6 +37,8 @@ __pycache__/
 
 # Exclude large PMTiles files
 frontend/public/offline-maps/*.pmtiles
+# Exclude PMTiles executable
+frontend/public/offline-maps/pmtiles.exe
 
 # Keep a README in the offline-maps directory
 !frontend/public/offline-maps/README.md
