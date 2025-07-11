@@ -2,6 +2,8 @@
 node_modules/
 /build
 /dist
+# Exclude large lock file
+frontend/package-lock.json
 
 # Dependencies
 /.pnp
