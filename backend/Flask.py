@@ -26,6 +26,12 @@ except ImportError:
 from board_factory import BoardFactory
 from config_manager import BoardConfigManager
 from logic.shared_attributes.Network import Network
+import sys
+
+# Check if we're running in a test environment
+def is_testing():
+    """Check if we're running in a test environment"""
+    return 'pytest' in sys.modules or 'unittest' in sys.modules or any('test' in arg for arg in sys.argv)
 
 # Check if we're running in a test environment
 def is_testing():
