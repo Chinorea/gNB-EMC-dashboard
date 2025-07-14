@@ -1254,6 +1254,7 @@ npm install -g pmtiles
 
 #### 2. Acquire Source Data
 
+#### 2.1 Terrain Source
 **Recommended Method: Direct Extract from Protomaps Base Layer**
 
 The most efficient method is to extract specific regions directly from the Protomaps global base layer, by downloading through the PMTiles CLI tool:
@@ -1304,6 +1305,83 @@ tilemaker --input malaysia-singapore-brunei-latest.osm.pbf --output singapore.pm
 curl -O https://protomaps.com/extracts/[COUNTRY_OR_REGION].pmtiles
 ```
 
+#### 2.2 Satellite Source
+**Recommended Method: MOBAC (Mobile Atlas Creator)**
+
+This method provide the best customizability for your map area and source, and max zoom capability.
+
+**2.2.1. Download and Install MOBAC**
+   - Download MOBAC from [https://mobac.sourceforge.io/](https://mobac.sourceforge.io/)
+   - Extract the zip file to a directory of your choice
+   - Run MOBAC by executing `Mobile Atlas Creator.exe` (Windows) or `start.sh` (Linux/Mac)
+
+**2.2.2. Add Custom Map Sources for High-Resolution Satellite Imagery**
+   
+   MOBAC's default satellite sources may have limitations, so adding custom sources is recommended:
+   
+   - Create XML files in the MOBAC `mapsources` directory (usually in your MOBAC installation folder)
+   - For ESRI World Imagery (recommended):
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <customMapSource>
+       <name>ESRI World Imagery</name>
+       <minZoom>0</minZoom>
+       <maxZoom>18</maxZoom>
+       <tileType>jpg</tileType>
+       <tileUpdate>None</tileUpdate>
+       <url>https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{$z}/{$y}/{$x}</url>
+   </customMapSource>
+   ```
+   - Alternative Option: Bing Satellite
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+  <customMapSource>
+      <name>Bing Satellite Enhanced</name>
+      <minZoom>1</minZoom>
+      <maxZoom>19</maxZoom>
+      <tileType>jpg</tileType>
+      <tileUpdate>None</tileUpdate>
+      <url>http://ecn.t{$serverpart}.tiles.virtualearth.net/tiles/a{$quadkey}.jpeg?g=1</url>
+      <serverParts>0,1,2,3</serverParts>
+  </customMapSource>
+   ```
+
+  **2.2.3. Create a Satellite Map Atlas**
+  - Start MOBAC and select "ESRI World Imagery" from the map source dropdown
+  - Navigate to your area of interest using the map view
+  - Hold Shift and drag to select the region you want to download
+  - In the left panel under "Atlas Content", click "Add Selection"
+  - Set the zoom levels (recommended: 10-15 for a balance of detail and file size)
+  - Select "MBTiles" as the output format (we'll convert to PMTiles later)
+  - Name your atlas (e.g., "shoalwater_bay_satellite")
+  - Click "Create Atlas" and specify a save location
+
+  **2.2.4. MBTiles to PMTiles conversion**
+  - Once MOBAC completes the download, use the PMTiles conversion tool:
+  ```
+  # Navigate to your offline-maps directory where pmtiles.exe is located
+  cd frontend/public/offline-maps
+
+  # Convert the MBTiles file to PMTiles format
+  pmtiles.exe convert your_atlas_name.mbtiles area_name_satellite.pmtiles
+  ```
+
+  **2.2.5. Add the Satellite Map to the Configuration**
+  - Place the converted PMTiles file in the frontend/public/offline-maps directory
+  - Update the OfflineMapsHandler.js file to include the new satellite map:
+  ```
+  {
+    id: 'area_name_satellite',
+    name: 'Area Name Satellite',
+    url: './offline-maps/area_name_satellite.pmtiles',
+    bounds: { north: xx.xxx, south: xx.xxx, east: xx.xxx, west: xx.xxx },
+    center: [xx.xxx, xx.xxx],
+    zoom: 13,
+    type: 'satellite'  // Important: mark as satellite type
+  }
+  ```
+
 #### 3. Optimize for Size and Performance
 
 PMTiles files can be optimized to balance quality and size:
@@ -1336,181 +1414,6 @@ frontend/
           ├── singapore.pmtiles
           ├── queensland.pmtiles
           └── default.pmtiles
-```
-
-### Integrating Offline Maps
-
-#### Installation
-
-```bash
-# Install required packages
-npm install pmtiles leaflet protomaps-leaflet
-```
-
-#### Frontend Implementation
-
-**1. Map Component:**
-```javascript
-// Map.js - Key parts
-import * as pmtiles from "pmtiles";
-import * as protomaps from "protomaps-leaflet";
-
-const Map = ({ nodeCoordinates }) => {
-  useEffect(() => {
-    // Initialize PMTiles protocol
-    window.pmtilesProtocol = new pmtiles.Protocol();
-
-    // Create map instance
-    const map = L.map('map').setView([1.3521, 103.8198], 12);
-    
-    // Register PMTiles protocol
-    protomaps.register({
-      map: map,
-      protocol: window.pmtilesProtocol,
-    });
-
-    // Use offline map tiles
-    const offlineLayer = protomaps.leafletLayer({
-      url: "offline-maps/singapore.pmtiles",
-      attribution: "© Protomaps © OpenStreetMap contributors",
-      style: protomaps.defaultStyle
-    }).addTo(map);
-
-    // Add node markers
-    nodeCoordinates.forEach(node => {
-      L.marker([node.lat, node.lng], { title: node.name }).addTo(map);
-    });
-    
-    return () => map.remove();
-  }, [nodeCoordinates]);
-
-  return <div id="map" style={{ height: '500px', width: '100%' }} />;
-};
-```
-
-**2. Internet Connectivity Detection:**
-```javascript
-// OfflineMapsHandler.js
-export const useOfflineMaps = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [mapSource, setMapSource] = useState('offline');
-  
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setMapSource(localStorage.getItem('preferredMapSource') || 'online');
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      setMapSource('offline');
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-  
-  return {
-    isOnline,
-    mapSource,
-    setMapSource: (source) => {
-      setMapSource(source);
-      localStorage.setItem('preferredMapSource', source);
-    }
-  };
-};
-```
-
-**3. Creating Map Layers:**
-```javascript
-// Creating map layers with options for online/offline
-export const createMapLayer = (mapSource) => {
-  if (mapSource === 'offline') {
-    return protomaps.leafletLayer({
-      url: "offline-maps/default.pmtiles",
-      attribution: "© Protomaps © OpenStreetMap contributors",
-      style: protomaps.defaultStyle
-    });
-  } else {
-    // Online map providers
-    return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    });
-  }
-};
-```
-
-### Multi-Region Support
-
-For deployments in different geographical regions, implement a region selector:
-
-```javascript
-// Region selector component
-const RegionSelector = ({ onRegionChange }) => {
-  const regions = [
-    { id: 'singapore', name: 'Singapore', file: 'singapore.pmtiles', center: [1.3521, 103.8198] },
-    { id: 'queensland', name: 'Queensland', file: 'queensland.pmtiles', center: [-23.8, 148.0] },
-    // Add more regions as needed
-  ];
-  
-  return (
-    <select onChange={(e) => {
-      const region = regions.find(r => r.id === e.target.value);
-      onRegionChange(region);
-    }}>
-      {regions.map(region => (
-        <option key={region.id} value={region.id}>{region.name}</option>
-      ))}
-    </select>
-  );
-};
-```
-
-### Automatic Updates for Field Deployments
-
-For automatically updating offline maps when internet becomes available:
-
-```javascript
-// In OfflineMapUpdater.js
-export const checkForMapUpdates = async () => {
-  if (!navigator.onLine) return;
-  
-  try {
-    const response = await fetch('https://api.server.com/map-versions');
-    const versions = await response.json();
-    
-    const localVersions = JSON.parse(localStorage.getItem('mapVersions') || '{}');
-    
-    for (const [region, version] of Object.entries(versions)) {
-      if (version > (localVersions[region] || 0)) {
-        // Download new map version
-        await downloadMapFile(region, version);
-        localVersions[region] = version;
-      }
-    }
-    
-    localStorage.setItem('mapVersions', JSON.stringify(localVersions));
-  } catch (error) {
-    console.error('Failed to check for map updates:', error);
-  }
-};
-
-const downloadMapFile = async (region, version) => {
-  try {
-    const response = await fetch(`https://api.server.com/maps/${region}-${version}.pmtiles`);
-    const blob = await response.blob();
-    
-    // Save to IndexedDB for persistent storage
-    await saveMapToStorage(region, blob);
-  } catch (error) {
-    console.error(`Failed to download map for ${region}:`, error);
-  }
-};
 ```
 
 ### Performance Considerations

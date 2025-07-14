@@ -453,8 +453,128 @@ Visualize node locations and network topology with real-time updates.
 - **Red Lines**: Poor quality connection (low SNR)
 - **No Line**: No connection or link quality data unavailable
 
+#### 2. Offline Maps for Field Deployments
+
+The dashboard supports offline maps functionality, allowing you to continue using the map features even when internet connectivity is unavailable or restricted. This is particularly important for field deployments in remote areas.
+
+**Why Use Offline Maps:**
+- **Field Operations**: Continue operations in areas with poor or no internet connectivity
+- **Data Conservation**: Reduce bandwidth usage in limited connectivity environments
+- **Reliability**: Ensure map functionality regardless of network conditions
+- **Security**: Operate in secure environments without external internet dependencies
+
+> **📌 Note**: Offline maps provide basic coverage but may have lower resolution than online maps. Always try to use online maps when possible for the best visual quality.
+
+**How Offline Maps Work:**
+The dashboard uses PMTiles format - a single-file archive containing all map data for a specific region. These files are pre-generated and stored locally in your application.
+
 ---
 
+##### Setting Up Offline Maps
+
+**Step 1: Verify Current Offline Maps**
+Your dashboard installation may already include some offline map files:
+
+1. Navigate to your frontend installation directory
+2. Check the `frontend/public/offline-maps/` folder
+3. Look for `.pmtiles` files (e.g., `singapore.pmtiles`, `queensland.pmtiles`)
+
+**Step 2: Using Existing Offline Maps**
+If offline maps are already available:
+
+1. **Access Map View**: Click the **Map** tab in the sidebar
+2. **Check Connectivity**: If internet is unavailable, the system automatically switches to offline mode
+3. **Manual Switch**: Use the map controls to manually switch between online and offline maps
+4. **Region Selection**: If multiple offline regions are available, select the appropriate region from the map controls
+
+---
+
+##### Creating Custom Offline Maps
+
+If you need offline maps for a specific area not already covered, you can create custom offline map files.
+
+> **📖 For Detailed Technical Instructions**: See the complete guide for creating custom offline maps with satellite imagery in the **[Developer Guide - Satellite Imagery for Offline Maps](DeveloperGuide.md#satellite-imagery-for-offline-maps)** section.
+
+**Quick Overview:**
+1. **Download MOBAC** (Mobile Atlas Creator) - free mapping tool
+2. **Configure satellite imagery sources** for high-quality maps
+3. **Create map atlas** for your specific deployment area
+4. **Convert to PMTiles format** using the PMTiles converter
+5. **Deploy to dashboard** by placing files in the offline-maps directory
+
+**What You'll Need:**
+- MOBAC software (free download from [https://mobac.sourceforge.io/](https://mobac.sourceforge.io/))
+- Internet connection (for initial map download)
+- Approximate area coordinates for your deployment region
+- PMTiles converter tool
+
+**File Size Guidelines:**
+- **Small Areas**: Single city coverage = 5-20 MB
+- **Medium Areas**: State/province coverage = 50-200 MB  
+- **Large Areas**: Small country coverage = 200-500 MB
+
+---
+
+##### Using Offline Maps in the Field
+
+**Automatic Offline Detection:**
+- The dashboard automatically detects when internet connectivity is lost
+- Maps automatically switch to offline mode when online maps are unavailable
+- All map functionality (markers, GPS tracking, link quality lines) continues to work
+
+**Manual Offline Mode:**
+- Use the map source selector to manually choose offline maps
+- Useful for conserving bandwidth or when operating in secure environments
+- Access offline maps even when internet is available
+
+**Offline Map Features:**
+- ✅ **GPS Tracking**: Continue tracking node positions
+- ✅ **Link Quality Visualization**: View mesh network connections
+- ✅ **Node Markers**: See all configured nodes on the map
+- ✅ **Zoom & Pan**: Full map navigation capabilities
+- ⚠️ **Limited Resolution**: Lower detail than online satellite imagery
+- ❌ **Real-time Updates**: Map imagery doesn't update (static offline data)
+
+---
+
+##### Best Practices for Offline Maps
+
+**File Size Management:**
+- Create focused maps for your specific deployment areas
+- Balance zoom levels between detail and file size
+- Test coverage to verify the map covers your entire operational area
+
+**Storage Considerations:**
+- Store offline maps on devices with sufficient storage
+- Consider network storage for large deployments
+- Exclude large `.pmtiles` files from version control systems
+
+**Update Strategy:**
+- Update offline maps periodically when new satellite imagery is available
+- Test new offline maps before field deployment
+- Keep backup copies of working offline map files
+
+---
+
+##### Troubleshooting Offline Maps
+
+**Map Not Loading:**
+- Verify `.pmtiles` file is in the correct directory: `frontend/public/offline-maps/`
+- Check file permissions and ensure the file isn't corrupted
+- Restart the dashboard after adding new offline map files
+
+**Poor Map Quality:**
+- Offline maps have inherently lower resolution than online maps
+- Consider creating maps with higher zoom levels (increases file size)
+- Try different satellite imagery sources when creating maps
+
+**Coverage Issues:**
+- Verify the map region covers your entire deployment area
+- Check coordinates when creating the map atlas
+- Create overlapping regions if needed for comprehensive coverage
+
+> **🔧 Advanced Troubleshooting**: For detailed technical troubleshooting and advanced configuration options, refer to the **[Developer Guide - Offline Maps System](DeveloperGuide.md#offline-maps-system)** section.
+````markdown
 ### Real-time Dashboard
 
 ---
@@ -928,4 +1048,4 @@ For technical support, bug reports, or feature requests:
 
 ---
 
-*This guide covers version 1.1 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*
+*This guide covers version 1.2 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*

@@ -28,14 +28,6 @@ export function useOfflineMaps(theme) {
           zoom: 18
         },
         {
-          id: 'queensland',
-          name: 'Queensland, Australia',
-          url: './offline-maps/queensland.pmtiles',
-          bounds: { north: -10.4, south: -29.2, east: 153.6, west: 138.0 },
-          center: [-23.3781, 150.5144],
-          zoom: 6
-        },
-        {
           id: 'shoalwater_bay',
           name: 'Shoalwater Bay Area, Australia',
           url: './offline-maps/shoalwater_bay_area.pmtiles',
