@@ -42,7 +42,10 @@ export const ThemeContextProvider = ({ children }) => {
       root.style.setProperty('--tooltip-shadow', '0 2px 4px rgba(255,255,255,0.1)');
     }
     
-    console.log('Theme mode set to:', mode, 'data-theme attribute:', document.documentElement.getAttribute('data-theme'));
+    // Only log in development mode and not during testing
+    if (process.env.NODE_ENV === 'development' && !process.env.JEST_WORKER_ID) {
+      console.log('Theme mode set to:', mode, 'data-theme attribute:', document.documentElement.getAttribute('data-theme'));
+    }
   }, [mode]);  // Set initial data-theme attribute on mount
   useEffect(() => {
     // Set data-theme attribute on document element for CSS selectors

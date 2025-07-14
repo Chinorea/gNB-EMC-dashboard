@@ -42,7 +42,8 @@ class EdgeQBoard(BaseBoard):
             "file_paths": {
                 "cu_log": "/logdump/cu_log.txt",
                 "du_log": "/logdump/du_log.txt",
-                "setup_log": "/opt/webdashboard/logdump/setup_log.txt"
+                "setup_log": "/opt/webdashboard/logdump/setup_log.txt",
+                "api_log": "/opt/webdashboard/logdump/api_logs.txt"
             }
         }
     

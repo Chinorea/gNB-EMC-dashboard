@@ -622,4 +622,4 @@ For technical support, bug reports, or feature requests:
 
 ---
 
-*This guide covers version 1.0 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*
+*This guide covers version 1.1 of the 5G RAN Dashboard. For the latest updates and additional resources, please visit the project repository.*

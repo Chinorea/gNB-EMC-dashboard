@@ -141,6 +141,29 @@ function MapView({
     const hue = pct * 120;                       // 0=red, 120=green
     return `hsl(${hue},100%,50%)`;
   }
+
+  // Helper function to scale circle radius based on txPower (-1 to 3)
+  function txPowerToRadius(txPower) {
+    // Default radius for null/undefined txPower
+    if (txPower === null || txPower === undefined || isNaN(parseFloat(txPower))) {
+      return 3; // Default radius when txPower is not available (reduced from 10)
+    }
+    
+    const power = parseFloat(txPower);
+    const minPower = -1;
+    const maxPower = 3;
+    const minRadius = 6;   // Minimum circle radius (for txPower = -1)
+    const maxRadius = 18;  // Maximum circle radius (for txPower = 3)
+    
+    // Clamp the power value to the expected range
+    const clampedPower = Math.max(minPower, Math.min(maxPower, power));
+    
+    // Linear scaling from power range to radius range
+    const normalizedPower = (clampedPower - minPower) / (maxPower - minPower); // 0..1
+    const radius = minRadius + (normalizedPower * (maxRadius - minRadius));
+    
+    return Math.round(radius);
+  }
   
   useEffect(() => {
     if (!map.current) return;
@@ -195,18 +218,24 @@ function MapView({
     const group = L.layerGroup();    markers.forEach(marker => {
       const lat = parseFloat(marker.latitude)  || 0;
       const lng = parseFloat(marker.longitude) || 0;
-      const { latitude, longitude, nodeStatus, ...rest } = marker;
+      const { latitude, longitude, nodeStatus, txPower, ...rest } = marker;
       const label = String(marker.label);
-      const popupHtml = Object
-        .entries(rest)
-        .map(([k,v]) => `<strong>${k}</strong>: ${v}`)
-        .join('<br>');
+      
+      // Calculate radius based on txPower value
+      const radius = txPowerToRadius(txPower);
+      
+      // Create popup content including txPower information
+      const popupEntries = Object.entries(rest).map(([k,v]) => `<strong>${k}</strong>: ${v}`);
+      if (txPower !== null && txPower !== undefined) {
+        popupEntries.unshift(`<strong>TX Power</strong>: ${txPower} dBm`);
+      }
+      const popupHtml = popupEntries.join('<br>');
 
       // Get status-based colors
       const statusColors = getStatusColors(nodeStatus);
 
       const circle = L.circle([lat, lng], {
-        radius:      10,
+        radius:      radius, // Use calculated radius based on txPower
         color:       statusColors.color,
         fillColor:   statusColors.fillColor,
         fillOpacity: 0.6,

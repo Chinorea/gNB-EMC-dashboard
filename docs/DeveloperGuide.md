@@ -1,4 +1,4 @@
-# gNB-EMC Dashboard Developer Guide
+# gNB-EMS Dashboard Developer Guide
 
 **Version 1.1 - Multi-Board Architecture**
 
@@ -798,52 +798,55 @@ board_group.add_argument('--newboard', action='store_true',
 
 ### Testing & Debugging
 
+**Testing Overview:**
+
+The dashboard includes comprehensive testing for both frontend and backend components:
+
 **Frontend Testing:**
+- Unit tests for React components using Jest and React Testing Library
+- Integration tests for user workflows and component interactions
+- Network scanning and real-time update testing
+- Coverage reports and automated test execution
+
+**Backend Testing:**
+- Unit tests for board factory, configuration manager, and API endpoints
+- Board-specific attribute testing with mock implementations
+- API integration testing with comprehensive request/response validation
+- Logging system testing for debugging and troubleshooting
+
+📖 **[Complete Testing Documentation](../frontend/testing/README.md)**
+
+**Quick Testing Commands:**
 ```bash
-# Run frontend tests
+# Frontend testing
 cd frontend
 npm test
+
+# Backend testing
+cd backend
+python3 -m pytest tests/
 
 # Debug network scanning
 # Check browser console for NetworkScanner logs
 console.log("NetworkScanner: Starting scan...");
 
-# Test individual components
-npm test -- --testNamePattern="NetworkScanner"
-```
-
-**Backend Testing:**
-```bash
-# Test board detection
-python3 WebDashboard.py --help
-
-# Test specific board
-python3 WebDashboard.py --edgeq
-
 # Debug API endpoints
 curl http://localhost:5000/api/board-info
 curl http://localhost:5000/api/attributes
-
-# Test board-specific functionality
-python3 -c "from board_factory import BoardFactory; print(BoardFactory.get_available_boards())"
 ```
 
-**Network Scanning Testing:**
-```javascript
-// Frontend testing in browser console
-const scanner = new NetworkScanner();
-scanner.scanUserSubnet('192.168.1', 
-  (progress) => console.log('Progress:', progress),
-  (node) => console.log('Found node:', node)
-);
+**Testing Logs:**
+- Frontend testing includes comprehensive test coverage tracking
+- Backend testing validates board-specific functionality with detailed logs
+- Log monitoring available for troubleshooting and system verification
+- Test execution logs help identify integration issues and performance bottlenecks
 ```
 
-**Integration Testing:**
-- Test frontend-backend communication across all board types
-- Verify network scanning with multiple device types
-- Test MANET assignment workflows
-- Validate real-time updates with high node counts
-- Performance testing with 20+ nodes
+**Important Notes:**
+- Ensure all tests pass before committing changes
+- Use `npm run coverage` to check frontend test coverage
+- Backend tests require a running instance of the Flask app
+- Debugging information is logged to the console and server logs
 
 ### Deployment
 

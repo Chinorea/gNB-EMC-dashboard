@@ -26,10 +26,24 @@ except ImportError:
 from board_factory import BoardFactory
 from config_manager import BoardConfigManager
 from logic.shared_attributes.Network import Network
+import sys
+
+# Check if we're running in a test environment
+def is_testing():
+    """Check if we're running in a test environment"""
+    return 'pytest' in sys.modules or 'unittest' in sys.modules or any('test' in arg for arg in sys.argv)
 
 # Initialize board based on command line args or auto-detection (defaults to EdgeQ)
-board_type = BoardFactory.parse_board_from_args()
-current_board = BoardFactory.create_board(board_type)
+if is_testing():
+    # For testing, use default EdgeQ board without parsing args
+    board_type = 'edgeq'
+    current_board = BoardFactory.create_board(board_type)
+else:
+    # Normal execution - parse command line arguments
+    board_type = BoardFactory.parse_board_from_args()
+    current_board = BoardFactory.create_board(board_type)
+
+# Initialize config manager
 config_manager = BoardConfigManager(current_board)
 
 # Set up LogManager with board config as single source of truth
@@ -73,6 +87,44 @@ if not os.path.exists(CMD_LOG_DIR):
             os.makedirs(CMD_LOG_DIR)
 
 print(f"Using log directory: {CMD_LOG_DIR}")
+
+# Initialize API logging
+API_LOG_FILENAME = "api_logs.txt"
+API_LOG_FILEPATH = os.path.join(CMD_LOG_DIR, API_LOG_FILENAME)
+
+# Create/clear the API log file on startup for a fresh logging session
+try:
+    # Make sure the directory exists
+    os.makedirs(os.path.dirname(API_LOG_FILEPATH), exist_ok=True)
+    # Clear the file by opening it with 'w' mode and immediately closing
+    with open(API_LOG_FILEPATH, 'w') as api_log_file:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        api_log_file.write(f"=== API Logging Session Started at {timestamp} ===\n")
+    print(f"API logging initialized: {API_LOG_FILEPATH}")
+except Exception as e:
+    print(f"Warning: Failed to initialize API log file: {str(e)}")
+
+def log_api_request(endpoint, method, request_data=None, response_data=None, status_code=None, error=None):
+    """Log API requests and responses to the API log file in Apache-style format"""
+    try:
+        # Get client IP address
+        client_ip = request.remote_addr if request else "unknown"
+        
+        # Format timestamp like Apache logs
+        timestamp = datetime.datetime.now().strftime("%d/%b/%Y %H:%M:%S")
+        
+        # Format the log entry in Apache Common Log Format style
+        # client_ip - - [timestamp] "METHOD /endpoint HTTP/1.1" status_code -
+        log_entry = f'{client_ip} - - [{timestamp}] "{method} {endpoint} HTTP/1.1" {status_code or "000"} -\n'
+        
+        with open(API_LOG_FILEPATH, 'a') as api_log_file:
+            api_log_file.write(log_entry)
+            api_log_file.flush()  # Ensure immediate write to file
+            
+    except Exception as e:
+        # Don't let logging errors break the API
+        print(f"Warning: Failed to write to API log: {str(e)}")
+
 print(f"Flask application initialization complete for {current_board.get_board_name()}.")
 
 app = Flask(__name__)
@@ -81,13 +133,22 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route("/api/board-info", methods=["GET"])
 def get_board_info():
     """Get current board information and configuration"""
-    return jsonify({
-        "board_type": current_board.get_board_name(),
-        "config_path": current_board.get_config_file_path(),
-        "log_directory": config_manager.get_config_value('log_directory'),
-        "available_files": list(current_board.get_file_paths().keys()),
-        "timeouts": config_manager.get_config_value('timeouts')
-    })
+    try:
+        response_data = {
+            "board_type": current_board.get_board_name(),
+            "config_path": current_board.get_config_file_path(),
+            "log_directory": config_manager.get_config_value('log_directory'),
+            "available_files": list(current_board.get_file_paths().keys()),
+            "timeouts": config_manager.get_config_value('timeouts')
+        }
+        
+        log_api_request("/api/board-info", "GET", response_data=response_data, status_code=200)
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = f"Failed to get board info: {str(e)}"
+        log_api_request("/api/board-info", "GET", error=error_msg, status_code=500)
+        return jsonify({"error": error_msg}), 500
 
 @app.route("/api/attributes", methods=["GET"])
 def get_attributes():
@@ -135,22 +196,43 @@ def get_attributes():
             "board_time":          board_date_time.boardTime,
             "core_connection":     core_connection.networkStatus.name,
         }
+        
+        log_api_request("/api/attributes", "GET", response_data=data, status_code=200)
         return jsonify(data)
         
     except Exception as e:
-        return jsonify({"error": f"Failed to get attributes: {str(e)}"}), 500
+        error_msg = f"Failed to get attributes: {str(e)}"
+        log_api_request("/api/attributes", "GET", error=error_msg, status_code=500)
+        return jsonify({"error": error_msg}), 500
 
 @app.route("/api/node_status", methods=["GET"])
 def get_raptor_status():
-    raptor_status.refresh()
-    return jsonify({
-        "node_status": raptor_status.raptorStatus.name
-    }), 200
+    try:
+        raptor_status.refresh()
+        response_data = {
+            "node_status": raptor_status.raptorStatus.name
+        }
+        
+        log_api_request("/api/node_status", "GET", response_data=response_data, status_code=200)
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        error_msg = f"Failed to get raptor status: {str(e)}"
+        log_api_request("/api/node_status", "GET", error=error_msg, status_code=500)
+        return jsonify({"error": error_msg}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Minimal health check endpoint for fast network discovery"""
-    return jsonify({"status": "online"})
+    try:
+        response_data = {"status": "online"}
+        log_api_request("/api/health", "GET", response_data=response_data, status_code=200)
+        return jsonify(response_data)
+        
+    except Exception as e:
+        error_msg = f"Health check failed: {str(e)}"
+        log_api_request("/api/health", "GET", error=error_msg, status_code=500)
+        return jsonify({"error": error_msg}), 500
 
 @app.route("/api/setup_script", methods=["POST"])
 def setup_script():
@@ -160,11 +242,16 @@ def setup_script():
     action = data.get("action")
     logger = LogManager.get_logger('setup_script')
 
+    # Log the incoming request
+    log_api_request("/api/setup_script", "POST", request_data=data)
+
     # Get board-specific commands
     ACTIONS = current_board.get_setup_commands()
     
     if action not in ACTIONS:
-        return jsonify({"error": f"Unknown action '{action}' for {current_board.get_board_name()}"}), 400
+        error_response = {"error": f"Unknown action '{action}' for {current_board.get_board_name()}"}
+        log_api_request("/api/setup_script", "POST", request_data=data, response_data=error_response, status_code=400)
+        return jsonify(error_response), 400
 
     cmd = ACTIONS[action]
     logger.info(f"Executing action '{action}' with command: {' '.join(cmd)}")
@@ -213,13 +300,15 @@ def setup_script():
                         output = f.read()
                     
                     logger.info(f"Action '{action}' completed with no issue, exit code 0")
-                    return jsonify({
+                    response_data = {
                         "action": action,
                         "status": "completed",
                         "output": output.strip(),
                         "log_file": log_filepath,
                         "exit_code": 0  # Always return 0 for stop and status commands
-                    }), 200
+                    }
+                    log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=200)
+                    return jsonify(response_data), 200
                 except subprocess.TimeoutExpired:
                     logger.warning(f"Action '{action}' timed out. Killing process.")
                     proc.kill()
@@ -229,13 +318,15 @@ def setup_script():
                     with open(log_filepath, 'r') as f:
                         output = f.read()
                     
-                    return jsonify({
+                    response_data = {
                         "action": action,
                         "error": "timeout",
                         "output": output.strip(),
                         "log_file": log_filepath,
                         "exit_code": -1
-                    }), 504
+                    }
+                    log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=504)
+                    return jsonify(response_data), 504
             
             # For start/setup actions, monitor the log file for "CELL_IS_UP"
             start_time = time.time()
@@ -256,14 +347,16 @@ def setup_script():
                     with open(log_filepath, 'r') as f:
                         output = f.read()
                     
-                    return jsonify({
+                    response_data = {
                         "action": action,
                         "error": "timeout",
                         "details": f"No CELL_IS_UP in {MAX_WAIT}s",
                         "output": output.strip(),
                         "log_file": log_filepath,
                         "exit_code": -1
-                    }), 504
+                    }
+                    log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=504)
+                    return jsonify(response_data), 504
                 
                 # Check if the process has terminated
                 if proc.poll() is not None:
@@ -274,23 +367,27 @@ def setup_script():
                     # Check if "CELL_IS_UP" is in the output
                     if "CELL_IS_UP" in output:
                         logger.info("Setup is successful, gNB is now active")
-                        return jsonify({
+                        response_data = {
                             "action": action,
                             "status": "ok",
                             "output": output.strip(),
                             "log_file": log_filepath,
                             "exit_code": 0
-                        }), 200
+                        }
+                        log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=200)
+                        return jsonify(response_data), 200
                     else:
                         logger.warning(f"Process terminated prematurely with code {proc.returncode}.")
-                        return jsonify({
+                        response_data = {
                             "action": action,
                             "error": "process_terminated_unexpectedly",
                             "details": f"Process terminated (code {proc.returncode}) before CELL_IS_UP was detected.",
                             "output": output.strip(),
                             "log_file": log_filepath,
                             "exit_code": proc.returncode
-                        }), 500
+                        }
+                        log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=500)
+                        return jsonify(response_data), 500
                 
                 # Check the log file for "CELL_IS_UP" without loading the whole thing
                 try:
@@ -314,13 +411,15 @@ def setup_script():
                             with open(log_filepath, 'r') as full_f:
                                 output = full_f.read()
                         
-                            return jsonify({
+                            response_data = {
                                 "action": action,
                                 "status": "ok", 
                                 "output": output.strip(),
                                 "log_file": log_filepath,
                                 "exit_code": proc.returncode
-                            }), 200
+                            }
+                            log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=200)
+                            return jsonify(response_data), 200
                 except Exception as e:
                     logger.error(f"Error reading log file: {str(e)}")
                 
@@ -334,38 +433,52 @@ def setup_script():
                 proc.kill()
             except:
                 pass
-        return jsonify({
+        response_data = {
             "action": action,
             "error": "execution_error",
             "details": str(e),
             "exit_code": -2
-        }), 500
+        }
+        log_api_request("/api/setup_script", "POST", request_data=data, response_data=response_data, status_code=500)
+        return jsonify(response_data), 500
 
 @app.route("/api/download/<file_key>", methods=["GET"])
 def download_file(file_key):
     """Download board-specific files"""
-    # Get board-specific file paths
-    FILE_PATHS = current_board.get_file_paths()
-    
-    file_path = FILE_PATHS.get(file_key)
-    if file_path is None:
-        available_files = list(FILE_PATHS.keys())
-        return jsonify({
-            "error": f"Unknown file key '{file_key}' for {current_board.get_board_name()}",
-            "available_files": available_files
-        }), 404
+    try:
+        # Get board-specific file paths
+        FILE_PATHS = current_board.get_file_paths()
+        
+        file_path = FILE_PATHS.get(file_key)
+        if file_path is None:
+            available_files = list(FILE_PATHS.keys())
+            error_response = {
+                "error": f"Unknown file key '{file_key}' for {current_board.get_board_name()}",
+                "available_files": available_files
+            }
+            log_api_request(f"/api/download/{file_key}", "GET", response_data=error_response, status_code=404)
+            return jsonify(error_response), 404
 
-    # file must exist on disk
-    if not os.path.isfile(file_path):
-        return jsonify({"error": f"File not found on server: {file_path}"}), 404
+        # file must exist on disk
+        if not os.path.isfile(file_path):
+            error_response = {"error": f"File not found on server: {file_path}"}
+            log_api_request(f"/api/download/{file_key}", "GET", response_data=error_response, status_code=404)
+            return jsonify(error_response), 404
 
-    # send it as an attachment (will trigger Save-As in the browser)
-    return send_file(
-        file_path,
-        as_attachment=True,
-        download_name=os.path.basename(file_path),
-        mimetype="text/plain",
-    )
+        # Log successful file download (don't include file content in log)
+        log_api_request(f"/api/download/{file_key}", "GET", response_data={"file_downloaded": os.path.basename(file_path)}, status_code=200)
+        
+        # send it as an attachment (will trigger Save-As in the browser)
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=os.path.basename(file_path),
+            mimetype="text/plain",
+        )
+    except Exception as e:
+        error_msg = f"Failed to download file: {str(e)}"
+        log_api_request(f"/api/download/{file_key}", "GET", error=error_msg, status_code=500)
+        return jsonify({"error": error_msg}), 500
 
 @app.route("/api/config", methods=["POST"])
 def set_config():
@@ -377,23 +490,32 @@ def set_config():
         field = data.get("field")
         val = data.get("value")
 
+        # Log the incoming request
+        log_api_request("/api/config", "POST", request_data=data)
+
         if radio.edit_config(field, val):
             # create success response
-            return jsonify({
+            response_data = {
                 "status": "success",
                 "message": f"Updated {field} to {val}"
-            }), 200
+            }
+            log_api_request("/api/config", "POST", request_data=data, response_data=response_data, status_code=200)
+            return jsonify(response_data), 200
         else:
             # create error response
-            return jsonify({
+            response_data = {
                 "status": "error",
                 "message": f"Failed to update {field} to {val}"
-            }), 400
+            }
+            log_api_request("/api/config", "POST", request_data=data, response_data=response_data, status_code=400)
+            return jsonify(response_data), 400
             
     except Exception as e:
-        return jsonify({
+        error_response = {
             "status": "error",
             "message": f"Failed to set config: {str(e)}"
-        }), 500
+        }
+        log_api_request("/api/config", "POST", request_data=data if 'data' in locals() else None, response_data=error_response, status_code=500)
+        return jsonify(error_response), 500
 
 

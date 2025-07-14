@@ -10,7 +10,7 @@ export default function LogCard({ ip }) {
   const colors = getThemeColors(theme);
   const [logLines, setLogLines] = useState([]);
   const [error, setError] = useState(null);
-  const [logType, setLogType] = useState('du'); // 'du' or 'cu' or 'setup'
+  const [logType, setLogType] = useState('du'); // 'du' or 'cu' or 'setup' or 'api'
 
   useEffect(() => {
     if (!ip) return;
@@ -81,6 +81,11 @@ export default function LogCard({ ip }) {
                   onClick={() => setLogType('setup')}
                   sx={{ minWidth: '60px' }}
                 >Setup</Button>
+                <Button
+                  variant={logType === 'api' ? 'contained' : 'outlined'}
+                  onClick={() => setLogType('api')}
+                  sx={{ minWidth: '60px' }}
+                >API</Button>
               </ButtonGroup>
             </Box>
             <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
